@@ -1,0 +1,6 @@
+{
+  "name": "YuBiFLo",
+  "description": "YuBiFLo — Your business is a flower. An all-in-one retail growth & intelligence engine that is far beyond just a POS: featuring supply-driven velocity inventory, 05:57 AM float reconciliation (Equity Paybill 1450180372031, M-Pesa & Cash), customer credit ledgers, batch restock audits, AI sales blooming forecasts, and multi-store management.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,497 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --bg-canvas: #0B0F0E;
+    --bg-page: #0B0F0E;
+    --bg-card: #121815;
+    --bg-card-2: #151C18;
+    --border: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.13);
+    --teal: #1FB88E;
+    --teal-dim: rgba(31, 184, 142, 0.14);
+    --gold: #D4A537;
+    --gold-dim: rgba(212, 165, 55, 0.14);
+    --text-hi: #F2F3F1;
+    --text-mid: #A8B0AC;
+    --text-low: #697169;
+    --bg-surface: #121815;
+    --bg-surface-elevated: #151C18;
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-accent: rgba(31, 184, 142, 0.25);
+    --text-primary: #F2F3F1;
+    --text-secondary: #A8B0AC;
+    --text-muted: #697169;
+  }
+
+  /* Light theme support for high-contrast daylight retail environments */
+  .theme-light {
+    color-scheme: light;
+    --bg-canvas: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-surface-elevated: #f1f5f9;
+    --border-subtle: #e2e8f0;
+    --border-accent: rgba(16, 185, 129, 0.35);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+  }
+  
+  body {
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.011em;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
+    letter-spacing: -0.025em;
+  }
+
+  code, kbd, samp, pre, .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-feature-settings: "tnum";
+    font-variant-numeric: tabular-nums;
+  }
+
+  .font-fraunces {
+    font-family: 'Fraunces', serif;
+  }
+  .font-sora {
+    font-family: 'Sora', system-ui, sans-serif;
+  }
+  .font-outfit {
+    font-family: 'Outfit', sans-serif;
+  }
+  .font-jakarta {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+  .font-manrope {
+    font-family: 'Manrope', system-ui, sans-serif;
+  }
+}
+
+/* YuBiFLo Redesign Dedicated Style Tokens */
+.yubiflo-bg-page {
+  background-color: var(--bg-page);
+}
+.yubiflo-bg-card {
+  background-color: var(--bg-card);
+}
+.yubiflo-bg-card-2 {
+  background-color: var(--bg-card-2);
+}
+.yubiflo-border {
+  border-color: var(--border);
+}
+.yubiflo-border-strong {
+  border-color: var(--border-strong);
+}
+.yubiflo-teal {
+  color: var(--teal);
+}
+.yubiflo-gold {
+  color: var(--gold);
+}
+.yubiflo-text-hi {
+  color: var(--text-hi);
+}
+.yubiflo-text-mid {
+  color: var(--text-mid);
+}
+.yubiflo-text-low {
+  color: var(--text-low);
+}
+
+/* YuBiFLo Redesign Layout & Components */
+.yubiflo-wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.yubiflo-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.yubiflo-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.yubiflo-brand-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--teal-dim);
+  border: 1px solid var(--teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--teal);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+.yubiflo-brand-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--text-hi);
+  font-family: 'Outfit', sans-serif;
+}
+
+.yubiflo-brand-tag {
+  font-size: 11.5px;
+  color: var(--text-low);
+  margin-top: 1px;
+}
+
+.yubiflo-shop-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-mid);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.yubiflo-shop-pill:hover {
+  border-color: var(--border-strong);
+}
+.yubiflo-shop-pill b {
+  color: var(--text-hi);
+  font-weight: 500;
+}
+
+.yubiflo-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.yubiflo-badge-quiet {
+  font-size: 12.5px;
+  color: var(--text-mid);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 7px 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.yubiflo-badge-quiet:hover {
+  border-color: var(--border-strong);
+  color: var(--text-hi);
+}
+
+.yubiflo-btn-primary {
+  font-size: 13px;
+  font-weight: 500;
+  color: #06110D;
+  background: var(--teal);
+  border: none;
+  padding: 9px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+.yubiflo-btn-primary:hover {
+  opacity: 0.92;
+}
+.yubiflo-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.yubiflo-btn-ghost {
+  font-size: 13px;
+  color: var(--text-mid);
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 9px 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  transition: all 0.15s ease;
+}
+.yubiflo-btn-ghost:hover {
+  color: var(--text-hi);
+  border-color: var(--border-strong);
+  background: var(--bg-card);
+}
+
+.yubiflo-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 28px;
+  overflow-x: auto;
+}
+
+.yubiflo-tab {
+  font-size: 13px;
+  color: var(--text-mid);
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  font-family: 'Outfit', sans-serif;
+  transition: all 0.15s ease;
+}
+.yubiflo-tab:hover {
+  color: var(--text-hi);
+}
+.yubiflo-tab.active {
+  color: var(--text-hi);
+  background: var(--bg-card);
+  border-color: var(--border-strong);
+}
+.yubiflo-tab .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--teal);
+  display: inline-block;
+  margin-right: 7px;
+}
+
+.yubiflo-hero {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 36px 40px;
+  margin-bottom: 22px;
+}
+@media (max-width: 640px) {
+  .yubiflo-hero {
+    padding: 24px 20px;
+  }
+}
+
+.yubiflo-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.yubiflo-stage {
+  font-size: 12px;
+  font-weight: 500;
+  color: #0F0B02;
+  background: var(--gold);
+  padding: 6px 13px;
+  border-radius: 20px;
+}
+
+.yubiflo-hero-meta {
+  font-size: 12.5px;
+  color: var(--text-low);
+}
+
+.yubiflo-hero h1 {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 38px;
+  line-height: 1.15;
+  letter-spacing: -0.3px;
+  max-width: 640px;
+  margin-bottom: 14px;
+  color: var(--text-hi);
+}
+@media (max-width: 640px) {
+  .yubiflo-hero h1 {
+    font-size: 28px;
+  }
+}
+
+.yubiflo-hero p {
+  font-size: 14.5px;
+  color: var(--text-mid);
+  max-width: 480px;
+  line-height: 1.55;
+  margin-bottom: 26px;
+}
+
+.yubiflo-progress-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--text-low);
+  margin-bottom: 8px;
+}
+.yubiflo-progress-row .now {
+  color: var(--teal);
+  font-weight: 500;
+}
+
+.yubiflo-progress-track {
+  height: 3px;
+  background: var(--border-strong);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+.yubiflo-progress-fill {
+  height: 100%;
+  background: var(--teal);
+  transition: width 0.4s ease;
+}
+
+.yubiflo-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.yubiflo-hero-actions .yubiflo-btn-ghost,
+.yubiflo-hero-actions .yubiflo-btn-primary {
+  padding: 10px 18px;
+}
+
+.yubiflo-metrics {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+@media (max-width: 960px) {
+  .yubiflo-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 540px) {
+  .yubiflo-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+.yubiflo-metric {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+}
+
+.yubiflo-metric.hero-metric {
+  background: linear-gradient(180deg, var(--bg-card-2), var(--bg-card));
+  border-color: var(--border-strong);
+}
+
+.yubiflo-metric-label {
+  font-size: 12px;
+  color: var(--text-low);
+  margin-bottom: 10px;
+}
+
+.yubiflo-metric-value {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 26px;
+  color: var(--text-hi);
+  line-height: 1.2;
+}
+
+.yubiflo-metric.hero-metric .yubiflo-metric-value {
+  font-size: 34px;
+  color: var(--teal);
+}
+
+.yubiflo-metric-sub {
+  font-size: 11.5px;
+  color: var(--text-low);
+  margin-top: 8px;
+}
+
+.yubiflo-metric-sub.gold {
+  color: var(--gold);
+}
+
+.yubiflo-footnote {
+  font-size: 11.5px;
+  color: var(--text-low);
+  text-align: center;
+  margin-top: 8px;
+  margin-bottom: 24px;
+}
+
+/* Custom smooth dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0b0f19;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Sophisticated Card and Component Utilities */
+.dark-card {
+  background-color: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark-card-hover:hover {
+  background-color: #162032;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Refined Subtle Elevation Highlights */
+.elevation-card {
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
+}
+
+.elevation-card-emerald {
+  background: #111827;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.06);
+}
+
+.elevation-card-amber {
+  background: #111827;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.06);
+}
+
+.elevation-card-rose {
+  background: #111827;
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  box-shadow: 0 4px 20px -2px rgba(244, 63, 94, 0.06);
+}
+
+
