@@ -3,7 +3,7 @@ import {
   Building2, Globe, Plus, ChevronDown, Copy, X, ArrowRight, Sparkles, 
   AlertTriangle, Layers, Database, BarChart3, BrainCircuit, Eye, 
   LayoutDashboard, Mic, Zap, Clock, Package, Users, Scale, RefreshCw, BarChart2,
-  Smartphone, HelpCircle, Download, Radio, Sun, Truck
+  Smartphone, HelpCircle, Download, Radio, Sun, Truck, Languages
 } from "lucide-react";
 
 import { 
@@ -31,6 +31,7 @@ import MorningBookendTab from "./components/tabs/MorningBookendTab";
 import SupplierLogTab, { SupplyLogEntry } from "./components/tabs/SupplierLogTab";
 import EveningReconciliationTab from "./components/tabs/EveningReconciliationTab";
 import PendingDraftsQueueTab, { VoiceDraftRecord } from "./components/tabs/PendingDraftsQueueTab";
+import MultilingualVoiceTab from "./components/tabs/MultilingualVoiceTab";
 import WarehouseTab from "./components/tabs/WarehouseTab";
 import VoiceLedgerTab from "./components/tabs/VoiceLedgerTab";
 import AmbientLedgerTab from "./components/tabs/AmbientLedgerTab";
@@ -545,6 +546,7 @@ export default function App() {
     { id: "morning_bookend", name: "Morning Bookend (60s)", icon: <Sun size={16} />, badge: "Setup" },
     { id: "supplier_log", name: "Supplier Log (5s)", icon: <Truck size={16} />, badge: "Bulk→Micro" },
     { id: "pending_drafts", name: "Pending Voice Drafts", icon: <Radio size={16} />, badge: "3 Intents" },
+    { id: "multilingual_voice", name: "5-Dialect Voice Studio", icon: <Languages size={16} />, badge: "5 Nairobi Dialects" },
     { id: "evening_reconciliation", name: "Evening Reconciliation", icon: <Scale size={16} />, badge: "Reverse Math" },
     { id: "ambient_ledger", name: "Ambient Ledger (Muva)", icon: <Radio size={16} />, badge: "AEC & VAD" },
     { id: "warehouse", name: "Warehouse & Bulk Supply", icon: <Building2 size={16} />, badge: `${alacioState.warehouse.length} bulk` },
@@ -739,6 +741,13 @@ export default function App() {
               <PendingDraftsQueueTab
                 state={alacioState}
                 onApproveDraft={handleApproveVoiceDraft}
+              />
+            )}
+
+            {activeTab === "multilingual_voice" && (
+              <MultilingualVoiceTab
+                state={alacioState}
+                onCommitParsedSale={handleApproveAmbientDraft}
               />
             )}
 

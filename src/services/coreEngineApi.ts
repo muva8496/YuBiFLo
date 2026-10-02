@@ -1,6 +1,7 @@
 import express from "express";
 import { createPool } from "../db/index.ts";
 import { requireTenant, TenantRequest, withTenantTransaction, setTenantSessionContext } from "../middleware/tenant.ts";
+import { KenyanDialectEngine } from "./kenyanDialectEngine";
 
 const router = express.Router();
 const pool = createPool();
@@ -587,85 +588,33 @@ let pendingDraftsStore: Array<{
   }
 ];
 
-// 12. POST /api/v1/voice-parse - YuBiFlo Ambient Voice NLP Intent Parser
+// 12. POST /api/v1/voice-parse - YuBiFlo Ambient Voice NLP Intent Parser (5-Language Nairobi Engine)
 router.post("/voice-parse", async (req, res) => {
   try {
     const { transcript = "", merchant_id = "alacio_mini_shop" } = req.body;
-    const text = transcript.trim().toLowerCase();
+    
+    // Parse across Kikuyu, Kamba, Swahili, English, and Sheng
+    const parsed = KenyanDialectEngine.parseMultilingualSpeech(transcript);
 
-    let intent_type: "SUPPLIER_DELIVERY" | "CREDIT_RECORD" | "ADVANCE_PAYMENT" | "UNKNOWN" = "UNKNOWN";
-    let payload_json: any = {};
-    let total_amount = 0;
-
-    // 1. Intent: SUPPLIER_DELIVERY
-    if (text.includes("leta maziwa") || text.includes("crate") || text.includes("supplier") || text.includes("ameleta")) {
-      intent_type = "SUPPLIER_DELIVERY";
-      const crateMatch = text.match(/crate\s*(\d+)/i) || text.match(/(\d+)\s*crate/i);
-      const breadMatch = text.match(/mkate\s*(\d+)/i) || text.match(/(\d+)\s*mkate/i);
-      const crates = crateMatch ? parseInt(crateMatch[1]) : 2;
-      const bread = breadMatch ? parseInt(breadMatch[1]) : 20;
-
-      payload_json = {
-        supplier_name: "Wholesale Distributor",
-        items: [
-          { item_name: "Brookside Fresh Milk", quantity: crates, unit: "crates" },
-          { item_name: "Fresh White Bread", quantity: bread, unit: "loaves" }
-        ],
-        payment_mode: text.includes("mpesa") ? "MPESA" : "CASH",
-        total_cost: crates * 1320 + bread * 65
-      };
-      total_amount = payload_json.total_cost;
-
-    // 2. Intent: CREDIT_RECORD (DENI)
-    } else if (text.includes("deni") || text.includes("kopa") || text.includes("amechukua") && text.includes("sugar ya")) {
-      intent_type = "CREDIT_RECORD";
-      const sugarMatch = text.match(/ya\s*(\d+)/i);
-      const amount = sugarMatch ? parseInt(sugarMatch[1]) : 40;
-      const nameMatch = transcript.match(/^([A-Za-z]+)\s+amechukua/i);
-      const customer = nameMatch ? nameMatch[1] : "Kamau";
-
-      payload_json = {
-        customer_name: customer,
-        items: [
-          { item_name: "Mumias Sugar", quantity: 1, unit: "micro-fraction" }
-        ],
-        amount_owed: amount,
-        notes: "Verbal deni logged at counter"
-      };
-      total_amount = amount;
-
-    // 3. Intent: ADVANCE_PAYMENT (Deferred pickup / change)
-    } else if (text.includes("ameacha") || text.includes("atachukua jioni") || text.includes("nitarudi kuchukua")) {
-      intent_type = "ADVANCE_PAYMENT";
-      const paidMatch = text.match(/ameacha\s*(\d+)/i) || text.match(/(\d+)/i);
-      const changeMatch = text.match(/change\s*(\d+)/i);
-      const paid = paidMatch ? parseInt(paidMatch[1]) : 600;
-      const change = changeMatch ? parseInt(changeMatch[1]) : 400;
-
-      payload_json = {
-        customer_name: "Advance Customer",
-        amount_paid: paid,
-        change_given: change,
-        net_retained: paid - change,
-        items: [
-          { item_name: "Flour / Unga", quantity: 1, unit: "bale" }
-        ],
-        pickup_status: "Reserved for evening pickup"
-      };
-      total_amount = paid - change;
-
-    } else {
-      intent_type = "UNKNOWN";
-      payload_json = { raw: transcript };
-    }
+    const payload_json = {
+      detected_language: parsed.detectedLanguage,
+      confidence: parsed.confidence,
+      counterparty: parsed.counterparty,
+      items: parsed.extractedItems,
+      payment_mode: parsed.paymentMode,
+      amount: parsed.amount,
+      change_given: parsed.changeGiven,
+      pickup_deferred: parsed.pickupDeferred,
+      transcription_english: parsed.transcriptionEnglish
+    };
 
     const newDraft = {
       id: `draft_${Date.now()}`,
       merchant_id,
-      intent_type,
+      intent_type: parsed.intent as any,
       raw_transcript: transcript,
       payload_json,
-      total_amount,
+      total_amount: parsed.amount,
       status: "PENDING" as const,
       created_at: new Date().toISOString()
     };
@@ -674,12 +623,13 @@ router.post("/voice-parse", async (req, res) => {
 
     res.status(201).json({
       status: "SUCCESS",
+      detected_language: parsed.detectedLanguage,
       draft: newDraft,
-      message: "Draft saved to pending_drafts queue. Merchant confirmation required before ledger write-down."
+      message: `Parsed spoken ${parsed.detectedLanguage}. Saved to pending_drafts queue pending merchant review.`
     });
   } catch (err: any) {
-    console.error("Error in voice-parse:", err);
-    res.status(500).json({ error: "Failed to parse voice transcript" });
+    console.error("Error in multilingual voice-parse:", err);
+    res.status(500).json({ error: "Failed to parse multilingual voice transcript" });
   }
 });
 
