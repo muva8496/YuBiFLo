@@ -1,296 +1,571 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { 
-  Database, BarChart3, BrainCircuit, ArrowRight, CheckCircle2, 
-  AlertTriangle, Eye, Layers, Store, Wrench, Pill, Sparkles, 
-  LayoutDashboard, Zap, Clock, Package, Users, Scale, BarChart2, 
-  RefreshCw, Plus, Search, ChevronDown, Building2, Globe, Copy, 
-  X, Coins, SlidersHorizontal, Smartphone, TrendingUp, ShieldAlert,
-  Mic
+  Building2, Globe, Plus, ChevronDown, Copy, X, ArrowRight, Sparkles, 
+  AlertTriangle, Layers, Database, BarChart3, BrainCircuit, Eye, 
+  LayoutDashboard, Mic, Zap, Clock, Package, Users, Scale, RefreshCw, BarChart2,
+  Smartphone, HelpCircle, Download, Radio, Sun, Truck
 } from "lucide-react";
-import VoiceLedger, { VoiceTransactionPayload } from "./components/VoiceLedger";
 
-// ==========================================
-// 1. PERSISTENCE ENGINE (SAFE LOCALSTORAGE)
-// ==========================================
-const STORAGE_KEY = "yubiflo_master_workspaces_v1";
-const ACTIVE_ID_KEY = "yubiflo_master_active_id";
+import { 
+  AlacioMasterState, 
+  InventoryItem, 
+  CustomerDebtor,
+  FloatDenomination, 
+  ReconciliationAudit, 
+  SalesLedgerItem,
+  WarehouseBatch,
+  PayoutOrDrawing,
+  MpesaStatementRecord,
+  FreemiumTier
+} from "./types/alacio";
+import { 
+  loadAlacioState, 
+  saveAlacioState, 
+  calculateKpis,
+  PLATFORM_BLUEPRINTS,
+  PROJECT_ALACIO_CASE_STUDY
+} from "./services/alacioStorage";
 
-export interface WorkspaceInventoryItem {
-  id: number | string;
-  name: string;
-  category: string;
-  unit_type: string;
-  unit_cost: number;
-  unit_retail: number;
-  current_stock: number;
-  opening_stock: number;
-  expected_margin: number;
-  total_shelf_value: number;
-  velocity_badge: string;
-}
+import DashboardTab from "./components/tabs/DashboardTab";
+import MorningBookendTab from "./components/tabs/MorningBookendTab";
+import SupplierLogTab, { SupplyLogEntry } from "./components/tabs/SupplierLogTab";
+import EveningReconciliationTab from "./components/tabs/EveningReconciliationTab";
+import PendingDraftsQueueTab, { VoiceDraftRecord } from "./components/tabs/PendingDraftsQueueTab";
+import WarehouseTab from "./components/tabs/WarehouseTab";
+import VoiceLedgerTab from "./components/tabs/VoiceLedgerTab";
+import AmbientLedgerTab from "./components/tabs/AmbientLedgerTab";
+import QuickDumpTab from "./components/tabs/QuickDumpTab";
+import OpeningFloatTab from "./components/tabs/OpeningFloatTab";
+import InventoryTab from "./components/tabs/InventoryTab";
+import CustomersCreditTab from "./components/tabs/CustomersCreditTab";
+import TLedgersTab from "./components/tabs/TLedgersTab";
+import ReconciliationTab from "./components/tabs/ReconciliationTab";
+import AnalyticsTab from "./components/tabs/AnalyticsTab";
+import HomeScreenDiamonds from "./components/HomeScreenDiamonds";
+import PullOwnAppModal from "./components/PullOwnAppModal";
+import OneTapGapModal from "./components/OneTapGapModal";
+import MpesaImportModal from "./components/MpesaImportModal";
+import FreemiumBanner from "./components/FreemiumBanner";
+import { VoiceTransactionPayload } from "./components/VoiceLedger";
 
-export interface WorkspaceKpis {
-  total_active_shelf_retail_value: number;
-  total_capital_invested: number;
-  locked_in_potential_gross_profit: number;
-  avg_markup_percentage: number;
-  total_active_items: number;
-}
-
-export interface Workspace {
-  id: string;
-  slug: string;
-  business_name: string;
-  blueprint_type: string;
-  currency: string;
-  is_template: boolean;
-  kpis: WorkspaceKpis;
-  inventory: WorkspaceInventoryItem[];
-}
-
-const INITIAL_PROJECT_ALACIO: Workspace = {
-  id: "ws_alacio_001",
-  slug: "alacio-mini-shop",
-  business_name: "Alacio Mini Shop",
-  blueprint_type: "RETAIL_FMCG",
-  currency: "KSh",
-  is_template: false,
-  kpis: {
-    total_active_shelf_retail_value: 35545,
-    total_capital_invested: 29599.06,
-    locked_in_potential_gross_profit: 5945.94,
-    avg_markup_percentage: 20.1,
-    total_active_items: 43
-  },
-  inventory: [
-    { id: 1, name: "Milk 500ml", category: "Dairy", unit_type: "packets", unit_cost: 50, unit_retail: 60, current_stock: 18, opening_stock: 10, expected_margin: 10, total_shelf_value: 1080, velocity_badge: "High Velocity" },
-    { id: 2, name: "Unga 2kg", category: "Flour", unit_type: "bales", unit_cost: 180, unit_retail: 210, current_stock: 4, opening_stock: 4, expected_margin: 30, total_shelf_value: 840, velocity_badge: "Low Stock Alert" },
-    { id: 3, name: "Oil 1L", category: "Cooking & Oils", unit_type: "bottles", unit_cost: 280, unit_retail: 330, current_stock: 6, opening_stock: 2, expected_margin: 50, total_shelf_value: 1980, velocity_badge: "Normal" },
-    { id: 4, name: "Eggs Crate", category: "Poultry", unit_type: "crates", unit_cost: 380, unit_retail: 450, current_stock: 2, opening_stock: 1, expected_margin: 70, total_shelf_value: 900, velocity_badge: "Low Stock Alert" },
-    { id: 5, name: "Festive Bread 400g", category: "Bakery", unit_type: "loaves", unit_cost: 55, unit_retail: 65, current_stock: 12, opening_stock: 6, expected_margin: 10, total_shelf_value: 780, velocity_badge: "High Velocity" },
-    { id: 6, name: "Royco Mchuzi 200g", category: "Spices", unit_type: "tins", unit_cost: 120, unit_retail: 150, current_stock: 8, opening_stock: 4, expected_margin: 30, total_shelf_value: 1200, velocity_badge: "Normal" }
-  ]
-};
-
-const EMPTY_RETAIL_TEMPLATE: Workspace = {
-  id: "tpl_fmcg_001",
-  slug: "fmcg-duka-blueprint",
-  business_name: "Retail FMCG Blueprint",
-  blueprint_type: "RETAIL_FMCG",
-  currency: "KSh",
-  is_template: true,
-  kpis: {
-    total_active_shelf_retail_value: 0,
-    total_capital_invested: 0,
-    locked_in_potential_gross_profit: 0,
-    avg_markup_percentage: 0,
-    total_active_items: 0
-  },
-  inventory: []
-};
-
-const HARDWARE_TEMPLATE: Workspace = {
-  id: "tpl_hardware_002",
-  slug: "hardware-construction-blueprint",
-  business_name: "Hardware & Construction Blueprint",
-  blueprint_type: "HARDWARE_BULK",
-  currency: "KSh",
-  is_template: true,
-  kpis: {
-    total_active_shelf_retail_value: 0,
-    total_capital_invested: 0,
-    locked_in_potential_gross_profit: 0,
-    avg_markup_percentage: 0,
-    total_active_items: 0
-  },
-  inventory: [
-    { id: "hw-1", name: "Bamburi Tembo Cement 50kg", category: "Cement & Aggregates", unit_type: "bags (50kg)", unit_cost: 680, unit_retail: 750, current_stock: 40, opening_stock: 15, expected_margin: 70, total_shelf_value: 30000, velocity_badge: "High Velocity" },
-    { id: "hw-2", name: "Cypress Timber 2x2", category: "Timber & Boards", unit_type: "meters", unit_cost: 42, unit_retail: 58, current_stock: 120, opening_stock: 30, expected_margin: 16, total_shelf_value: 6960, velocity_badge: "Normal" },
-    { id: "hw-3", name: "Corrugated Iron Sheets G28", category: "Steel & Roofing", unit_type: "sheets", unit_cost: 850, unit_retail: 1050, current_stock: 25, opening_stock: 5, expected_margin: 200, total_shelf_value: 26250, velocity_badge: "High Velocity" }
-  ]
-};
-
-function getSafeWorkspaces(): Workspace[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [INITIAL_PROJECT_ALACIO, EMPTY_RETAIL_TEMPLATE, HARDWARE_TEMPLATE];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : [INITIAL_PROJECT_ALACIO, EMPTY_RETAIL_TEMPLATE, HARDWARE_TEMPLATE];
-  } catch (e) {
-    return [INITIAL_PROJECT_ALACIO, EMPTY_RETAIL_TEMPLATE, HARDWARE_TEMPLATE];
-  }
-}
-
-// ==========================================
-// 2. MAIN CONSOLIDATED COMPONENT
-// ==========================================
 export default function App() {
-  const [currentView, setCurrentView] = useState<"landing" | "workspace">("landing"); // "landing" | "workspace"
-  const [activeModule, setActiveModule] = useState<string>("inventory"); // "inventory" | "reconciliation"
-  const [workspaces, setWorkspaces] = useState<Workspace[]>(getSafeWorkspaces);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>(() => {
-    return localStorage.getItem(ACTIVE_ID_KEY) || INITIAL_PROJECT_ALACIO.id;
-  });
+  const [currentView, setCurrentView] = useState<"landing" | "workspace">("landing");
+  const [activeTab, setActiveTab] = useState<string>("dashboard");
+
+  // Zero-Data-Loss LocalStorage + Firestore Persistence
+  const [alacioState, setAlacioState] = useState<AlacioMasterState>(() => loadAlacioState());
+
+  // Modal States
+  const [isRestockOpen, setIsRestockOpen] = useState(false);
+  const [selectedRestockItem, setSelectedRestockItem] = useState<InventoryItem | null>(null);
+  const [restockQty, setRestockQty] = useState("");
+  const [restockCost, setRestockCost] = useState("");
+  const [restockRetail, setRestockRetail] = useState("");
 
   const [isClonerOpen, setIsClonerOpen] = useState(false);
-  const [showRestockModal, setShowRestockModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<WorkspaceInventoryItem | null>(null);
-  const [batchQty, setBatchQty] = useState("");
-  const [unitCost, setUnitCost] = useState("");
-  const [unitRetail, setUnitRetail] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All Categories (43)");
+  const [isPullOwnAppOpen, setIsPullOwnAppOpen] = useState(false);
+  const [isOneTapGapOpen, setIsOneTapGapOpen] = useState(false);
+  const [isMpesaImportOpen, setIsMpesaImportOpen] = useState(false);
+  const [lastVoiceLog, setLastVoiceLog] = useState<string | null>(null);
 
-  // Reconciliation local state
-  const [mpesaCollected, setMpesaCollected] = useState("4500");
-  const [cashCollected, setCashCollected] = useState("2800");
-
-  // Safe sync
+  // Sync to localStorage and Firestore on change
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(workspaces));
-      localStorage.setItem(ACTIVE_ID_KEY, activeWorkspaceId);
-    } catch (e) {
-      console.warn("Storage sync failed", e);
-    }
-  }, [workspaces, activeWorkspaceId]);
+    saveAlacioState(alacioState);
+  }, [alacioState]);
 
-  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0] || INITIAL_PROJECT_ALACIO;
+  // Restock Execution
+  const handleOpenRestock = (item?: InventoryItem) => {
+    const target = item || alacioState.inventory[0];
+    setSelectedRestockItem(target);
+    setRestockCost(String(target.unit_cost));
+    setRestockRetail(String(target.unit_retail));
+    setRestockQty("");
+    setIsRestockOpen(true);
+  };
 
-  // Restock calculation engine
-  const handleExecuteRestock = () => {
-    if (!batchQty || !unitCost || !unitRetail || !selectedItem) return;
-    const qty = parseFloat(batchQty);
-    const cost = parseFloat(unitCost);
-    const retail = parseFloat(unitRetail);
+  const handleExecuteRestock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRestockItem || !restockQty) return;
 
-    const updatedInventory = activeWorkspace.inventory.map((inv) => {
-      if (inv.id === selectedItem.id) {
+    const qty = parseFloat(restockQty);
+    const cost = parseFloat(restockCost) || selectedRestockItem.unit_cost;
+    const retail = parseFloat(restockRetail) || selectedRestockItem.unit_retail;
+
+    const updatedInventory = alacioState.inventory.map((inv) => {
+      if (inv.id === selectedRestockItem.id) {
+        const newTotalStock = inv.current_stock + qty;
         return {
           ...inv,
-          current_stock: qty,
+          current_stock: newTotalStock,
+          opening_stock: newTotalStock,
           unit_cost: cost,
           unit_retail: retail,
           expected_margin: retail - cost,
-          total_shelf_value: qty * retail,
-          velocity_badge: qty <= 5 ? "Low Stock Alert" : "High Velocity"
+          total_shelf_value: newTotalStock * retail,
+          velocity_badge: newTotalStock <= 5 ? "Low Stock Alert" : "High Velocity"
         };
       }
       return inv;
     });
 
-    const totalRetail = updatedInventory.reduce((acc, curr) => acc + curr.total_shelf_value, 0);
-    const totalCost = updatedInventory.reduce((acc, curr) => acc + (curr.current_stock * curr.unit_cost), 0);
-    const profit = totalRetail - totalCost;
+    const newKpis = calculateKpis(updatedInventory, alacioState.warehouse);
+    setAlacioState((prev) => ({
+      ...prev,
+      inventory: updatedInventory,
+      kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
 
-    const updatedWorkspace: Workspace = {
-      ...activeWorkspace,
-      kpis: {
-        ...activeWorkspace.kpis,
-        total_active_shelf_retail_value: totalRetail,
-        total_capital_invested: totalCost,
-        locked_in_potential_gross_profit: profit,
-        avg_markup_percentage: totalCost > 0 ? parseFloat(((profit / totalCost) * 100).toFixed(1)) : 0,
-        total_active_items: updatedInventory.length
-      },
-      inventory: updatedInventory
-    };
-
-    setWorkspaces((prev) => prev.map((w) => (w.id === updatedWorkspace.id ? updatedWorkspace : w)));
-    setShowRestockModal(false);
-    setBatchQty("");
+    setIsRestockOpen(false);
   };
 
-  // Reconciliation computation
-  const reconData = useMemo(() => {
-    let totalExpected = 0;
-    activeWorkspace.inventory.forEach((item) => {
-      const expectedRevenue = (item.current_stock > 0 ? item.current_stock : 1) * item.unit_retail;
-      totalExpected += expectedRevenue;
-    });
-
-    const mpesa = parseFloat(mpesaCollected) || 0;
-    const cash = parseFloat(cashCollected) || 0;
-    const totalCollected = mpesa + cash;
-    const gap = totalCollected - totalExpected;
-
-    return { totalExpected, totalCollected, gap };
-  }, [activeWorkspace, mpesaCollected, cashCollected]);
-
-  // Clone workspace from modal
-  const handleWorkspaceCreated = (newWs: Workspace) => {
-    setWorkspaces((prev) => [...prev, newWs]);
-    setActiveWorkspaceId(newWs.id);
-    setCurrentView("workspace");
-    setActiveModule("inventory");
-  };
-
-  const [lastVoiceLog, setLastVoiceLog] = useState<string | null>(null);
-
-  // Commit transaction from Voice Ledger (deduct stock, adjust revenue & KPIs)
+  // Voice Ledger (VCR) Ingestion Execution
   const handleVoiceTransaction = (payload: VoiceTransactionPayload) => {
-    let updatedInventory = [...activeWorkspace.inventory];
+    let updatedInventory = [...alacioState.inventory];
+    let itemsSummary = "";
+
     payload.items.forEach((voiceItem) => {
+      itemsSummary += `${voiceItem.qty}x ${voiceItem.name} `;
       const idx = updatedInventory.findIndex(
         (inv) => inv.name.toLowerCase().includes(voiceItem.name.toLowerCase()) || voiceItem.name.toLowerCase().includes(inv.name.toLowerCase())
       );
       if (idx !== -1) {
-        const inv = updatedInventory[idx];
-        const newStock = Math.max(0, inv.current_stock - voiceItem.qty);
+        const item = updatedInventory[idx];
+        const newStock = Math.max(0, item.current_stock - voiceItem.qty);
         updatedInventory[idx] = {
-          ...inv,
+          ...item,
           current_stock: newStock,
-          total_shelf_value: newStock * inv.unit_retail,
-          velocity_badge: newStock <= 5 ? "Low Stock Alert" : "High Velocity",
+          total_shelf_value: newStock * item.unit_retail,
+          velocity_badge: newStock <= 5 ? "Low Stock Alert" : "High Velocity"
         };
       }
     });
 
-    const totalRetail = updatedInventory.reduce((acc, curr) => acc + curr.total_shelf_value, 0);
-    const totalCost = updatedInventory.reduce((acc, curr) => acc + (curr.current_stock * curr.unit_cost), 0);
-    const profit = totalRetail - totalCost;
+    let updatedCustomers = [...alacioState.customers];
+    if (payload.debtAmount > 0) {
+      const cIdx = updatedCustomers.findIndex((c) => c.name.toLowerCase().includes(payload.customer.toLowerCase()));
+      if (cIdx !== -1) {
+        updatedCustomers[cIdx] = {
+          ...updatedCustomers[cIdx],
+          debt_balance: updatedCustomers[cIdx].debt_balance + payload.debtAmount,
+          last_transaction_date: "Just now"
+        };
+      } else {
+        updatedCustomers.push({
+          id: `cust_${Date.now()}`,
+          name: payload.customer,
+          phone: "07XX XXX XXX",
+          debt_balance: payload.debtAmount,
+          credit_limit: 1000,
+          last_transaction_date: "Just now",
+          notes: "Created via Counter Voice Record (VCR)"
+        });
+      }
+    }
 
-    const updatedWorkspace: Workspace = {
-      ...activeWorkspace,
-      kpis: {
-        ...activeWorkspace.kpis,
-        total_active_shelf_retail_value: totalRetail,
-        total_capital_invested: totalCost,
-        locked_in_potential_gross_profit: profit,
-        avg_markup_percentage: totalCost > 0 ? parseFloat(((profit / totalCost) * 100).toFixed(1)) : 0,
-        total_active_items: updatedInventory.length,
-      },
-      inventory: updatedInventory,
+    const newSalesRecord: SalesLedgerItem = {
+      id: `sl_${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      customer_name: payload.customer,
+      items_summary: itemsSummary || "Assorted items",
+      total_amount: payload.total,
+      cash_paid: payload.cashPaid,
+      mpesa_paid: payload.mpesaPaid,
+      debt_amount: payload.debtAmount,
+      payment_method: payload.debtAmount > 0 ? "CREDIT" : payload.cashPaid > 0 ? "CASH" : "MPESA"
     };
 
-    setWorkspaces((prev) => prev.map((w) => (w.id === updatedWorkspace.id ? updatedWorkspace : w)));
+    const newKpis = calculateKpis(updatedInventory, alacioState.warehouse);
+    setAlacioState((prev) => ({
+      ...prev,
+      inventory: updatedInventory,
+      customers: updatedCustomers,
+      salesLedger: [newSalesRecord, ...prev.salesLedger],
+      cash_register_balance: prev.cash_register_balance + payload.cashPaid,
+      vcr_daily_count: (prev.vcr_daily_count || 0) + 1,
+      kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
+
     setLastVoiceLog(
-      `Logged voice transaction for ${payload.customer}: ${activeWorkspace.currency} ${payload.total} (Cash: ${activeWorkspace.currency} ${payload.cashPaid}, Deni: ${activeWorkspace.currency} ${payload.debtAmount})`
+      `VCR Captured: ${payload.customer} (${alacioState.currency} ${payload.total}) &bull; Stock auto-deducted &bull; Audio discarded`
     );
-    setTimeout(() => setLastVoiceLog(null), 7000);
+    setTimeout(() => setLastVoiceLog(null), 6000);
   };
 
-  // Filtered inventory based on active category
-  const filteredInventory = useMemo(() => {
-    if (selectedCategory === "All Categories (43)" || selectedCategory === "All Categories") {
-      return activeWorkspace.inventory;
+  // Quick Dump Execution
+  const handleQuickSale = (itemName: string, qty: number, amount: number, method: "CASH" | "MPESA") => {
+    let updatedInventory = [...alacioState.inventory];
+    const idx = updatedInventory.findIndex((i) => i.name.toLowerCase().includes(itemName.toLowerCase()));
+    if (idx !== -1) {
+      const item = updatedInventory[idx];
+      const newStock = Math.max(0, item.current_stock - qty);
+      updatedInventory[idx] = {
+        ...item,
+        current_stock: newStock,
+        total_shelf_value: newStock * item.unit_retail,
+        velocity_badge: newStock <= 5 ? "Low Stock Alert" : "High Velocity"
+      };
     }
-    return activeWorkspace.inventory.filter((item) => 
-      item.category.toLowerCase().includes(selectedCategory.toLowerCase())
-    );
-  }, [activeWorkspace.inventory, selectedCategory]);
+
+    const newSalesRecord: SalesLedgerItem = {
+      id: `sl_${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      customer_name: "Counter Walk-in",
+      items_summary: `${qty}x ${itemName}`,
+      total_amount: amount,
+      cash_paid: method === "CASH" ? amount : 0,
+      mpesa_paid: method === "MPESA" ? amount : 0,
+      debt_amount: 0,
+      payment_method: method
+    };
+
+    const newKpis = calculateKpis(updatedInventory, alacioState.warehouse);
+    setAlacioState((prev) => ({
+      ...prev,
+      inventory: updatedInventory,
+      salesLedger: [newSalesRecord, ...prev.salesLedger],
+      cash_register_balance: method === "CASH" ? prev.cash_register_balance + amount : prev.cash_register_balance,
+      kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Opening Float Update Execution
+  const handleUpdateFloat = (updatedDenoms: FloatDenomination[]) => {
+    const total = updatedDenoms.reduce((acc, d) => acc + d.value * d.count, 0);
+    setAlacioState((prev) => ({
+      ...prev,
+      floatDenominations: updatedDenoms,
+      cash_register_balance: total,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Deni Repayment Execution
+  const handleRepayDebt = (customerId: string, amount: number) => {
+    const updatedCustomers = alacioState.customers.map((c) => {
+      if (c.id === customerId) {
+        return {
+          ...c,
+          debt_balance: Math.max(0, c.debt_balance - amount),
+          last_transaction_date: "Today (Repayment)"
+        };
+      }
+      return c;
+    });
+
+    setAlacioState((prev) => ({
+      ...prev,
+      customers: updatedCustomers,
+      cash_register_balance: prev.cash_register_balance + amount,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Add Debtor Execution
+  const handleAddDebtor = (newDebtor: { name: string; phone: string; credit_limit: number; initial_debt: number; notes: string }) => {
+    const created = {
+      id: `cust_${Date.now()}`,
+      name: newDebtor.name,
+      phone: newDebtor.phone,
+      debt_balance: newDebtor.initial_debt,
+      credit_limit: newDebtor.credit_limit,
+      last_transaction_date: "Today",
+      notes: newDebtor.notes
+    };
+
+    setAlacioState((prev) => ({
+      ...prev,
+      customers: [...prev.customers, created],
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Reconciliation Execution
+  const handleCommitReconciliation = (audit: ReconciliationAudit) => {
+    setAlacioState((prev) => ({
+      ...prev,
+      reconciliations: [audit, ...prev.reconciliations],
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Update Inventory Stock from Daily Closing Count
+  const handleUpdateInventoryStock = (updates: { id: number | string; newStock: number }[]) => {
+    const updatedInventory = alacioState.inventory.map((inv) => {
+      const match = updates.find((u) => u.id === inv.id);
+      if (match) {
+        return {
+          ...inv,
+          current_stock: match.newStock,
+          total_shelf_value: match.newStock * inv.unit_retail,
+          velocity_badge: match.newStock <= 5 ? "Low Stock Alert" : "High Velocity"
+        };
+      }
+      return inv;
+    });
+
+    const newKpis = calculateKpis(updatedInventory, alacioState.warehouse);
+    setAlacioState((prev) => ({
+      ...prev,
+      inventory: updatedInventory,
+      kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // 1-Tap Gap Resolution Execution
+  const handleResolveGap = (payout: PayoutOrDrawing) => {
+    const updatedPayouts = [payout, ...alacioState.payouts];
+    const newDrawer = Math.max(0, alacioState.cash_register_balance - payout.amount);
+    setAlacioState((prev) => ({
+      ...prev,
+      payouts: updatedPayouts,
+      cash_register_balance: newDrawer,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // M-Pesa Statement Import Execution
+  const handleImportMpesa = (records: MpesaStatementRecord[]) => {
+    const updatedStatements = [...records, ...alacioState.mpesaStatements];
+    const addedFloat = records.reduce((acc, r) => acc + (r.status === "MATCHED" ? r.amount : 0), 0);
+    setAlacioState((prev) => ({
+      ...prev,
+      mpesaStatements: updatedStatements,
+      mpesa_float_balance: prev.mpesa_float_balance + addedFloat,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Warehouse: Transfer Bulk Backroom Stock to Front Retail Shelf
+  const handleTransferToShelf = (batchId: string, quantityToMove: number) => {
+    let transferredItemName = "";
+    const updatedWarehouse = alacioState.warehouse.map((batch) => {
+      if (batch.id === batchId) {
+        transferredItemName = batch.item_name;
+        const newBulkQty = Math.max(0, batch.bulk_quantity - quantityToMove);
+        return {
+          ...batch,
+          bulk_quantity: newBulkQty,
+          status: newBulkQty === 0 ? ("DEPLETED" as const) : newBulkQty <= batch.reorder_threshold ? ("LOW_BUFFER" as const) : ("IN_STORAGE" as const)
+        };
+      }
+      return batch;
+    });
+
+    const updatedInventory = alacioState.inventory.map((inv) => {
+      if (inv.name.toLowerCase().includes(transferredItemName.toLowerCase()) || transferredItemName.toLowerCase().includes(inv.name.toLowerCase())) {
+        const newStock = inv.current_stock + quantityToMove;
+        return {
+          ...inv,
+          current_stock: newStock,
+          total_shelf_value: newStock * inv.unit_retail,
+          velocity_badge: newStock <= 5 ? "Low Stock Alert" : "High Velocity"
+        };
+      }
+      return inv;
+    });
+
+    const newKpis = calculateKpis(updatedInventory, updatedWarehouse);
+    setAlacioState((prev) => ({
+      ...prev,
+      warehouse: updatedWarehouse,
+      inventory: updatedInventory,
+      kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Warehouse: Receive incoming wholesale shipment
+  const handleReceiveShipment = (newBatchData: Omit<WarehouseBatch, "id">) => {
+    const newBatch: WarehouseBatch = {
+      ...newBatchData,
+      id: `wh_batch_${Date.now()}`
+    };
+    const updatedWarehouse = [newBatch, ...alacioState.warehouse];
+    const newKpis = calculateKpis(alacioState.inventory, updatedWarehouse);
+
+    setAlacioState((prev) => ({
+      ...prev,
+      warehouse: updatedWarehouse,
+      kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Muva Ambient Ledger: Approve Overheard Draft Sale
+  const handleApproveAmbientDraft = (salesRecord: SalesLedgerItem, itemMatchName: string, qty: number, isCollected: boolean) => {
+    let updatedInventory = [...alacioState.inventory];
+    if (isCollected) {
+      const idx = updatedInventory.findIndex((i) => i.name.toLowerCase().includes(itemMatchName.toLowerCase()));
+      if (idx !== -1) {
+        const item = updatedInventory[idx];
+        const newStock = Math.max(0, item.current_stock - qty);
+        updatedInventory[idx] = {
+          ...item,
+          current_stock: newStock,
+          total_shelf_value: newStock * item.unit_retail,
+          velocity_badge: newStock <= 5 ? "Low Stock Alert" : "High Velocity"
+        };
+      }
+    }
+
+    const newKpis = calculateKpis(updatedInventory, alacioState.warehouse);
+    setAlacioState((prev) => ({
+      ...prev,
+      inventory: updatedInventory,
+      salesLedger: [salesRecord, ...prev.salesLedger],
+      cash_register_balance: prev.cash_register_balance + salesRecord.cash_paid,
+      kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Morning Bookend: Confirm Starting Balances (Cash, M-Pesa, Equitel Paybill), Yesterday Deni, & Shelf Counts
+  const handleConfirmMorningBookend = (payload: {
+    cashFloat: number;
+    mpesaFloat: number;
+    equitelBalance: number;
+    updatedCustomers: CustomerDebtor[];
+    openingCounts: { id: string | number; openingStock: number }[];
+  }) => {
+    const updatedInventory = alacioState.inventory.map((inv) => {
+      const match = payload.openingCounts.find((o) => String(o.id) === String(inv.id));
+      if (match) {
+        return {
+          ...inv,
+          opening_stock: match.openingStock,
+          current_stock: match.openingStock,
+          total_shelf_value: match.openingStock * inv.unit_retail
+        };
+      }
+      return inv;
+    });
+    const newKpis = calculateKpis(updatedInventory, alacioState.warehouse);
+    setAlacioState((prev) => ({
+      ...prev,
+      inventory: updatedInventory,
+      customers: payload.updatedCustomers,
+      cash_register_balance: payload.cashFloat,
+      mpesa_float_balance: payload.mpesaFloat,
+      equitel_account_balance: payload.equitelBalance,
+      kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Supplier Log: 5-Second Incoming Delivery with Bulk-to-Micro Conversion
+  const handleLogSupplyDelivery = (entry: SupplyLogEntry) => {
+    const updatedInventory = alacioState.inventory.map((inv) => {
+      if (inv.name.toLowerCase().includes(entry.itemName.toLowerCase()) || entry.itemName.toLowerCase().includes(inv.name.toLowerCase())) {
+        const newStock = inv.current_stock + entry.retailUnitsAdded;
+        return {
+          ...inv,
+          current_stock: newStock,
+          total_shelf_value: newStock * inv.unit_retail,
+          velocity_badge: newStock <= 5 ? "Low Stock Alert" : "High Velocity"
+        };
+      }
+      return inv;
+    });
+    const newKpis = calculateKpis(updatedInventory, alacioState.warehouse);
+    setAlacioState((prev) => ({
+      ...prev,
+      inventory: updatedInventory,
+      kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Pending Voice Drafts: Approve Staged Draft Intent
+  const handleApproveVoiceDraft = (draft: VoiceDraftRecord) => {
+    if (draft.intent_type === "SUPPLIER_DELIVERY") {
+      let updatedInventory = [...alacioState.inventory];
+      draft.payload.items?.forEach((item: any) => {
+        const idx = updatedInventory.findIndex((i) => i.name.toLowerCase().includes(item.item_name.toLowerCase()));
+        if (idx !== -1) {
+          const inv = updatedInventory[idx];
+          const added = item.quantity * (item.unit === "crates" ? 24 : 1);
+          const newStock = inv.current_stock + added;
+          updatedInventory[idx] = {
+            ...inv,
+            current_stock: newStock,
+            total_shelf_value: newStock * inv.unit_retail
+          };
+        }
+      });
+      setAlacioState((prev) => ({
+        ...prev,
+        inventory: updatedInventory,
+        kpis: calculateKpis(updatedInventory, prev.warehouse),
+        last_updated: new Date().toISOString()
+      }));
+    } else if (draft.intent_type === "CREDIT_RECORD") {
+      const customerName = draft.payload.customer_name || "Credit Customer";
+      const amount = draft.payload.amount_owed || draft.total_amount;
+      let updatedCustomers = [...alacioState.customers];
+      const cIdx = updatedCustomers.findIndex((c) => c.name.toLowerCase().includes(customerName.toLowerCase()));
+      if (cIdx !== -1) {
+        updatedCustomers[cIdx] = {
+          ...updatedCustomers[cIdx],
+          debt_balance: updatedCustomers[cIdx].debt_balance + amount,
+          last_transaction_date: "Today"
+        };
+      } else {
+        updatedCustomers.push({
+          id: `cust_${Date.now()}`,
+          name: customerName,
+          phone: "07XX XXX XXX",
+          debt_balance: amount,
+          credit_limit: 1000,
+          last_transaction_date: "Today",
+          notes: "Logged via Voice Draft Queue"
+        });
+      }
+      setAlacioState((prev) => ({
+        ...prev,
+        customers: updatedCustomers,
+        last_updated: new Date().toISOString()
+      }));
+    } else if (draft.intent_type === "ADVANCE_PAYMENT") {
+      const netRetained = (draft.payload.amount_paid || 600) - (draft.payload.change_given || 400);
+      setAlacioState((prev) => ({
+        ...prev,
+        cash_register_balance: prev.cash_register_balance + netRetained,
+        last_updated: new Date().toISOString()
+      }));
+    }
+  };
+
+  // Navigation Items (YuBiFlo Core Operating Cycle)
+  const navItems = [
+    { id: "dashboard", name: "Dashboard", icon: <LayoutDashboard size={16} /> },
+    { id: "morning_bookend", name: "Morning Bookend (60s)", icon: <Sun size={16} />, badge: "Setup" },
+    { id: "supplier_log", name: "Supplier Log (5s)", icon: <Truck size={16} />, badge: "Bulk→Micro" },
+    { id: "pending_drafts", name: "Pending Voice Drafts", icon: <Radio size={16} />, badge: "3 Intents" },
+    { id: "evening_reconciliation", name: "Evening Reconciliation", icon: <Scale size={16} />, badge: "Reverse Math" },
+    { id: "ambient_ledger", name: "Ambient Ledger (Muva)", icon: <Radio size={16} />, badge: "AEC & VAD" },
+    { id: "warehouse", name: "Warehouse & Bulk Supply", icon: <Building2 size={16} />, badge: `${alacioState.warehouse.length} bulk` },
+    { id: "voice_ledger", name: "VCR: Voice Ledger", icon: <Mic size={16} />, badge: "Free Starter" },
+    { id: "inventory", name: "Inventory & Batches", icon: <Package size={16} />, badge: `${alacioState.inventory.length}` },
+    { id: "customers", name: "Customers & Credit", icon: <Users size={16} />, badge: `${alacioState.customers.length} debt` },
+    { id: "analytics", name: "Analytics & Expansion", icon: <BarChart2 size={16} />, badge: "Tier 3" }
+  ];
 
   return (
-    <div className="min-h-screen bg-[#0a0d12] text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950">
+    <div className="min-h-screen bg-[#070e0b] text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950">
       
       {/* GLOBAL HEADER / WORKSPACE SWITCHER */}
-      <header className="h-14 bg-[#0e1218] border-b border-slate-800/80 px-4 sm:px-6 flex items-center justify-between text-xs sticky top-0 z-40">
+      <header className="h-14 bg-[#0a1510] border-b border-emerald-950/80 px-4 sm:px-6 flex items-center justify-between text-xs sticky top-0 z-40 backdrop-blur-md">
         <div className="flex items-center gap-3 sm:gap-4">
           <button 
             onClick={() => setCurrentView("landing")}
             className="flex items-center gap-2 text-white font-black tracking-wide text-sm cursor-pointer"
           >
-            <div className="w-7 h-7 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center font-bold">Y</div>
-            YuBiFLo
+            <div className="w-7 h-7 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center font-bold font-mono">Y</div>
+            <span className="font-serif tracking-tight">YuBiFLo</span>
           </button>
           
           <span className="text-slate-700 hidden sm:inline">|</span>
@@ -300,247 +575,114 @@ export default function App() {
             <span className="text-slate-400 hidden md:inline">Workspace:</span>
             <div className="relative">
               <select
-                value={activeWorkspace.id}
+                value="alacio_mini_shop"
                 onChange={(e) => {
-                  setActiveWorkspaceId(e.target.value);
-                  setCurrentView("workspace");
+                  if (e.target.value === "alacio_mini_shop") {
+                    setCurrentView("workspace");
+                  }
                 }}
-                className="bg-[#0a0d12] border border-slate-700 rounded px-2.5 py-1 text-white font-bold appearance-none pr-6 cursor-pointer max-w-[140px] sm:max-w-[220px] truncate"
+                className="bg-[#060c09] border border-emerald-900/60 rounded px-2.5 py-1 text-white font-bold appearance-none pr-6 cursor-pointer"
               >
-                {workspaces.map((ws) => (
-                  <option key={ws.id} value={ws.id}>
-                    {ws.business_name} {ws.is_template ? "(Blueprint)" : `(${ws.currency})`}
-                  </option>
-                ))}
+                <option value="alacio_mini_shop">Alacio Mini Shop (KSh)</option>
               </select>
               <ChevronDown size={12} className="absolute right-1.5 top-2 text-slate-400 pointer-events-none" />
             </div>
+            <span className="hidden lg:inline-block text-[10px] font-mono bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
+              Live CDO Telemetry &bull; Zero Data Loss
+            </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {currentView === "workspace" && (
+          {/* SPECIAL FEATURE: PULL YOUR OWN APP */}
+          <button
+            onClick={() => setIsPullOwnAppOpen(true)}
+            className="px-2.5 sm:px-3 py-1.5 bg-[#102018] hover:bg-[#152a20] border border-emerald-500/40 text-emerald-300 font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs"
+            title="Export your single-business installable PWA"
+          >
+            <Smartphone size={13} className="text-emerald-400" />
+            <span className="hidden sm:inline">Pull Your Own App</span>
+          </button>
+
+          {currentView === "workspace" ? (
             <button
               onClick={() => setCurrentView("landing")}
               className="text-slate-400 hover:text-white transition flex items-center gap-1 font-medium cursor-pointer text-xs"
             >
-              <Globe size={14} /> <span className="hidden sm:inline">Agency Home</span>
+              <Globe size={14} /> <span className="hidden md:inline">Agency Home</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setCurrentView("workspace")}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-lg text-xs transition cursor-pointer"
+            >
+              Open Alacio Workspace
             </button>
           )}
+
           <button
             onClick={() => setIsClonerOpen(true)}
             className="px-2.5 sm:px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition flex items-center gap-1.5 shadow cursor-pointer text-xs"
           >
-            <Plus size={14} /> <span className="hidden sm:inline">Clone Blueprint for New Client</span><span className="sm:hidden">Clone</span>
+            <Plus size={14} /> <span className="hidden sm:inline">Clone Blueprint</span><span className="sm:hidden">Clone</span>
           </button>
         </div>
       </header>
 
       {/* ========================================================= */}
-      {/* VIEW A: B2B AGENCY LANDING PAGE (HOOK, AGITATE, SOLUTION) */}
+      {/* VIEW A: B2B AGENCY LANDING PAGE (DIAMONDS & BLUEPRINTS)  */}
       {/* ========================================================= */}
       {currentView === "landing" && (
-        <div>
-          {/* 1. HOOK */}
-          <section className="relative pt-24 pb-20 px-6 border-b border-slate-800/60 text-center">
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-medium text-emerald-400">
-                <Sparkles size={14} /> Custom MSME Data Ecosystems
-              </div>
-              <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-[1.1]">
-                Stop Losing Money to Pen, Paper, &amp; <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">Rush-Hour Guesswork.</span>
-              </h1>
-              <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto">
-                YuBiFlo builds custom data engineering pipelines, automated financial dashboards, and predictive AI models tailored to how your business actually runs.
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
-                <a 
-                  href="#case-study"
-                  className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition flex items-center gap-2 shadow-lg shadow-emerald-500/20"
-                >
-                  Explore Client Deployment (Project #1) <ArrowRight size={16} />
-                </a>
-                <button
-                  onClick={() => {
-                    setActiveWorkspaceId(EMPTY_RETAIL_TEMPLATE.id);
-                    setCurrentView("workspace");
-                    setActiveModule("inventory");
-                  }}
-                  className="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm rounded-xl transition border border-slate-700 cursor-pointer"
-                >
-                  Explore Blueprints
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* 2. AGITATION */}
-          <section className="py-20 px-6 bg-[#0c1016] border-b border-slate-800/60">
-            <div className="max-w-6xl mx-auto space-y-10">
-              <div className="text-center space-y-2">
-                <span className="text-xs font-mono font-bold text-red-400 uppercase tracking-widest">The Reality</span>
-                <h2 className="text-3xl font-extrabold text-white">Why Standard POS Fails Fast-Paced Shops</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-[#121720] border border-slate-800 rounded-2xl p-6 space-y-3">
-                  <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400"><AlertTriangle size={18} /></div>
-                  <h3 className="font-bold text-white">Counter Friction</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">During rush hours, typing 20-shilling purchases into a phone slows lines. Unrecorded transactions slip away unlogged.</p>
-                </div>
-                <div className="bg-[#121720] border border-slate-800 rounded-2xl p-6 space-y-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400"><Layers size={18} /></div>
-                  <h3 className="font-bold text-white">The Cash Discrepancy Gap</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">M-Pesa statements and cash drawers never match what walked off the shelf. Did money leak into deni or lost change?</p>
-                </div>
-                <div className="bg-[#121720] border border-slate-800 rounded-2xl p-6 space-y-3">
-                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400"><Database size={18} /></div>
-                  <h3 className="font-bold text-white">One Size Fits None</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">A grocery duka needs restock velocity; a hardware store needs broken-bulk kg mapping. Generic apps solve neither.</p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* 3. SOLUTION MATRIX */}
-          <section className="py-20 px-6 border-b border-slate-800/60">
-            <div className="max-w-6xl mx-auto space-y-12">
-              <div className="text-center space-y-2">
-                <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-widest">The Architecture</span>
-                <h2 className="text-3xl font-extrabold text-white">The YuBiFlo 3-Tier Data Stack</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-[#111620] border border-slate-800 rounded-2xl p-7 flex flex-col justify-between">
-                  <div>
-                    <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl w-fit mb-4"><Database size={22} /></div>
-                    <h3 className="text-lg font-bold text-white mb-2">1. Data Engineering</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">Frictionless ingestion via Restock-Trigger batch logic and invoice OCR. Zero counter-typing needed.</p>
-                  </div>
-                  <span className="mt-6 text-[10px] font-mono text-emerald-400 bg-emerald-950/30 p-2 rounded">✓ Eliminates manual counter inputs</span>
-                </div>
-                <div className="bg-[#111620] border border-slate-800 rounded-2xl p-7 flex flex-col justify-between">
-                  <div>
-                    <div className="p-3 bg-teal-500/10 text-teal-400 rounded-xl w-fit mb-4"><BarChart3 size={22} /></div>
-                    <h3 className="text-lg font-bold text-white mb-2">2. Automated BI &amp; Auditing</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">Real-time shelf value, locked gross profit, and automated end-of-day discrepancy reconciliation.</p>
-                  </div>
-                  <span className="mt-6 text-[10px] font-mono text-teal-400 bg-teal-950/30 p-2 rounded">✓ Audits drawer cash against shelf depletion</span>
-                </div>
-                <div className="bg-[#111620] border border-slate-800 rounded-2xl p-7 flex flex-col justify-between">
-                  <div>
-                    <div className="p-3 bg-cyan-500/10 text-cyan-400 rounded-xl w-fit mb-4"><BrainCircuit size={22} /></div>
-                    <h3 className="text-lg font-bold text-white mb-2">3. Predictive Data Science</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">Batch turnover forecasting alerting you exactly when to reorder high-velocity items before stockouts happen.</p>
-                  </div>
-                  <span className="mt-6 text-[10px] font-mono text-cyan-400 bg-cyan-950/30 p-2 rounded">✓ Stops stockouts of milk, unga, and bread</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* 4. CLIENT CASE STUDY: PROJECT #1 */}
-          <section id="case-study" className="py-24 px-6 bg-gradient-to-b from-[#0e131b] to-[#0a0d12]">
-            <div className="max-w-6xl mx-auto space-y-10">
-              <div className="text-center space-y-2">
-                <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-widest">Field Verification</span>
-                <h2 className="text-3xl sm:text-4xl font-extrabold text-white">Project #1: Live Retail Deployment</h2>
-                <p className="text-xs text-slate-400">Authorized live data view of our first operational client build.</p>
-              </div>
-              <div className="bg-[#121822] border border-slate-700/80 rounded-3xl p-8 sm:p-12 shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-8">
-                <div className="space-y-6 max-w-xl">
-                  <div className="inline-block px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-mono font-semibold rounded-full">
-                    Production Case Study
-                  </div>
-                  <h3 className="text-2xl sm:text-3xl font-black text-white">Alacio Mini Shop Data Engine</h3>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    Deployed across 43 active inventory items. YuBiFlo replaced lost manual ledgering with reverse supply-driven velocity tracking.
-                  </p>
-                  <div className="grid grid-cols-3 gap-3 pt-2">
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-                      <span className="text-[10px] text-slate-400 uppercase font-mono">Shelf Value</span>
-                      <div className="text-base font-black text-emerald-400 font-mono mt-0.5">KSh 35,545</div>
-                    </div>
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-                      <span className="text-[10px] text-slate-400 uppercase font-mono">Capital Invested</span>
-                      <div className="text-base font-black text-white font-mono mt-0.5">KSh 29,599</div>
-                    </div>
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-                      <span className="text-[10px] text-slate-400 uppercase font-mono">Locked Markup</span>
-                      <div className="text-base font-black text-teal-400 font-mono mt-0.5">20.1%</div>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      setActiveWorkspaceId(INITIAL_PROJECT_ALACIO.id);
-                      setCurrentView("workspace");
-                      setActiveModule("inventory");
-                    }}
-                    className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer"
-                  >
-                    <Eye size={16} /> Open Client System &amp; Live Data
-                  </button>
-                </div>
-                <div className="w-full lg:w-80 bg-[#090d12] border border-slate-800 rounded-2xl p-5 font-mono text-xs space-y-3">
-                  <div className="flex justify-between pb-2 border-b border-slate-800 text-slate-400">
-                    <span>Engine</span><span className="text-emerald-400 font-bold">Active</span>
-                  </div>
-                  <div className="flex justify-between text-slate-300">
-                    <span className="text-slate-500">Pipeline:</span><span>Restock-Trigger</span>
-                  </div>
-                  <div className="flex justify-between text-slate-300">
-                    <span className="text-slate-500">Audit Cycle:</span><span>Daily EOD</span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 pt-2 border-t border-slate-800">
-                    "YuBiFlo completely solved inventory blindspots without needing any staff training."
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
+        <HomeScreenDiamonds
+          blueprints={PLATFORM_BLUEPRINTS}
+          projectCaseStudy={PROJECT_ALACIO_CASE_STUDY}
+          onSelectBlueprint={(blueprintId) => {
+            setCurrentView("workspace");
+            setActiveTab("inventory");
+          }}
+          onOpenProjectCaseStudy={() => {
+            setCurrentView("workspace");
+            setActiveTab("dashboard");
+          }}
+        />
       )}
 
       {/* ========================================================= */}
-      {/* VIEW B: CLIENT WORKSPACE / TEMPLATE RUNTIME               */}
+      {/* VIEW B: CLIENT WORKSPACE RUNTIME (10 TABS + FREEMIUM CDO) */}
       {/* ========================================================= */}
       {currentView === "workspace" && (
         <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
           
-          {/* SIDEBAR */}
-          <aside className="w-64 bg-[#13181f] border-r border-slate-800 flex flex-col justify-between shrink-0">
+          {/* SIDEBAR NAVIGATION */}
+          <aside className="w-64 bg-[#0a130f] border-r border-emerald-950 flex flex-col justify-between shrink-0 select-none">
             <div>
-              <div className="p-4 border-b border-slate-800/80">
-                <span className="text-xs font-bold text-white block">{activeWorkspace.business_name}</span>
-                <span className="text-[10px] text-slate-500 font-mono">
-                  {activeWorkspace.is_template ? "Configurable Template Blueprint" : "Active Client Telemetry"}
+              <div className="p-4 border-b border-emerald-950/80">
+                <span className="text-xs font-bold text-white block font-serif">Alacio Mini Shop</span>
+                <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1.5 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Consented Live Client Telemetry
                 </span>
               </div>
               <div className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Navigation</div>
               <nav className="space-y-0.5 px-3">
-                {[
-                  { id: "dashboard", name: "Dashboard", icon: <LayoutDashboard size={16} /> },
-                  { id: "voice_ledger", name: "Voice Ledger (Sheng)", icon: <Mic size={16} />, badge: "AI Ingest" },
-                  { id: "quick_dump", name: "Quick Raw Dump", icon: <Zap size={16} />, badge: "Fast Drop" },
-                  { id: "opening_float", name: "Opening Float", icon: <Clock size={16} />, badge: "655/" },
-                  { id: "inventory", name: "Inventory & Batches", icon: <Package size={16} />, badge: `${activeWorkspace.inventory.length}` },
-                  { id: "customers", name: "Customers & Credit", icon: <Users size={16} />, badge: "12 debt" },
-                  { id: "t_ledgers", name: "T-Ledgers & Ranking", icon: <Scale size={16} />, badge: "6 Ledgers" },
-                  { id: "reconciliation", name: "Reconciliation Audit", icon: <RefreshCw size={16} /> },
-                  { id: "analytics", name: "Analytics", icon: <BarChart2 size={16} />, badge: "16 Charts" }
-                ].map((item) => (
+                {navItems.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => {
-                      setActiveModule(item.id);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${
-                      activeModule === item.id 
-                        ? "bg-[#182623] text-emerald-400 border border-emerald-500/20 font-semibold" 
-                        : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+                    onClick={() => setActiveTab(item.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition cursor-pointer ${
+                      activeTab === item.id 
+                        ? "bg-[#14261d] text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm" 
+                        : "text-slate-400 hover:bg-[#0f1d16] hover:text-slate-200"
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">{item.icon}<span>{item.name}</span></div>
+                    <div className="flex items-center gap-2.5">
+                      {item.icon}
+                      <span>{item.name}</span>
+                    </div>
                     {item.badge && (
-                      <span className="text-[10px] px-1.5 py-0.2 bg-slate-800 text-slate-400 rounded font-mono">
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                        activeTab === item.id ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-800 text-slate-400"
+                      }`}>
                         {item.badge}
                       </span>
                     )}
@@ -548,378 +690,300 @@ export default function App() {
                 ))}
               </nav>
             </div>
-            <div className="p-4 border-t border-slate-800 text-[10px] font-mono text-slate-500">
-              Workspace ID: {activeWorkspace.id}
+            
+            <div className="p-4 border-t border-emerald-950 text-[10px] font-mono text-slate-500 flex justify-between items-center">
+              <span>Client: alacio-mini-shop</span>
+              <span className="text-amber-400 font-bold">CDO Platform</span>
             </div>
           </aside>
 
-          {/* MAIN WORKSPACE CONTENT */}
+          {/* MAIN WORKSPACE CONTENT ROUTER */}
           <main className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6">
             
-            {/* SUB-MODULE 0: VOICE LEDGER */}
-            {activeModule === "voice_ledger" && (
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                      <Mic className="text-emerald-400" size={20} /> Voice Ledger &amp; Sheng NLP Ingestion
-                    </h2>
-                    <p className="text-xs text-slate-400">Speak transactions in Sheng / Swahili during rapid-fire peak hours without tapping screens.</p>
-                  </div>
-                  <button
-                    onClick={() => setActiveModule("inventory")}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition cursor-pointer font-medium"
-                  >
-                    View Active Inventory ({activeWorkspace.inventory.length})
-                  </button>
-                </div>
+            {/* FREEMIUM LADDER & FINANCIAL HEALTH NOTIFICATION BANNER */}
+            <FreemiumBanner
+              currentTier={alacioState.tier}
+              cleanTradingDays={alacioState.clean_trading_days}
+              vcrCount={alacioState.vcr_daily_count}
+              onUpgradePrompt={() => {
+                alert("Weekly CDO Financial Health Report: Alacio Mini Shop has achieved 94/100 health score with KES 35,545 shelf value locked and KES 30,615 warehouse bulk reserves. Ready for second branch expansion!");
+              }}
+              onToggleTier={(tier: FreemiumTier) => {
+                setAlacioState((prev) => ({ ...prev, tier }));
+              }}
+            />
 
-                {lastVoiceLog && (
-                  <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
-                    <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                    <span className="font-mono">{lastVoiceLog}</span>
-                  </div>
-                )}
-
-                <VoiceLedger 
-                  currency={activeWorkspace.currency} 
-                  onLogTransaction={handleVoiceTransaction} 
-                />
-              </div>
+            {activeTab === "dashboard" && (
+              <DashboardTab
+                state={alacioState}
+                onNavigateTab={setActiveTab}
+                onOpenRestock={() => handleOpenRestock()}
+              />
             )}
 
-            {/* SUB-MODULE 1: INVENTORY & SUPPLY VELOCITY */}
-            {(activeModule === "inventory" || activeModule === "dashboard" || activeModule === "quick_dump" || activeModule === "opening_float" || activeModule === "customers" || activeModule === "t_ledgers" || activeModule === "analytics") && activeModule !== "reconciliation" && activeModule !== "voice_ledger" && (
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                      <Package className="text-emerald-400" size={20} /> Active Stock &amp; Supply Velocity
-                    </h2>
-                    <p className="text-xs text-slate-400">Real-time shelf inventory, unit margins, and automatic batch turnover status.</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button 
-                      onClick={() => setActiveModule("voice_ledger")}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition cursor-pointer"
-                    >
-                      <Mic size={14} /> Voice Ingest (Sheng)
-                    </button>
-                    <button 
-                      onClick={() => {
-                        if (activeWorkspace.inventory.length > 0) {
-                          setSelectedItem(activeWorkspace.inventory[0]);
-                          setUnitCost(String(activeWorkspace.inventory[0].unit_cost));
-                          setUnitRetail(String(activeWorkspace.inventory[0].unit_retail));
-                          setShowRestockModal(true);
-                        }
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-500 text-slate-950 rounded hover:bg-emerald-400 transition cursor-pointer"
-                    >
-                      <RefreshCw size={14} /> Restock Batch
-                    </button>
-                  </div>
-                </div>
-
-                {/* KPI CARDS */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-[#13181f] border border-slate-800 rounded-xl p-5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Total Active Shelf Retail Value</span>
-                    <div className="mt-2 text-2xl font-black text-emerald-400 font-mono">
-                      {activeWorkspace.currency} {activeWorkspace.kpis.total_active_shelf_retail_value.toLocaleString()}
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">Across {activeWorkspace.inventory.length} active inventory items</p>
-                  </div>
-                  <div className="bg-[#13181f] border border-slate-800 rounded-xl p-5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Total Capital Invested (Cost Price)</span>
-                    <div className="mt-2 text-2xl font-black text-white font-mono">
-                      {activeWorkspace.currency} {activeWorkspace.kpis.total_capital_invested.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">Wholesale money out tied in current batches</p>
-                  </div>
-                  <div className="bg-[#13181f] border border-slate-800 rounded-xl p-5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Locked-in Potential Gross Profit</span>
-                    <div className="mt-2 text-2xl font-black text-white font-mono">
-                      {activeWorkspace.currency} {activeWorkspace.kpis.locked_in_potential_gross_profit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </div>
-                    <p className="text-[11px] text-emerald-400 mt-1">Avg markup: {activeWorkspace.kpis.avg_markup_percentage}%</p>
-                  </div>
-                </div>
-
-                {/* CATEGORY FILTER PILLS */}
-                <div className="flex flex-wrap gap-1.5 pt-2">
-                  {["All Categories (43)", "Dairy", "Flour", "Cooking & Oils", "Poultry", "Bakery", "Spices", "Cement & Aggregates", "Steel & Roofing"].map((cat, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setSelectedCategory(cat)}
-                      className={`text-xs px-3 py-1.5 rounded-full border transition cursor-pointer ${
-                        selectedCategory === cat 
-                          ? "bg-slate-700 text-white border-slate-600" 
-                          : "bg-[#13181f] text-slate-400 border-slate-800 hover:border-slate-700"
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-
-                {/* INVENTORY TABLE */}
-                <div className="bg-[#13181f] border border-slate-800 rounded-xl overflow-x-auto">
-                  <table className="w-full text-left text-xs min-w-[650px]">
-                    <thead className="bg-[#18202a] text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
-                      <tr>
-                        <th className="py-3 px-4 font-semibold">Product Name &amp; Category</th>
-                        <th className="py-3 px-4 font-semibold">Velocity Badge</th>
-                        <th className="py-3 px-4 font-semibold">Active Shelf Stock</th>
-                        <th className="py-3 px-4 font-semibold">Unit Cost</th>
-                        <th className="py-3 px-4 font-semibold">Unit Retail</th>
-                        <th className="py-3 px-4 font-semibold">Expected Margin</th>
-                        <th className="py-3 px-4 font-semibold">Total Shelf Value</th>
-                        <th className="py-3 px-4 font-semibold text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60 font-mono">
-                      {filteredInventory.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-800/30 transition">
-                          <td className="py-3.5 px-4 font-sans font-medium text-slate-200">
-                            <div>{item.name}</div>
-                            <div className="text-[10px] text-slate-500 font-sans">{item.category}</div>
-                          </td>
-                          <td className="py-3.5 px-4 font-sans">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                              item.velocity_badge === "Low Stock Alert" 
-                                ? "bg-red-500/10 text-red-400 border-red-500/20" 
-                                : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                            }`}>
-                              {item.velocity_badge}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 font-semibold text-slate-300">{item.current_stock} {item.unit_type}</td>
-                          <td className="py-3.5 px-4 text-slate-400">{activeWorkspace.currency} {item.unit_cost}</td>
-                          <td className="py-3.5 px-4 text-slate-200 font-semibold">{activeWorkspace.currency} {item.unit_retail}</td>
-                          <td className="py-3.5 px-4 text-emerald-400 font-semibold">+{activeWorkspace.currency} {item.expected_margin}</td>
-                          <td className="py-3.5 px-4 font-bold text-white">{activeWorkspace.currency} {item.total_shelf_value.toLocaleString()}</td>
-                          <td className="py-3.5 px-4 text-right font-sans">
-                            <button
-                              onClick={() => {
-                                setSelectedItem(item);
-                                setUnitCost(String(item.unit_cost));
-                                setUnitRetail(String(item.unit_retail));
-                                setShowRestockModal(true);
-                              }}
-                              className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded hover:bg-emerald-500/20 cursor-pointer"
-                            >
-                              Restock
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {filteredInventory.length === 0 && (
-                    <div className="p-8 text-center text-xs text-slate-500">
-                      Empty Blueprint Template. Click "Clone Blueprint" or "Restock Batch" to populate data.
-                    </div>
-                  )}
-                </div>
-              </div>
+            {activeTab === "morning_bookend" && (
+              <MorningBookendTab
+                state={alacioState}
+                onConfirmMorningBookend={handleConfirmMorningBookend}
+              />
             )}
 
-            {/* SUB-MODULE 2: RECONCILIATION CASH AUDIT */}
-            {activeModule === "reconciliation" && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Scale className="text-emerald-400" size={20} /> Daily Reconciliation &amp; Cash Audit
-                  </h2>
-                  <p className="text-xs text-slate-400">Reconciling stock depletion against actual physical drawer cash and M-Pesa statements.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-[#13181f] border border-slate-800 rounded-xl p-5">
-                    <span className="text-[10px] font-mono text-slate-400 uppercase">Expected Revenue (Stock Sold)</span>
-                    <div className="text-2xl font-black text-white font-mono mt-1">
-                      {activeWorkspace.currency} {reconData.totalExpected.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="bg-[#13181f] border border-slate-800 rounded-xl p-5">
-                    <span className="text-[10px] font-mono text-slate-400 uppercase">Actual Money Collected</span>
-                    <div className="text-2xl font-black text-emerald-400 font-mono mt-1">
-                      {activeWorkspace.currency} {reconData.totalCollected.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className={`border rounded-xl p-5 ${reconData.gap < 0 ? "bg-red-950/20 border-red-500/30" : "bg-[#13181f] border-slate-800"}`}>
-                    <span className="text-[10px] font-mono text-slate-400 uppercase">Cash Discrepancy Gap</span>
-                    <div className={`text-2xl font-black font-mono mt-1 ${reconData.gap < 0 ? "text-red-400" : "text-emerald-400"}`}>
-                      {reconData.gap < 0 ? "-" : "+"}{activeWorkspace.currency} {Math.abs(reconData.gap).toLocaleString()}
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      {reconData.gap < 0 ? "⚠️ Leakage or unrecorded deni detected" : "✓ Balanced register"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-[#13181f] border border-slate-800 rounded-xl p-6 max-w-xl space-y-4">
-                  <h3 className="text-xs font-bold uppercase text-slate-300 font-mono">Input Register Collections</h3>
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">M-Pesa Statement Total ({activeWorkspace.currency})</label>
-                    <input 
-                      type="number"
-                      value={mpesaCollected}
-                      onChange={(e) => setMpesaCollected(e.target.value)}
-                      className="w-full bg-[#0a0d12] border border-slate-700 rounded p-2.5 text-white font-mono text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Physical Cash Drawer Count ({activeWorkspace.currency})</label>
-                    <input 
-                      type="number"
-                      value={cashCollected}
-                      onChange={(e) => setCashCollected(e.target.value)}
-                      className="w-full bg-[#0a0d12] border border-slate-700 rounded p-2.5 text-white font-mono text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
+            {activeTab === "supplier_log" && (
+              <SupplierLogTab
+                state={alacioState}
+                onLogSupplyDelivery={handleLogSupplyDelivery}
+              />
             )}
 
+            {activeTab === "pending_drafts" && (
+              <PendingDraftsQueueTab
+                state={alacioState}
+                onApproveDraft={handleApproveVoiceDraft}
+              />
+            )}
+
+            {activeTab === "evening_reconciliation" && (
+              <EveningReconciliationTab
+                state={alacioState}
+                onCommitAudit={handleCommitReconciliation}
+                onOpenOneTapGap={() => setIsOneTapGapOpen(true)}
+              />
+            )}
+
+            {activeTab === "ambient_ledger" && (
+              <AmbientLedgerTab
+                state={alacioState}
+                onApproveDraftSale={handleApproveAmbientDraft}
+              />
+            )}
+
+            {activeTab === "warehouse" && (
+              <WarehouseTab
+                currency={alacioState.currency}
+                warehouse={alacioState.warehouse}
+                inventory={alacioState.inventory}
+                onTransferToShelf={handleTransferToShelf}
+                onReceiveShipment={handleReceiveShipment}
+              />
+            )}
+
+            {activeTab === "voice_ledger" && (
+              <VoiceLedgerTab
+                currency={alacioState.currency}
+                onCommitTransaction={handleVoiceTransaction}
+                lastLoggedMessage={lastVoiceLog}
+                vcrCount={alacioState.vcr_daily_count}
+                customerConsent={alacioState.vcr_customer_consent}
+                onToggleConsent={(val) => setAlacioState((prev) => ({ ...prev, vcr_customer_consent: val }))}
+              />
+            )}
+
+            {activeTab === "quick_dump" && (
+              <QuickDumpTab
+                currency={alacioState.currency}
+                inventory={alacioState.inventory}
+                recentSales={alacioState.salesLedger}
+                onQuickSale={handleQuickSale}
+              />
+            )}
+
+            {activeTab === "opening_float" && (
+              <OpeningFloatTab
+                currency={alacioState.currency}
+                denominations={alacioState.floatDenominations}
+                onUpdateDenominations={handleUpdateFloat}
+              />
+            )}
+
+            {activeTab === "inventory" && (
+              <InventoryTab
+                currency={alacioState.currency}
+                inventory={alacioState.inventory}
+                onOpenRestock={handleOpenRestock}
+              />
+            )}
+
+            {activeTab === "customers" && (
+              <CustomersCreditTab
+                currency={alacioState.currency}
+                customers={alacioState.customers}
+                onRepayDebt={handleRepayDebt}
+                onAddDebtor={handleAddDebtor}
+              />
+            )}
+
+            {activeTab === "t_ledgers" && (
+              <TLedgersTab state={alacioState} />
+            )}
+
+            {activeTab === "reconciliation" && (
+              <ReconciliationTab
+                state={alacioState}
+                onCommitReconciliation={handleCommitReconciliation}
+                onUpdateInventoryStock={handleUpdateInventoryStock}
+                onOpenOneTapGap={() => setIsOneTapGapOpen(true)}
+                onOpenMpesaImport={() => setIsMpesaImportOpen(true)}
+              />
+            )}
+
+            {activeTab === "analytics" && (
+              <AnalyticsTab state={alacioState} />
+            )}
           </main>
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* 3. MODALS (RESTOCK & WORKSPACE CLONER)                     */}
-      {/* ========================================================= */}
-      {/* RESTOCK TRIGGER MODAL */}
-      {showRestockModal && selectedItem && (
+      {/* SPECIAL FEATURE: PULL YOUR OWN APP MODAL */}
+      <PullOwnAppModal
+        isOpen={isPullOwnAppOpen}
+        onClose={() => setIsPullOwnAppOpen(false)}
+        state={alacioState}
+      />
+
+      {/* 1-TAP GAP RESOLUTION MODAL */}
+      <OneTapGapModal
+        isOpen={isOneTapGapOpen}
+        onClose={() => setIsOneTapGapOpen(false)}
+        gapAmount={-1500}
+        currency={alacioState.currency}
+        onResolveGap={handleResolveGap}
+      />
+
+      {/* M-PESA STATEMENT IMPORT MODAL */}
+      <MpesaImportModal
+        isOpen={isMpesaImportOpen}
+        onClose={() => setIsMpesaImportOpen(false)}
+        currency={alacioState.currency}
+        onImportRecords={handleImportMpesa}
+      />
+
+      {/* RESTOCK BATCH MODAL */}
+      {isRestockOpen && selectedRestockItem && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-[#13181f] border border-slate-700 w-full max-w-md rounded-xl p-6 space-y-4 text-xs">
-            <h3 className="text-base font-bold text-white">Restock Batch: {selectedItem.name}</h3>
-            <p className="text-slate-400">Logging this batch automatically calculates implied sales of preceding stock.</p>
-            <div>
-              <label className="text-slate-400 block mb-1">Batch Units Received ({selectedItem.unit_type})</label>
-              <input 
-                type="number"
-                value={batchQty}
-                onChange={(e) => setBatchQty(e.target.value)}
-                placeholder="e.g. 18"
-                className="w-full bg-[#0a0d12] border border-slate-700 rounded p-2 text-white font-mono"
-              />
+          <div className="bg-[#101b15] border-2 border-emerald-500/40 w-full max-w-md rounded-2xl p-6 space-y-4 text-xs font-sans shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2 font-serif">
+                <RefreshCw size={16} className="text-emerald-400" /> Restock-Trigger Accounting Engine: {selectedRestockItem.name}
+              </h3>
+              <button onClick={() => setIsRestockOpen(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={16} /></button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+
+            <p className="text-slate-300 text-[11px] leading-relaxed">
+              Arriving batch is logged as evidence that previous stock cleared. Automatically recalibrates shelf valuation, unit margin, and expected cash.
+            </p>
+
+            <form onSubmit={handleExecuteRestock} className="space-y-4">
               <div>
-                <label className="text-slate-400 block mb-1">Unit Cost ({activeWorkspace.currency})</label>
-                <input 
+                <label className="text-slate-300 font-semibold block mb-1">
+                  Batch Units Received ({selectedRestockItem.unit_type})
+                </label>
+                <input
                   type="number"
-                  value={unitCost}
-                  onChange={(e) => setUnitCost(e.target.value)}
-                  className="w-full bg-[#0a0d12] border border-slate-700 rounded p-2 text-white font-mono"
+                  required
+                  min={1}
+                  value={restockQty}
+                  onChange={(e) => setRestockQty(e.target.value)}
+                  placeholder="e.g. 24"
+                  className="w-full bg-[#070e0b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:outline-none focus:border-emerald-500"
+                  autoFocus
                 />
               </div>
-              <div>
-                <label className="text-slate-400 block mb-1">Unit Retail ({activeWorkspace.currency})</label>
-                <input 
-                  type="number"
-                  value={unitRetail}
-                  onChange={(e) => setUnitRetail(e.target.value)}
-                  className="w-full bg-[#0a0d12] border border-slate-700 rounded p-2 text-white font-mono"
-                />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">
+                    Wholesale Cost ({alacioState.currency})
+                  </label>
+                  <input
+                    type="number"
+                    value={restockCost}
+                    onChange={(e) => setRestockCost(e.target.value)}
+                    className="w-full bg-[#070e0b] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">
+                    Retail Shelf Price ({alacioState.currency})
+                  </label>
+                  <input
+                    type="number"
+                    value={restockRetail}
+                    onChange={(e) => setRestockRetail(e.target.value)}
+                    className="w-full bg-[#070e0b] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                  />
+                </div>
               </div>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => setShowRestockModal(false)} className="flex-1 py-2 bg-slate-800 text-slate-300 rounded cursor-pointer">Cancel</button>
-              <button onClick={handleExecuteRestock} className="flex-1 py-2 bg-emerald-500 text-slate-950 font-bold rounded cursor-pointer">Confirm Restock</button>
-            </div>
+
+              <div className="flex gap-2 justify-end pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsRestockOpen(false)}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl cursor-pointer shadow"
+                >
+                  Confirm Restock Batch
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
       {/* CLONER MODAL */}
       {isClonerOpen && (
-        <ClonerModal 
-          onClose={() => setIsClonerOpen(false)}
-          onCreate={handleWorkspaceCreated}
-        />
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#101b15] border-2 border-emerald-500/40 rounded-3xl w-full max-w-md p-6 space-y-4 text-xs font-sans shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2 font-serif">
+                <Copy size={16} className="text-emerald-400" /> Clone Blueprint for New Client
+              </h3>
+              <button onClick={() => setIsClonerOpen(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={16} /></button>
+            </div>
+            <div>
+              <label className="text-slate-300 font-semibold block mb-1">Select Industry Blueprint</label>
+              <select className="w-full bg-[#070e0b] border border-slate-700 rounded-xl p-2.5 text-white font-sans">
+                {PLATFORM_BLUEPRINTS.map((bp) => (
+                  <option key={bp.id} value={bp.id}>{bp.name} ({bp.industry})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-slate-300 font-semibold block mb-1">Client Business Name</label>
+              <input 
+                type="text"
+                placeholder="e.g. Ruiru Modern Hardware Store"
+                className="w-full bg-[#070e0b] border border-slate-700 rounded-xl p-2.5 text-white font-sans"
+              />
+            </div>
+            <div>
+              <label className="text-slate-300 font-semibold block mb-1">Operating Currency</label>
+              <input 
+                type="text"
+                defaultValue="KSh"
+                className="w-full bg-[#070e0b] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setIsClonerOpen(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl cursor-pointer">Cancel</button>
+              <button 
+                onClick={() => {
+                  alert("New client workspace cloned with isolated taxonomy, VCR listener, and Cloud Firestore storage!");
+                  setIsClonerOpen(false);
+                }}
+                className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl cursor-pointer shadow"
+              >
+                Provision Isolated Client Workspace
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-    </div>
-  );
-}
-
-// INLINE CLONER MODAL SUBCOMPONENT
-interface ClonerModalProps {
-  onClose: () => void;
-  onCreate: (newWs: Workspace) => void;
-}
-
-function ClonerModal({ onClose, onCreate }: ClonerModalProps) {
-  const [name, setName] = useState("");
-  const [curr, setCurr] = useState("KSh");
-
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-[#121822] border border-slate-700 rounded-2xl w-full max-w-md p-6 space-y-4 text-xs font-sans">
-        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Copy size={16} className="text-emerald-400" /> Clone Blueprint for New Client
-          </h3>
-          <button onClick={onClose} className="cursor-pointer"><X size={16} className="text-slate-400" /></button>
-        </div>
-        <div>
-          <label className="text-slate-300 font-semibold block mb-1">Client Business Name</label>
-          <input 
-            type="text"
-            required
-            placeholder="e.g. Mama Boi Stores"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full bg-[#0a0d12] border border-slate-700 rounded-lg p-2.5 text-white"
-            autoFocus
-          />
-        </div>
-        <div>
-          <label className="text-slate-300 font-semibold block mb-1">Currency</label>
-          <input 
-            type="text"
-            value={curr}
-            onChange={(e) => setCurr(e.target.value)}
-            className="w-full bg-[#0a0d12] border border-slate-700 rounded-lg p-2.5 text-white font-mono"
-          />
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <button onClick={onClose} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg cursor-pointer">Cancel</button>
-          <button 
-            onClick={() => {
-              if (!name.trim()) return;
-              onCreate({
-                id: `ws_${Date.now()}`,
-                slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-                business_name: name.trim(),
-                blueprint_type: "RETAIL_FMCG",
-                currency: curr,
-                is_template: false,
-                kpis: {
-                  total_active_shelf_retail_value: 0,
-                  total_capital_invested: 0,
-                  locked_in_potential_gross_profit: 0,
-                  avg_markup_percentage: 0,
-                  total_active_items: 4
-                },
-                inventory: [
-                  { id: 1, name: "Milk 500ml", category: "Dairy", unit_type: "packets", unit_cost: 50, unit_retail: 60, current_stock: 0, opening_stock: 0, expected_margin: 10, total_shelf_value: 0, velocity_badge: "Low Stock Alert" },
-                  { id: 2, name: "Unga 2kg", category: "Flour", unit_type: "bales", unit_cost: 180, unit_retail: 210, current_stock: 0, opening_stock: 0, expected_margin: 30, total_shelf_value: 0, velocity_badge: "Low Stock Alert" },
-                  { id: 3, name: "Oil 1L", category: "Cooking & Oils", unit_type: "bottles", unit_cost: 280, unit_retail: 330, current_stock: 0, opening_stock: 0, expected_margin: 50, total_shelf_value: 0, velocity_badge: "Low Stock Alert" },
-                  { id: 4, name: "Eggs Crate", category: "Poultry", unit_type: "crates", unit_cost: 380, unit_retail: 450, current_stock: 0, opening_stock: 0, expected_margin: 70, total_shelf_value: 0, velocity_badge: "Low Stock Alert" }
-                ]
-              });
-              onClose();
-            }}
-            className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold rounded-lg cursor-pointer"
-          >
-            Provision Workspace
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

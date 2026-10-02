@@ -1,0 +1,152 @@
+{
+  "entities": {
+    "Workspace": {
+      "title": "Workspace",
+      "description": "Tenant business workspace (e.g. Alacio Mini Shop)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "business_name": { "type": "string", "maxLength": 100 },
+        "blueprint_type": { "type": "string", "maxLength": 50 },
+        "currency": { "type": "string", "maxLength": 10 },
+        "owner_id": { "type": "string", "maxLength": 128 },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "business_name", "blueprint_type", "currency"]
+    },
+    "InventoryItem": {
+      "title": "InventoryItem",
+      "description": "Active retail shelf merchandise item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "category": { "type": "string", "maxLength": 50 },
+        "unit_type": { "type": "string", "maxLength": 30 },
+        "unit_cost": { "type": "number" },
+        "unit_retail": { "type": "number" },
+        "current_stock": { "type": "number" },
+        "opening_stock": { "type": "number" },
+        "expected_margin": { "type": "number" },
+        "total_shelf_value": { "type": "number" },
+        "velocity_badge": { "type": "string", "maxLength": 30 }
+      },
+      "required": ["id", "name", "category", "unit_cost", "unit_retail", "current_stock"]
+    },
+    "WarehouseBatch": {
+      "title": "WarehouseBatch",
+      "description": "Bulk inventory stored in the backroom warehouse depot",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "item_id": { "type": "string", "maxLength": 128 },
+        "item_name": { "type": "string", "maxLength": 100 },
+        "category": { "type": "string", "maxLength": 50 },
+        "batch_number": { "type": "string", "maxLength": 50 },
+        "supplier_name": { "type": "string", "maxLength": 100 },
+        "bulk_quantity": { "type": "number" },
+        "unit_type": { "type": "string", "maxLength": 30 },
+        "bulk_cost_per_unit": { "type": "number" },
+        "total_batch_cost": { "type": "number" },
+        "storage_location": { "type": "string", "maxLength": 50 },
+        "reorder_threshold": { "type": "number" },
+        "received_date": { "type": "string" },
+        "expiry_date": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["IN_STORAGE", "LOW_BUFFER", "DEPLETED"] }
+      },
+      "required": ["id", "item_name", "bulk_quantity", "bulk_cost_per_unit", "status"]
+    },
+    "SaleRecord": {
+      "title": "SaleRecord",
+      "description": "Counter transaction or voice ledger commitment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string" },
+        "customer_name": { "type": "string", "maxLength": 100 },
+        "items_summary": { "type": "string", "maxLength": 500 },
+        "total_amount": { "type": "number" },
+        "cash_paid": { "type": "number" },
+        "mpesa_paid": { "type": "number" },
+        "debt_amount": { "type": "number" },
+        "payment_method": { "type": "string", "enum": ["CASH", "MPESA", "SPLIT", "CREDIT"] }
+      },
+      "required": ["id", "customer_name", "total_amount", "payment_method"]
+    },
+    "CustomerDebtor": {
+      "title": "CustomerDebtor",
+      "description": "Customer with credit (deni) ledger account",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "debt_balance": { "type": "number" },
+        "credit_limit": { "type": "number" },
+        "last_transaction_date": { "type": "string", "maxLength": 50 },
+        "notes": { "type": "string", "maxLength": 300 }
+      },
+      "required": ["id", "name", "debt_balance", "credit_limit"]
+    },
+    "ReconciliationAudit": {
+      "title": "ReconciliationAudit",
+      "description": "End-of-day reverse inventory and register audit",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 50 },
+        "expected_stock_sales": { "type": "number" },
+        "physical_cash": { "type": "number" },
+        "mpesa_statement": { "type": "number" },
+        "unlogged_credit": { "type": "number" },
+        "discrepancy_gap": { "type": "number" },
+        "status": { "type": "string", "enum": ["BALANCED", "LEAKAGE", "SURPLUS"] },
+        "sealed_at": { "type": "string" }
+      },
+      "required": ["id", "date", "expected_stock_sales", "physical_cash", "mpesa_statement", "status"]
+    },
+    "FloatAudit": {
+      "title": "FloatAudit",
+      "description": "05:57 AM Morning drawer opening float verified count",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 50 },
+        "total_amount": { "type": "number" },
+        "verified_at": { "type": "string" }
+      },
+      "required": ["id", "total_amount", "verified_at"]
+    }
+  },
+  "firestore": {
+    "/workspaces/{workspaceId}": {
+      "schema": "Workspace",
+      "description": "Store tenant root configuration and settings"
+    },
+    "/workspaces/{workspaceId}/inventory/{itemId}": {
+      "schema": "InventoryItem",
+      "description": "Active retail shelf merchandise stock"
+    },
+    "/workspaces/{workspaceId}/warehouse/{batchId}": {
+      "schema": "WarehouseBatch",
+      "description": "Bulk backroom warehouse batches and stock reserves"
+    },
+    "/workspaces/{workspaceId}/sales/{saleId}": {
+      "schema": "SaleRecord",
+      "description": "Daily retail sales and transactions"
+    },
+    "/workspaces/{workspaceId}/customers/{customerId}": {
+      "schema": "CustomerDebtor",
+      "description": "Debtor credit books and customer profiles"
+    },
+    "/workspaces/{workspaceId}/reconciliations/{reconId}": {
+      "schema": "ReconciliationAudit",
+      "description": "Daily sealed inventory vs cash audits"
+    },
+    "/workspaces/{workspaceId}/floats/{floatId}": {
+      "schema": "FloatAudit",
+      "description": "Morning opening float records"
+    }
+  }
+}

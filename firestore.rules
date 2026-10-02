@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default-Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Workspace Root
+    match /workspaces/{workspaceId} {
+      allow read: if true;
+      allow create, update: if isValidId(workspaceId) && incoming().id is string;
+      allow delete: if false;
+
+      // Active Shelf Inventory
+      match /inventory/{itemId} {
+        allow read: if isValidId(workspaceId);
+        allow create, update: if isValidId(workspaceId) && isValidId(itemId)
+          && incoming().name is string && incoming().name.size() <= 100
+          && incoming().unit_cost is number
+          && incoming().unit_retail is number
+          && incoming().current_stock is number;
+        allow delete: if isValidId(workspaceId) && isValidId(itemId);
+      }
+
+      // The Warehouse (Bulk Backroom Storage Batches)
+      match /warehouse/{batchId} {
+        allow read: if isValidId(workspaceId);
+        allow create, update: if isValidId(workspaceId) && isValidId(batchId)
+          && incoming().item_name is string && incoming().item_name.size() <= 100
+          && incoming().bulk_quantity is number
+          && incoming().bulk_cost_per_unit is number;
+        allow delete: if isValidId(workspaceId) && isValidId(batchId);
+      }
+
+      // Sales Transactions
+      match /sales/{saleId} {
+        allow read: if isValidId(workspaceId);
+        allow create: if isValidId(workspaceId) && isValidId(saleId)
+          && incoming().total_amount is number
+          && incoming().customer_name is string;
+        allow update, delete: if false; // Immutable sales ledger
+      }
+
+      // Customers & Credit (Deni Book)
+      match /customers/{customerId} {
+        allow read: if isValidId(workspaceId);
+        allow create, update: if isValidId(workspaceId) && isValidId(customerId)
+          && incoming().name is string
+          && incoming().debt_balance is number;
+        allow delete: if isValidId(workspaceId) && isValidId(customerId);
+      }
+
+      // Reconciliations (EOD Audits)
+      match /reconciliations/{reconId} {
+        allow read: if isValidId(workspaceId);
+        allow create: if isValidId(workspaceId) && isValidId(reconId)
+          && incoming().expected_stock_sales is number
+          && incoming().physical_cash is number;
+        allow update, delete: if false; // Immutable sealed audits
+      }
+
+      // Float Audits
+      match /floats/{floatId} {
+        allow read: if isValidId(workspaceId);
+        allow create, update: if isValidId(workspaceId) && isValidId(floatId)
+          && incoming().total_amount is number;
+        allow delete: if false;
+      }
+    }
+  }
+}

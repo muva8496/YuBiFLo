@@ -435,4 +435,274 @@ router.get("/workspace/inventory", requireTenant, async (req: TenantRequest, res
   }
 });
 
+// 11. POST /api/v1/reconciliation/close-day - YuBiFlo Reverse Inventory Reconciliation Engine
+router.post("/reconciliation/close-day", async (req, res) => {
+  try {
+    const {
+      merchant_id = 1,
+      reconciliation_date = new Date().toISOString().slice(0, 10),
+      item_audits = [],
+      actual_mpesa_collected = 0,
+      actual_cash_collected = 0
+    } = req.body;
+
+    let total_expected_revenue = 0.0;
+    const audited_items: Array<{
+      item_id: number;
+      item_name: string;
+      opening_qty: number;
+      supply_added_qty: number;
+      closing_counted_qty: number;
+      implied_sold_qty: number;
+      unit_retail_price: number;
+      expected_revenue: number;
+    }> = [];
+
+    // Reverse Inventory Math: Implied Sold = (Opening + Supply) - Closing
+    for (const audit of item_audits) {
+      const opening = parseFloat(audit.opening_qty || 0);
+      const supply = parseFloat(audit.supply_added_qty || 0);
+      const closing = parseFloat(audit.closing_counted_qty || 0);
+      const retail = parseFloat(audit.unit_retail_price || audit.retail_price || 65);
+      const name = audit.item_name || `Item #${audit.item_id}`;
+
+      const available_stock = opening + supply;
+      const implied_sold = closing > available_stock ? 0.0 : available_stock - closing;
+      const item_expected_revenue = implied_sold * retail;
+      total_expected_revenue += item_expected_revenue;
+
+      audited_items.push({
+        item_id: audit.item_id,
+        item_name: name,
+        opening_qty: opening,
+        supply_added_qty: supply,
+        closing_counted_qty: closing,
+        implied_sold_qty: implied_sold,
+        unit_retail_price: retail,
+        expected_revenue: item_expected_revenue
+      });
+    }
+
+    const actualMpesa = parseFloat(actual_mpesa_collected || 0);
+    const actualCash = parseFloat(actual_cash_collected || 0);
+    const total_actual_collected = actualMpesa + actualCash;
+    const discrepancy_gap = total_actual_collected - total_expected_revenue;
+
+    let status = "MATCHED";
+    let actionable_insight = "All stock accounts match cash and M-Pesa collected perfectly!";
+
+    if (Math.abs(discrepancy_gap) <= 5.00) {
+      status = "MATCHED";
+      actionable_insight = "All stock accounts match cash and M-Pesa collected perfectly!";
+    } else if (discrepancy_gap < 0.00) {
+      status = "LEAKAGE_DETECTED";
+      actionable_insight = `Unaccounted Gap of KSh ${Math.abs(discrepancy_gap).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Items walked out the door, but cash/M-Pesa is missing. Check unlogged credit (deni) or till shortage.`;
+    } else {
+      status = "SURPLUS_DETECTED";
+      actionable_insight = `Cash Surplus of KSh ${discrepancy_gap.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. You received more cash than recorded inventory drops. Check if a delivery was unlogged.`;
+    }
+
+    res.status(201).json({
+      merchant_id,
+      reconciliation_date,
+      audited_items,
+      total_expected_revenue,
+      actual_mpesa_collected: actualMpesa,
+      actual_cash_collected: actualCash,
+      total_actual_collected,
+      discrepancy_gap,
+      status,
+      actionable_insight
+    });
+  } catch (err: any) {
+    console.error("Error in reconciliation close-day:", err);
+    res.status(500).json({ error: "Reconciliation engine failure." });
+  }
+});
+
+// In-memory fallback pending drafts registry
+let pendingDraftsStore: Array<{
+  id: string;
+  merchant_id: string;
+  intent_type: "SUPPLIER_DELIVERY" | "CREDIT_RECORD" | "ADVANCE_PAYMENT" | "UNKNOWN";
+  raw_transcript: string;
+  payload_json: any;
+  total_amount: number;
+  status: "PENDING" | "APPROVED" | "DISMISSED";
+  created_at: string;
+}> = [
+  {
+    id: "draft_001",
+    merchant_id: "alacio_mini_shop",
+    intent_type: "SUPPLIER_DELIVERY",
+    raw_transcript: "Leta maziwa crate 2 na mkate 20",
+    payload_json: {
+      supplier_name: "Brookside Delivery",
+      items: [
+        { item_name: "Brookside Milk 500ml", quantity: 2, unit: "crates" },
+        { item_name: "Broadways Bread 400g", quantity: 20, unit: "loaves" }
+      ],
+      payment_mode: "MPESA",
+      total_cost: 3940
+    },
+    total_amount: 3940,
+    status: "PENDING",
+    created_at: new Date().toISOString()
+  },
+  {
+    id: "draft_002",
+    merchant_id: "alacio_mini_shop",
+    intent_type: "CREDIT_RECORD",
+    raw_transcript: "Kamau amechukua sugar ya 40 na deni",
+    payload_json: {
+      customer_name: "Kamau",
+      items: [
+        { item_name: "Mumias Sugar", quantity: 1, unit: "quarter-kg" }
+      ],
+      amount_owed: 40,
+      notes: "Unpaid micro-credit taken during rush hour"
+    },
+    total_amount: 40,
+    status: "PENDING",
+    created_at: new Date().toISOString()
+  },
+  {
+    id: "draft_003",
+    merchant_id: "alacio_mini_shop",
+    intent_type: "ADVANCE_PAYMENT",
+    raw_transcript: "Ameacha 600 taken change 400 ya item atachukua jioni",
+    payload_json: {
+      customer_name: "Mama Boi",
+      amount_paid: 600,
+      change_given: 400,
+      item_price: 200,
+      items: [
+        { item_name: "Unga Jogoo 2kg", quantity: 1, unit: "bale" }
+      ],
+      pickup_time: "Evening pickup (goods remain on shelf reserved)"
+    },
+    total_amount: 200,
+    status: "PENDING",
+    created_at: new Date().toISOString()
+  }
+];
+
+// 12. POST /api/v1/voice-parse - YuBiFlo Ambient Voice NLP Intent Parser
+router.post("/voice-parse", async (req, res) => {
+  try {
+    const { transcript = "", merchant_id = "alacio_mini_shop" } = req.body;
+    const text = transcript.trim().toLowerCase();
+
+    let intent_type: "SUPPLIER_DELIVERY" | "CREDIT_RECORD" | "ADVANCE_PAYMENT" | "UNKNOWN" = "UNKNOWN";
+    let payload_json: any = {};
+    let total_amount = 0;
+
+    // 1. Intent: SUPPLIER_DELIVERY
+    if (text.includes("leta maziwa") || text.includes("crate") || text.includes("supplier") || text.includes("ameleta")) {
+      intent_type = "SUPPLIER_DELIVERY";
+      const crateMatch = text.match(/crate\s*(\d+)/i) || text.match(/(\d+)\s*crate/i);
+      const breadMatch = text.match(/mkate\s*(\d+)/i) || text.match(/(\d+)\s*mkate/i);
+      const crates = crateMatch ? parseInt(crateMatch[1]) : 2;
+      const bread = breadMatch ? parseInt(breadMatch[1]) : 20;
+
+      payload_json = {
+        supplier_name: "Wholesale Distributor",
+        items: [
+          { item_name: "Brookside Fresh Milk", quantity: crates, unit: "crates" },
+          { item_name: "Fresh White Bread", quantity: bread, unit: "loaves" }
+        ],
+        payment_mode: text.includes("mpesa") ? "MPESA" : "CASH",
+        total_cost: crates * 1320 + bread * 65
+      };
+      total_amount = payload_json.total_cost;
+
+    // 2. Intent: CREDIT_RECORD (DENI)
+    } else if (text.includes("deni") || text.includes("kopa") || text.includes("amechukua") && text.includes("sugar ya")) {
+      intent_type = "CREDIT_RECORD";
+      const sugarMatch = text.match(/ya\s*(\d+)/i);
+      const amount = sugarMatch ? parseInt(sugarMatch[1]) : 40;
+      const nameMatch = transcript.match(/^([A-Za-z]+)\s+amechukua/i);
+      const customer = nameMatch ? nameMatch[1] : "Kamau";
+
+      payload_json = {
+        customer_name: customer,
+        items: [
+          { item_name: "Mumias Sugar", quantity: 1, unit: "micro-fraction" }
+        ],
+        amount_owed: amount,
+        notes: "Verbal deni logged at counter"
+      };
+      total_amount = amount;
+
+    // 3. Intent: ADVANCE_PAYMENT (Deferred pickup / change)
+    } else if (text.includes("ameacha") || text.includes("atachukua jioni") || text.includes("nitarudi kuchukua")) {
+      intent_type = "ADVANCE_PAYMENT";
+      const paidMatch = text.match(/ameacha\s*(\d+)/i) || text.match(/(\d+)/i);
+      const changeMatch = text.match(/change\s*(\d+)/i);
+      const paid = paidMatch ? parseInt(paidMatch[1]) : 600;
+      const change = changeMatch ? parseInt(changeMatch[1]) : 400;
+
+      payload_json = {
+        customer_name: "Advance Customer",
+        amount_paid: paid,
+        change_given: change,
+        net_retained: paid - change,
+        items: [
+          { item_name: "Flour / Unga", quantity: 1, unit: "bale" }
+        ],
+        pickup_status: "Reserved for evening pickup"
+      };
+      total_amount = paid - change;
+
+    } else {
+      intent_type = "UNKNOWN";
+      payload_json = { raw: transcript };
+    }
+
+    const newDraft = {
+      id: `draft_${Date.now()}`,
+      merchant_id,
+      intent_type,
+      raw_transcript: transcript,
+      payload_json,
+      total_amount,
+      status: "PENDING" as const,
+      created_at: new Date().toISOString()
+    };
+
+    pendingDraftsStore = [newDraft, ...pendingDraftsStore];
+
+    res.status(201).json({
+      status: "SUCCESS",
+      draft: newDraft,
+      message: "Draft saved to pending_drafts queue. Merchant confirmation required before ledger write-down."
+    });
+  } catch (err: any) {
+    console.error("Error in voice-parse:", err);
+    res.status(500).json({ error: "Failed to parse voice transcript" });
+  }
+});
+
+// 13. GET /api/v1/pending-drafts - Retrieve Queued Voice Drafts
+router.get("/pending-drafts", (req, res) => {
+  res.json({
+    status: "SUCCESS",
+    drafts: pendingDraftsStore
+  });
+});
+
+// 14. POST /api/v1/pending-drafts/:id/resolve - Approve or Dismiss Draft
+router.post("/pending-drafts/:id/resolve", (req, res) => {
+  const { id } = req.params;
+  const { action } = req.body; // "APPROVE" | "DISMISS"
+
+  const draft = pendingDraftsStore.find((d) => d.id === id);
+  if (!draft) {
+    return res.status(404).json({ error: "Draft not found" });
+  }
+
+  draft.status = action === "APPROVE" ? "APPROVED" : "DISMISSED";
+  res.json({ status: "SUCCESS", draft });
+});
+
 export default router;
