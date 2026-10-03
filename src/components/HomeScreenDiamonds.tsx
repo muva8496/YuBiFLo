@@ -1,24 +1,69 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
-  Building2, ArrowRight, ShieldCheck, Sparkles, AlertTriangle, 
-  Layers, Database, BarChart3, BrainCircuit, CheckCircle2, 
-  Store, Wrench, Truck, Pill, Eye, ChevronRight, Lock
+  Building2, ArrowRight, ShieldCheck, Sparkles, Database, 
+  BarChart3, BrainCircuit, Store, Check, Plus, Lock, 
+  ChevronRight, ArrowUpDown, Filter, HelpCircle, BarChart2
 } from "lucide-react";
-import { Blueprint, ProjectCaseStudy } from "../types/alacio";
+import { ProjectCaseStudy } from "../types/alacio";
+import { 
+  BusinessBlueprintConfig, 
+  BusinessWaitlistRequest, 
+  loadBlueprintsConfig, 
+  saveBlueprintsConfig, 
+  loadWaitlistRequests, 
+  getBlueprintCardConfig 
+} from "../services/alacioStorage";
+import WaitlistRequestModal from "./WaitlistRequestModal";
+import AdminDemandRadarModal from "./AdminDemandRadarModal";
 
 interface HomeScreenDiamondsProps {
-  blueprints: Blueprint[];
   projectCaseStudy: ProjectCaseStudy;
   onSelectBlueprint: (blueprintId: string) => void;
   onOpenProjectCaseStudy: () => void;
 }
 
 export default function HomeScreenDiamonds({
-  blueprints,
   projectCaseStudy,
   onSelectBlueprint,
   onOpenProjectCaseStudy
 }: HomeScreenDiamondsProps) {
+  // Configurable blueprints state (admin-editable without code changes)
+  const [blueprints, setBlueprints] = useState<BusinessBlueprintConfig[]>(() => loadBlueprintsConfig());
+
+  // Waitlist requests state
+  const [waitlistRequests, setWaitlistRequests] = useState<BusinessWaitlistRequest[]>(() => loadWaitlistRequests());
+
+  // Modals state
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
+  const [selectedBusinessType, setSelectedBusinessType] = useState<string>("");
+  const [isAdminRadarOpen, setIsAdminRadarOpen] = useState(false);
+
+  // Handle click on blueprint card
+  const handleCardClick = (bp: BusinessBlueprintConfig) => {
+    if (bp.status === "live") {
+      onSelectBlueprint("duka_fmcg");
+    } else {
+      setSelectedBusinessType(bp.name);
+      setIsWaitlistModalOpen(true);
+    }
+  };
+
+  // Open generic request form
+  const handleOpenCustomRequest = () => {
+    setSelectedBusinessType("");
+    setIsWaitlistModalOpen(true);
+  };
+
+  // Handle new request saved
+  const handleNewRequestSaved = (newReq: BusinessWaitlistRequest) => {
+    setWaitlistRequests((prev) => [newReq, ...prev]);
+  };
+
+  // Handle blueprints update from admin view
+  const handleUpdateBlueprints = (updated: BusinessBlueprintConfig[]) => {
+    setBlueprints(updated);
+  };
+
   return (
     <div className="space-y-20 pb-16">
       
@@ -53,14 +98,14 @@ export default function HomeScreenDiamonds({
         </p>
 
         {/* ======================================================== */}
-        {/* TWO DIAMOND ENTRY POINTS: TEMPLATES (LEFT) & PROJECTS (RIGHT) */}
+        {/* TWO DIAMOND ENTRY POINTS: BLUEPRINTS (LEFT) & PROJECTS (RIGHT) */}
         {/* ======================================================== */}
         <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto text-left">
           
-          {/* DIAMOND ENTRY 1: TEMPLATES (LEFT) */}
+          {/* DIAMOND ENTRY 1: BLUEPRINTS (LEFT) */}
           <div 
             onClick={() => {
-              const target = document.getElementById("templates-section");
+              const target = document.getElementById("choose-your-app-section");
               target?.scrollIntoView({ behavior: "smooth" });
             }}
             className="group relative bg-[#0f1d18] border-2 border-emerald-500/30 hover:border-emerald-400 rounded-3xl p-7 transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-950/60 cursor-pointer overflow-hidden flex flex-col justify-between"
@@ -77,15 +122,15 @@ export default function HomeScreenDiamonds({
                 <Store size={14} /> Entry Point 1 &bull; Blueprints
               </div>
               <h3 className="text-2xl font-bold text-white group-hover:text-emerald-300 transition-colors font-serif">
-                Templates &amp; Industry Blueprints
+                Built for your kind of business
               </h3>
               <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                Pre-engineered data schemas for Retail Dukas, Hardware stores, Wholesale distributors, and Pharmacies. Ready to clone in seconds.
+                Operating systems tailored for Retail Dukas, Hardware, Agrovet, Wholesale, and specialized Kenyan shops.
               </p>
             </div>
 
             <div className="mt-6 flex items-center justify-between text-xs font-mono text-emerald-400 font-semibold pt-4 border-t border-slate-800">
-              <span>Explore 4 Blueprints</span>
+              <span>Explore {blueprints.length} Business Types</span>
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -138,63 +183,56 @@ export default function HomeScreenDiamonds({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-[#0f1814] border border-slate-800 rounded-2xl p-6 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
-                <AlertTriangle size={18} />
-              </div>
-              <h3 className="font-bold text-white font-serif text-lg">Counter Friction</h3>
+              <span className="text-xs font-mono text-amber-400 font-bold block">Friction Point 1</span>
+              <h3 className="text-lg font-bold text-white font-serif">Manual Entry Kills The Queue</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                During 7:00 AM rush hour, typing a KES 20 matchbox or KES 65 milk on a phone keypad stops queues. Unrecorded transactions slip away unlogged.
+                When customers are lining up for 20-shilling sugar, salt, and milk, typing items into a screen stops sales. Incomplete records mean missing money at end-of-day.
               </p>
             </div>
 
             <div className="bg-[#0f1814] border border-slate-800 rounded-2xl p-6 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                <Layers size={18} />
-              </div>
-              <h3 className="font-bold text-white font-serif text-lg">Mixed Money &amp; Drawings</h3>
+              <span className="text-xs font-mono text-amber-400 font-bold block">Friction Point 2</span>
+              <h3 className="text-lg font-bold text-white font-serif">Mixed Owner Pockets &amp; Floats</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Owners reach into the drawer for personal lunch or school fees without a receipt. By evening, KES 3,000 is gone, creating an unresolved cash deficit.
+                Personal lunch, school pocket money, and emergency supplier cash come out of the same till or M-Pesa float. Without bookend baselines, profits leak invisibly.
               </p>
             </div>
 
             <div className="bg-[#0f1814] border border-slate-800 rounded-2xl p-6 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-                <Database size={18} />
-              </div>
-              <h3 className="font-bold text-white font-serif text-lg">Blind Restock &amp; Stockouts</h3>
+              <span className="text-xs font-mono text-amber-400 font-bold block">Friction Point 3</span>
+              <h3 className="text-lg font-bold text-white font-serif">Unrecorded Stock Discrepancies</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Without batch velocity metrics, shops tie capital in slow-moving items while high-demand unga and milk stock out 3 times every week.
+                Break-bulk items, spoilage, and shopkeeper debt books are rarely mapped to actual purchase receipts. YuBiFLo uses supply-based math to lock in true stock.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 3. THE YUBIFLO 3-TIER VALUE MATRIX */}
+      {/* 3. OPERATIONAL TRUTH (CLIENT-FACING PILLARS - NO TIERS, SCORES, OR RANKINGS) */}
       <section className="py-16 px-4 sm:px-6 max-w-5xl mx-auto space-y-12">
         <div className="text-center space-y-2">
           <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-widest">
             The CDO Architecture
           </span>
           <h2 className="text-2xl sm:text-4xl font-extrabold text-white font-serif">
-            The YuBiFLo 3-Tier Value System
+            How YuBiFLo Operates
           </h2>
-          <p className="text-xs text-slate-400">
-            Deterministic financial math for truth; AI strictly for messy human translation and plain-language answers.
+          <p className="text-xs text-slate-400 max-w-2xl mx-auto">
+            Deterministic financial math for absolute truth; voice AI strictly for natural counter conversations without keyboard friction.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* TIER 1 */}
+          {/* PILLAR 1: DATA INGESTION */}
           <div className="bg-[#0f1915] border border-emerald-500/20 rounded-2xl p-6 flex flex-col justify-between">
             <div>
               <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl w-fit mb-4">
                 <Database size={22} />
               </div>
-              <div className="text-[10px] font-mono uppercase text-emerald-400 font-bold">Tier 1 &bull; Available Day 1</div>
-              <h3 className="text-lg font-bold text-white mt-1 mb-2 font-serif">Data Engineering</h3>
+              <h3 className="text-lg font-bold text-white mb-2 font-serif">Frictionless Data Ingestion</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Frictionless ingestion that never stops sales: VCR (Voice Conversion Record) at the counter, morning opening float verification, restock batch triggers, and M-Pesa statements.
+                VCR (Voice Conversation Record) at the counter, morning opening float verification, supplier receipt photography, and M-Pesa statement audits.
               </p>
             </div>
             <div className="mt-6 pt-3 border-t border-slate-800 text-[11px] font-mono text-emerald-400">
@@ -202,16 +240,15 @@ export default function HomeScreenDiamonds({
             </div>
           </div>
 
-          {/* TIER 2 */}
+          {/* PILLAR 2: FINANCIAL AUDITING */}
           <div className="bg-[#0f1915] border border-teal-500/20 rounded-2xl p-6 flex flex-col justify-between">
             <div>
               <div className="p-3 bg-teal-500/10 text-teal-400 rounded-xl w-fit mb-4">
                 <BarChart3 size={22} />
               </div>
-              <div className="text-[10px] font-mono uppercase text-teal-400 font-bold">Tier 2 &bull; Available Day 1</div>
-              <h3 className="text-lg font-bold text-white mt-1 mb-2 font-serif">Analysis &amp; CDO Reports</h3>
+              <h3 className="text-lg font-bold text-white mb-2 font-serif">Deterministic Daily Math</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Deterministic calculations of live shelf retail value, wholesale capital invested, locked-in potential gross profit, customer credit aging, and end-of-day discrepancy resolution.
+                Reverse-inventory calculations of live shelf retail value, wholesale capital invested, customer credit aging, and end-of-day discrepancy reconciliation.
               </p>
             </div>
             <div className="mt-6 pt-3 border-t border-slate-800 text-[11px] font-mono text-teal-400">
@@ -219,100 +256,119 @@ export default function HomeScreenDiamonds({
             </div>
           </div>
 
-          {/* TIER 3 */}
+          {/* PILLAR 3: CAPITAL STABILITY */}
           <div className="bg-[#0f1915] border border-amber-500/20 rounded-2xl p-6 flex flex-col justify-between">
             <div>
               <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl w-fit mb-4">
                 <BrainCircuit size={22} />
               </div>
-              <div className="text-[10px] font-mono uppercase text-amber-400 font-bold">Tier 3 &bull; Unlocked at 30 Days</div>
-              <h3 className="text-lg font-bold text-white mt-1 mb-2 font-serif">Data Science &amp; Forecasting</h3>
+              <h3 className="text-lg font-bold text-white mb-2 font-serif">Capital &amp; Stock Intelligence</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Predictive stockout horizon calculations and branch-expansion readiness models. Unlocks only after sufficient clean trading days have accumulated.
+                Predictive stockout horizon calculations, break-bulk micro conversion, and bankable record keeping built to protect the owner's capital.
               </p>
             </div>
             <div className="mt-6 pt-3 border-t border-slate-800 text-[11px] font-mono text-amber-300">
-              ⏳ Building picture (18 / 30 clean days logged)
+              ✓ Audited bankable proof
             </div>
           </div>
         </div>
       </section>
 
-      {/* 4. BLUEPRINTS / TEMPLATES SECTION */}
-      <section id="templates-section" className="py-16 px-4 sm:px-6 max-w-5xl mx-auto space-y-10">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-800 pb-4">
-          <div>
-            <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-widest">
-              Industry Blueprints
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-serif">
-              Cloneable MSME Operating Systems
+      {/* ========================================================= */}
+      {/* 4. CHOOSE YOUR APP / BUILT FOR YOUR KIND OF BUSINESS     */}
+      {/* ========================================================= */}
+      <section id="choose-your-app-section" className="py-16 px-4 sm:px-6 max-w-5xl mx-auto space-y-10">
+        
+        {/* SECTION HEADER & PROMPT COPY */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-800 pb-5">
+          <div className="space-y-1.5">
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-white font-serif tracking-tight">
+              Built for your kind of business.
             </h2>
+            <p className="text-xs sm:text-sm text-slate-300 font-sans">
+              Don't see yours? Tell us. We build where owners ask.
+            </p>
           </div>
-          <p className="text-xs text-slate-400 max-w-md">
-            Each blueprint includes VCR voice capture, opening float, customer credit ledgers, and backroom warehouse depots.
-          </p>
+
+          {/* QUICK ACTIONS: REQUEST DIFFERENT & ADMIN RADAR */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              onClick={handleOpenCustomRequest}
+              className="px-3 py-1.5 bg-[#0f2117] hover:bg-[#142e20] text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition shadow"
+            >
+              <Plus size={13} /> Request Another Type
+            </button>
+
+            <button
+              onClick={() => setIsAdminRadarOpen(true)}
+              className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-mono flex items-center gap-1.5 cursor-pointer transition"
+              title="Admin view: demand count & status editor"
+            >
+              <BarChart2 size={13} className="text-amber-400" />
+              <span>Admin &amp; Demand Radar</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 ml-0.5" />
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {blueprints.map((bp) => (
-            <div 
-              key={bp.id}
-              className={`border rounded-2xl p-6 space-y-4 transition flex flex-col justify-between ${
-                bp.id === "duka_fmcg"
-                  ? "bg-[#0d1612] border-emerald-500/40 hover:border-emerald-400 shadow-lg shadow-emerald-950/40"
-                  : "bg-[#0c1410] border-slate-800 hover:border-amber-500/40"
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
-                    bp.id === "duka_fmcg" 
-                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" 
-                      : "bg-amber-500/10 text-amber-300 border-amber-500/30 flex items-center gap-1"
-                  }`}>
-                    {bp.id !== "duka_fmcg" && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
-                    {bp.badge}
-                  </span>
-                  <span className="text-[11px] font-mono text-slate-500">
-                    {bp.items_seed_count} seed items
-                  </span>
+        {/* BLUEPRINTS CARDS GRID (13 BUSINESS TYPES) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {blueprints.map((bp) => {
+            const cardCfg = getBlueprintCardConfig(bp.status);
+
+            return (
+              <div 
+                key={bp.id}
+                className={`border rounded-2xl p-5 space-y-4 transition flex flex-col justify-between ${
+                  cardCfg.isLive
+                    ? "bg-[#0d1612] border-emerald-500/50 hover:border-emerald-400 shadow-xl shadow-emerald-950/40"
+                    : "bg-[#0c1410] border-slate-800/90 hover:border-slate-700"
+                }`}
+              >
+                <div>
+                  {/* CARD BADGE */}
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${cardCfg.badgeClass} flex items-center gap-1.5`}>
+                      {cardCfg.isLive && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      )}
+                      {bp.status === "next" && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      )}
+                      {cardCfg.badgeText}
+                    </span>
+                  </div>
+
+                  {/* BUSINESS NAME */}
+                  <h3 className="text-lg font-bold text-white font-serif mt-3 leading-snug">
+                    {bp.name}
+                  </h3>
+
+                  {/* DESCRIPTION / TAGLINE */}
+                  <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                    {bp.description || "Tailored inventory math and cash drawer auditing for this business."}
+                  </p>
                 </div>
 
-                <h3 className="text-xl font-bold text-white font-serif mt-2.5">
-                  {bp.name}
-                </h3>
-                <div className="text-xs font-mono text-emerald-400">{bp.industry}</div>
-                <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                  {bp.description}
-                </p>
-              </div>
+                {/* CARD FOOTER & ACTION BUTTON */}
+                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-slate-400 font-mono truncate">
+                    {bp.tagline || "Built for owners"}
+                  </span>
 
-              <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <span className="text-[11px] text-slate-400 italic">
-                  {bp.tagline}
-                </span>
-                
-                {bp.id === "duka_fmcg" ? (
                   <button
-                    onClick={() => onSelectBlueprint(bp.id)}
-                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0 font-mono"
+                    onClick={() => handleCardClick(bp)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-mono transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${cardCfg.buttonClass}`}
                   >
-                    <span>Launch Retail Pilot (Alacio)</span>
+                    <span>{cardCfg.buttonText}</span>
                     <ArrowRight size={13} />
                   </button>
-                ) : (
-                  <button
-                    onClick={() => onSelectBlueprint(bp.id)}
-                    className="px-4 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow shrink-0 font-mono"
-                  >
-                    <span>In Development &rarr;</span>
-                  </button>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+
       </section>
 
       {/* 5. PROJECT #1 CONSENTED CASE STUDY BANNER */}
@@ -333,9 +389,10 @@ export default function HomeScreenDiamonds({
 
             <button
               onClick={onOpenProjectCaseStudy}
-              className="px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0"
+              className="px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0 font-mono"
             >
-              <Eye size={16} /> Enter Live Client System
+              <span>Enter Live Client System</span>
+              <ArrowRight size={15} />
             </button>
           </div>
 
@@ -357,11 +414,28 @@ export default function HomeScreenDiamonds({
               <div className="text-emerald-300">&bull; {projectCaseStudy.after_metrics.cash_gap_reconciliation}</div>
               <div className="text-emerald-300">&bull; {projectCaseStudy.after_metrics.shelf_value_locked}</div>
               <div className="text-emerald-300">&bull; {projectCaseStudy.after_metrics.payout_categorization}</div>
-              <div className="text-emerald-300 font-bold">&bull; Financial Health Score: {projectCaseStudy.after_metrics.financial_health_score}</div>
+              <div className="text-emerald-300 font-bold">&bull; Bankable Proof: 100% CDO-Verified &amp; Ledger-Backed</div>
             </div>
           </div>
         </div>
       </section>
+
+      {/* WAITLIST / REQUEST MODAL */}
+      <WaitlistRequestModal
+        isOpen={isWaitlistModalOpen}
+        onClose={() => setIsWaitlistModalOpen(false)}
+        initialBusinessType={selectedBusinessType}
+        onSuccessSubmitted={handleNewRequestSaved}
+      />
+
+      {/* ADMIN DEMAND RADAR & BLUEPRINTS STATUS EDITOR */}
+      <AdminDemandRadarModal
+        isOpen={isAdminRadarOpen}
+        onClose={() => setIsAdminRadarOpen(false)}
+        blueprints={blueprints}
+        requests={waitlistRequests}
+        onUpdateBlueprints={handleUpdateBlueprints}
+      />
 
     </div>
   );

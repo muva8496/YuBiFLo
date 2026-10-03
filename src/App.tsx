@@ -743,7 +743,6 @@ export default function App() {
       {/* ========================================================= */}
       {currentView === "landing" && (
         <HomeScreenDiamonds
-          blueprints={PLATFORM_BLUEPRINTS}
           projectCaseStudy={PROJECT_ALACIO_CASE_STUDY}
           onSelectBlueprint={(blueprintId) => {
             if (blueprintId === "duka_fmcg") {

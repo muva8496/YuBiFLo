@@ -13,6 +13,228 @@ import { db, handleFirestoreError, OperationType } from "./firebase";
 import { doc, setDoc } from "firebase/firestore";
 
 export const STORAGE_KEY_ALACIO = "yubiflo_alacio_state_v1";
+export const STORAGE_KEY_BLUEPRINTS_CONFIG = "yubiflo_blueprints_config_v2";
+export const STORAGE_KEY_WAITLIST_REQUESTS = "yubiflo_waitlist_requests_v2";
+
+export type BlueprintStatus = "live" | "next" | "soon" | "request";
+
+export interface BusinessBlueprintConfig {
+  id: string;
+  name: string;
+  status: BlueprintStatus;
+  description?: string;
+  tagline?: string;
+}
+
+export interface BusinessWaitlistRequest {
+  id: string;
+  name: string;
+  phone: string;
+  businessType: string;
+  location: string;
+  consent: boolean;
+  createdAt: string;
+}
+
+export const DEFAULT_BLUEPRINTS_CONFIG: BusinessBlueprintConfig[] = [
+  { 
+    id: "bp_retail", 
+    name: "Retail: Duka, Kiosk, Mini-supermarket", 
+    status: "live",
+    description: "Fast counter cash, M-Pesa float audits, reverse inventory math, and micro break-bulk packaging.",
+    tagline: "Live production pilot: Alacio Mini Shop"
+  },
+  { 
+    id: "bp_hardware", 
+    name: "Hardware", 
+    status: "next",
+    description: "Broken-bulk nails and cement, timber running feet, and contractor milestone credit ledgers.",
+    tagline: "Dimensional math & contractor credit"
+  },
+  { 
+    id: "bp_wholesale", 
+    name: "Wholesale", 
+    status: "soon",
+    description: "Pallet/crate distribution, route delivery trucks, and high-volume merchant buy-goods floats.",
+    tagline: "Route manifest & carton lot tracking"
+  },
+  { 
+    id: "bp_agrovet", 
+    name: "Agrovet", 
+    status: "soon",
+    description: "Animal feed bags, veterinary medicines, certified seeds, and seasonal farmer planting credit.",
+    tagline: "Batch expiry & farm input ledgers"
+  },
+  { 
+    id: "bp_butchery", 
+    name: "Butchery", 
+    status: "soon",
+    description: "Carcass weight breakdown, cuts per kilogram, bone yield, and cold-room daily shrinkage audits.",
+    tagline: "Weight variance & meat shrinkage control"
+  },
+  { 
+    id: "bp_bakery", 
+    name: "Bakery and Eatery", 
+    status: "soon",
+    description: "Flour batch production yield, daily bread deliveries, and fast takeaway meal tracking.",
+    tagline: "Daily bake production vs sales audit"
+  },
+  { 
+    id: "bp_gas_water", 
+    name: "Gas and Water Dealer", 
+    status: "soon",
+    description: "LPG cylinder exchange tracking (6kg, 13kg), water refill volumes, and cylinder deposit ledgers.",
+    tagline: "Cylinder exchange & empty deposit book"
+  },
+  { 
+    id: "bp_electronics", 
+    name: "Electronics and Phone Accessories", 
+    status: "soon",
+    description: "Serial number tracking, warranties, broken-screen repairs, and phone accessory margins.",
+    tagline: "Warranty, repair job cards & accessories"
+  },
+  { 
+    id: "bp_mpesa", 
+    name: "M-Pesa Agent", 
+    status: "request",
+    description: "Till float balancing, daily super-agency rebalancing, cash drawer vs line audits, and commission logs.",
+    tagline: "Cash-in-till vs SIM float reconciliation"
+  },
+  { 
+    id: "bp_salon_cyber", 
+    name: "Salon, Cyber Cafe, Tailor, Laundry", 
+    status: "request",
+    description: "Service job tickets, staff commission splits, garment/device tags, and customer pickup tracking.",
+    tagline: "Service job cards & commission ledger"
+  },
+  { 
+    id: "bp_jua_kali", 
+    name: "Jua Kali Maker", 
+    status: "request",
+    description: "Custom fabrication metal/timber jobs, client deposit milestones, and scrap material reuse.",
+    tagline: "Job deposit milestones & scrap accounting"
+  },
+  { 
+    id: "bp_farming_dairy", 
+    name: "Farming and Dairy", 
+    status: "request",
+    description: "Daily milk collection liters, co-op payout deductions, feed expenses, and livestock health costs.",
+    tagline: "Liter logs & co-op settlement reconciliation"
+  },
+  { 
+    id: "bp_transport_health", 
+    name: "Transport, School, Clinic and Chemist", 
+    status: "request",
+    description: "Matatu stage route fees, student fee receipts, clinic patient files, and poison/prescription logs.",
+    tagline: "Specialized service receipt ledgers"
+  }
+];
+
+export const INITIAL_WAITLIST_REQUESTS: BusinessWaitlistRequest[] = [
+  { id: "req_1", name: "David Mwangi", phone: "0722 341 980", businessType: "Hardware", location: "Eldoret, Oginga Odinga St", consent: true, createdAt: "2026-10-01 09:30" },
+  { id: "req_2", name: "Grace Wanjiku", phone: "0733 892 110", businessType: "Hardware", location: "Nairobi, Gikomba", consent: true, createdAt: "2026-10-01 11:15" },
+  { id: "req_3", name: "Paul Kiprotich", phone: "0711 556 701", businessType: "Hardware", location: "Nakuru, Biashara St", consent: true, createdAt: "2026-10-01 14:20" },
+  { id: "req_4", name: "Amina Hassan", phone: "0708 443 219", businessType: "Hardware", location: "Mombasa, Majengo", consent: true, createdAt: "2026-10-02 08:45" },
+  { id: "req_5", name: "Boniface Otieno", phone: "0720 991 304", businessType: "Butchery", location: "Kisumu, Kondele", consent: true, createdAt: "2026-10-02 10:10" },
+  { id: "req_6", name: "Mercy Chebet", phone: "0719 332 884", businessType: "Agrovet", location: "Kitale, Town Centre", consent: true, createdAt: "2026-10-02 11:00" },
+  { id: "req_7", name: "Stephen Kamau", phone: "0721 884 102", businessType: "Wholesale", location: "Nairobi, Thika Road", consent: true, createdAt: "2026-10-02 13:30" },
+  { id: "req_8", name: "Fatma Ali", phone: "0735 601 228", businessType: "Bakery and Eatery", location: "Nairobi, Eastleigh", consent: true, createdAt: "2026-10-02 15:40" },
+  { id: "req_9", name: "Jackson Mutua", phone: "0724 119 503", businessType: "Gas and Water Dealer", location: "Machakos, Kangundo Rd", consent: true, createdAt: "2026-10-02 16:50" },
+  { id: "req_10", name: "Kennedy Omondi", phone: "0718 200 441", businessType: "M-Pesa Agent", location: "Nairobi, Umoja", consent: true, createdAt: "2026-10-03 07:10" }
+];
+
+export function loadBlueprintsConfig(): BusinessBlueprintConfig[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_BLUEPRINTS_CONFIG);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn("[YuBiFlo Storage] Error loading blueprints config:", e);
+  }
+  return DEFAULT_BLUEPRINTS_CONFIG;
+}
+
+export function saveBlueprintsConfig(configs: BusinessBlueprintConfig[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_BLUEPRINTS_CONFIG, JSON.stringify(configs));
+  } catch (err) {
+    console.error("[YuBiFlo Storage] Error saving blueprints config:", err);
+  }
+}
+
+export function loadWaitlistRequests(): BusinessWaitlistRequest[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_WAITLIST_REQUESTS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn("[YuBiFlo Storage] Error loading waitlist requests:", e);
+  }
+  return INITIAL_WAITLIST_REQUESTS;
+}
+
+export function saveWaitlistRequest(
+  newEntry: Omit<BusinessWaitlistRequest, "id" | "createdAt">
+): BusinessWaitlistRequest {
+  const current = loadWaitlistRequests();
+  const created: BusinessWaitlistRequest = {
+    ...newEntry,
+    id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+    createdAt: new Date().toLocaleString()
+  };
+  const updated = [created, ...current];
+  try {
+    localStorage.setItem(STORAGE_KEY_WAITLIST_REQUESTS, JSON.stringify(updated));
+  } catch (err) {
+    console.error("[YuBiFlo Storage] Error saving waitlist request:", err);
+  }
+  return created;
+}
+
+export function getBlueprintCardConfig(status: BlueprintStatus) {
+  switch (status) {
+    case "live":
+      return {
+        badgeText: "Available now",
+        badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+        buttonText: "Start free with VCR",
+        buttonClass: "bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold shadow-lg shadow-emerald-500/20",
+        isLive: true
+      };
+    case "next":
+      return {
+        badgeText: "Coming next",
+        badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+        buttonText: "Join the waitlist",
+        buttonClass: "bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40",
+        isLive: false
+      };
+    case "soon":
+      return {
+        badgeText: "Coming soon",
+        badgeClass: "bg-teal-500/20 text-teal-300 border-teal-500/40",
+        buttonText: "Join the waitlist",
+        buttonClass: "bg-teal-500/15 hover:bg-teal-500/25 text-teal-300 border border-teal-500/40",
+        isLive: false
+      };
+    case "request":
+      return {
+        badgeText: "Tell us you need this",
+        badgeClass: "bg-slate-800 text-slate-300 border-slate-700",
+        buttonText: "Request this app",
+        buttonClass: "bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-500",
+        isLive: false
+      };
+  }
+}
 
 export const PLATFORM_BLUEPRINTS: Blueprint[] = [
   {
