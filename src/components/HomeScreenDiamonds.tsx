@@ -258,15 +258,20 @@ export default function HomeScreenDiamonds({
           {blueprints.map((bp) => (
             <div 
               key={bp.id}
-              className="bg-[#0d1612] border border-emerald-950 hover:border-emerald-500/40 rounded-2xl p-6 space-y-4 transition flex flex-col justify-between"
+              className={`border rounded-2xl p-6 space-y-4 transition flex flex-col justify-between ${
+                bp.id === "duka_fmcg"
+                  ? "bg-[#0d1612] border-emerald-500/40 hover:border-emerald-400 shadow-lg shadow-emerald-950/40"
+                  : "bg-[#0c1410] border-slate-800 hover:border-amber-500/40"
+              }`}
             >
               <div>
                 <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
-                    bp.status === "ACTIVE" 
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" 
-                      : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                  <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                    bp.id === "duka_fmcg" 
+                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" 
+                      : "bg-amber-500/10 text-amber-300 border-amber-500/30 flex items-center gap-1"
                   }`}>
+                    {bp.id !== "duka_fmcg" && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
                     {bp.badge}
                   </span>
                   <span className="text-[11px] font-mono text-slate-500">
@@ -274,7 +279,7 @@ export default function HomeScreenDiamonds({
                   </span>
                 </div>
 
-                <h3 className="text-xl font-bold text-white font-serif mt-2">
+                <h3 className="text-xl font-bold text-white font-serif mt-2.5">
                   {bp.name}
                 </h3>
                 <div className="text-xs font-mono text-emerald-400">{bp.industry}</div>
@@ -283,17 +288,27 @@ export default function HomeScreenDiamonds({
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-800 flex justify-between items-center">
+              <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <span className="text-[11px] text-slate-400 italic">
                   {bp.tagline}
                 </span>
-                <button
-                  onClick={() => onSelectBlueprint(bp.id)}
-                  className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow"
-                >
-                  <span>Launch System</span>
-                  <ArrowRight size={13} />
-                </button>
+                
+                {bp.id === "duka_fmcg" ? (
+                  <button
+                    onClick={() => onSelectBlueprint(bp.id)}
+                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0 font-mono"
+                  >
+                    <span>Launch Retail Pilot (Alacio)</span>
+                    <ArrowRight size={13} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onSelectBlueprint(bp.id)}
+                    className="px-4 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow shrink-0 font-mono"
+                  >
+                    <span>In Development &rarr;</span>
+                  </button>
+                )}
               </div>
             </div>
           ))}

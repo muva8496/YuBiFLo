@@ -17,42 +17,42 @@ export const STORAGE_KEY_ALACIO = "yubiflo_alacio_state_v1";
 export const PLATFORM_BLUEPRINTS: Blueprint[] = [
   {
     id: "duka_fmcg",
-    name: "Retail Duka & FMCG",
-    badge: "Tier 1-3 Live",
-    industry: "Grocery & Fast Moving Goods",
-    tagline: "High-velocity batch turnover & rapid rush-hour VCR ingestion",
-    description: "Built for busy neighbourhood shops where writing 20-shilling purchases kills queues. Includes 43-item starter taxonomy, break-bulk unit tracking, and morning float verification.",
+    name: "Retail Duka & FMCG (Direct to Consumer)",
+    badge: "Live Pilot (Alacio Mini Shop)",
+    industry: "B2C Consumer Retail & Groceries",
+    tagline: "High-velocity retail sales directly to everyday consumers",
+    description: "Built for busy neighbourhood shops selling directly to consumers. Alacio Mini Shop is our live operational branch demonstrating this template with 43 starter items, break-bulk micro packaging, and reverse inventory audits.",
     status: "ACTIVE",
     items_seed_count: 43
   },
   {
     id: "hardware_construction",
     name: "Hardware & Construction",
-    badge: "Ready to Clone",
+    badge: "In Development",
     industry: "Building Materials & Tools",
     tagline: "Broken-bulk nails/cement mapping with contractor credit ledgers",
     description: "Tracks bags of Bamburi cement, timber running feet, paint tinting batches, and contractor project accounts with strict credit limits.",
-    status: "ACTIVE",
+    status: "IN_DEVELOPMENT",
     items_seed_count: 58
   },
   {
     id: "wholesale_distribution",
     name: "Wholesale & Aggregator",
-    badge: "Ready to Clone",
+    badge: "In Development",
     industry: "B2B Goods Distribution",
     tagline: "Pallet/crate distribution with supplier delivery cross-checks",
     description: "Designed for mid-market distributors handling carton lots, route delivery trucks, and high-volume merchant buy-goods floats.",
-    status: "ACTIVE",
+    status: "IN_DEVELOPMENT",
     items_seed_count: 65
   },
   {
     id: "community_pharmacy",
     name: "Community Chemist / Pharmacy",
-    badge: "Regulatory Sandbox",
+    badge: "In Development",
     industry: "Healthcare & Pharmaceuticals",
     tagline: "Strict batch expiry dating & prescription ledger control",
     description: "Pharmacy board compliance schema, poison register audit trails, and FEFO (First-Expired, First-Out) shelf dispatching.",
-    status: "REGULATED_SANDBOX",
+    status: "IN_DEVELOPMENT",
     items_seed_count: 82
   }
 ];

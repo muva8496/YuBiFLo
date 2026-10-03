@@ -109,7 +109,7 @@ export interface Blueprint {
   industry: string;
   tagline: string;
   description: string;
-  status: "ACTIVE" | "UPCOMING" | "REGULATED_SANDBOX";
+  status: "ACTIVE" | "UPCOMING" | "REGULATED_SANDBOX" | "IN_DEVELOPMENT";
   items_seed_count: number;
 }
 

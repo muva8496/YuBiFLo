@@ -3,7 +3,7 @@ import {
   Building2, Globe, Plus, ChevronDown, Copy, X, ArrowRight, Sparkles, 
   AlertTriangle, Layers, Database, BarChart3, BrainCircuit, Eye, 
   LayoutDashboard, Mic, Zap, Clock, Package, Users, Scale, RefreshCw, BarChart2,
-  Smartphone, HelpCircle, Download, Radio, Sun, Truck, Languages
+  Smartphone, HelpCircle, Download, Radio, Sun, Truck, Languages, Camera
 } from "lucide-react";
 
 import { 
@@ -16,7 +16,8 @@ import {
   WarehouseBatch,
   PayoutOrDrawing,
   MpesaStatementRecord,
-  FreemiumTier
+  FreemiumTier,
+  Blueprint
 } from "./types/alacio";
 import { 
   loadAlacioState, 
@@ -28,7 +29,9 @@ import {
 
 import DashboardTab from "./components/tabs/DashboardTab";
 import MorningBookendTab from "./components/tabs/MorningBookendTab";
-import SupplierLogTab, { SupplyLogEntry } from "./components/tabs/SupplierLogTab";
+import SupplierLogTab, { MultiSupplyDelivery } from "./components/tabs/SupplierLogTab";
+import ReceiptUploadScannerTab from "./components/tabs/ReceiptUploadScannerTab";
+import { ProcessedReceipt } from "./services/receiptOcrService";
 import EveningReconciliationTab from "./components/tabs/EveningReconciliationTab";
 import PendingDraftsQueueTab, { VoiceDraftRecord } from "./components/tabs/PendingDraftsQueueTab";
 import MultilingualVoiceTab from "./components/tabs/MultilingualVoiceTab";
@@ -43,6 +46,7 @@ import TLedgersTab from "./components/tabs/TLedgersTab";
 import ReconciliationTab from "./components/tabs/ReconciliationTab";
 import AnalyticsTab from "./components/tabs/AnalyticsTab";
 import HomeScreenDiamonds from "./components/HomeScreenDiamonds";
+import TemplateInDevelopmentView from "./components/TemplateInDevelopmentView";
 import PullOwnAppModal from "./components/PullOwnAppModal";
 import OneTapGapModal from "./components/OneTapGapModal";
 import MpesaImportModal from "./components/MpesaImportModal";
@@ -50,7 +54,8 @@ import FreemiumBanner from "./components/FreemiumBanner";
 import { VoiceTransactionPayload } from "./components/VoiceLedger";
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<"landing" | "workspace">("landing");
+  const [currentView, setCurrentView] = useState<"landing" | "workspace" | "developing">("landing");
+  const [activeDevelopingBlueprint, setActiveDevelopingBlueprint] = useState<Blueprint | null>(null);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
 
   // Zero-Data-Loss LocalStorage + Firestore Persistence
@@ -457,24 +462,120 @@ export default function App() {
     }));
   };
 
-  // Supplier Log: 5-Second Incoming Delivery with Bulk-to-Micro Conversion
-  const handleLogSupplyDelivery = (entry: SupplyLogEntry) => {
-    const updatedInventory = alacioState.inventory.map((inv) => {
-      if (inv.name.toLowerCase().includes(entry.itemName.toLowerCase()) || entry.itemName.toLowerCase().includes(inv.name.toLowerCase())) {
-        const newStock = inv.current_stock + entry.retailUnitsAdded;
-        return {
+  // Supplier Log: Multi-Item Incoming Delivery with Bulk-to-Micro Conversion
+  const handleLogMultiSupplyDelivery = (delivery: MultiSupplyDelivery) => {
+    let updatedInventory = [...alacioState.inventory];
+
+    delivery.items.forEach((item) => {
+      const idx = updatedInventory.findIndex(
+        (inv) => inv.name.toLowerCase().includes(item.itemName.toLowerCase()) || 
+                 item.itemName.toLowerCase().includes(inv.name.toLowerCase())
+      );
+      if (idx !== -1) {
+        const inv = updatedInventory[idx];
+        const newStock = inv.current_stock + item.retailUnitsAdded;
+        updatedInventory[idx] = {
           ...inv,
           current_stock: newStock,
           total_shelf_value: newStock * inv.unit_retail,
           velocity_badge: newStock <= 5 ? "Low Stock Alert" : "High Velocity"
         };
+      } else {
+        const newItem: InventoryItem = {
+          id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          name: item.itemName,
+          category: "General Delivery",
+          unit_type: item.retailUnit,
+          unit_cost: item.unitCostAtDelivery,
+          unit_retail: item.retailPrice,
+          current_stock: item.retailUnitsAdded,
+          opening_stock: item.retailUnitsAdded,
+          expected_margin: item.retailPrice - item.unitCostAtDelivery,
+          total_shelf_value: item.retailUnitsAdded * item.retailPrice,
+          velocity_badge: "High Velocity"
+        };
+        updatedInventory.push(newItem);
       }
-      return inv;
     });
+
     const newKpis = calculateKpis(updatedInventory, alacioState.warehouse);
+
+    // Deduct cost from respective liquidity channel if paid on the spot
+    let newCashBalance = alacioState.cash_register_balance;
+    let newMpesaBalance = alacioState.mpesa_float_balance;
+    let newEquitelBalance = alacioState.equitel_account_balance;
+
+    if (delivery.paymentMode === "CASH") {
+      newCashBalance = Math.max(0, newCashBalance - delivery.totalCost);
+    } else if (delivery.paymentMode === "MPESA") {
+      newMpesaBalance = Math.max(0, newMpesaBalance - delivery.totalCost);
+    } else if (delivery.paymentMode === "EQUITEL") {
+      newEquitelBalance = Math.max(0, newEquitelBalance - delivery.totalCost);
+    }
+
     setAlacioState((prev) => ({
       ...prev,
       inventory: updatedInventory,
+      cash_register_balance: newCashBalance,
+      mpesa_float_balance: newMpesaBalance,
+      equitel_account_balance: newEquitelBalance,
+      kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Supply-Based Stock Calculation: Ingest Verified Supplier Receipt Image
+  const handleCommitProcessedReceipt = (receipt: ProcessedReceipt) => {
+    let updatedInventory = [...alacioState.inventory];
+
+    receipt.items.forEach((item) => {
+      const idx = updatedInventory.findIndex(
+        (inv) => inv.name.toLowerCase().includes(item.itemName.toLowerCase()) || 
+                 item.itemName.toLowerCase().includes(inv.name.toLowerCase())
+      );
+      if (idx !== -1) {
+        const inv = updatedInventory[idx];
+        const newStock = inv.current_stock + item.retailUnitsAdded;
+        updatedInventory[idx] = {
+          ...inv,
+          current_stock: newStock,
+          total_shelf_value: newStock * inv.unit_retail,
+          velocity_badge: newStock <= 5 ? "Low Stock Alert" : "High Velocity"
+        };
+      } else {
+        const newItem: InventoryItem = {
+          id: `item_rcpt_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          name: item.itemName,
+          category: "Supply Delivery",
+          unit_type: item.retailUnit,
+          unit_cost: item.unitCostAtDelivery,
+          unit_retail: item.retailPrice,
+          current_stock: item.retailUnitsAdded,
+          opening_stock: item.retailUnitsAdded,
+          expected_margin: item.expectedMargin,
+          total_shelf_value: item.retailUnitsAdded * item.retailPrice,
+          velocity_badge: "High Velocity"
+        };
+        updatedInventory.push(newItem);
+      }
+    });
+
+    const newKpis = calculateKpis(updatedInventory, alacioState.warehouse);
+
+    let newCashBalance = alacioState.cash_register_balance;
+    let newMpesaBalance = alacioState.mpesa_float_balance;
+
+    if (receipt.paymentMode === "CASH") {
+      newCashBalance = Math.max(0, newCashBalance - receipt.totalCost);
+    } else if (receipt.paymentMode === "MPESA") {
+      newMpesaBalance = Math.max(0, newMpesaBalance - receipt.totalCost);
+    }
+
+    setAlacioState((prev) => ({
+      ...prev,
+      inventory: updatedInventory,
+      cash_register_balance: newCashBalance,
+      mpesa_float_balance: newMpesaBalance,
       kpis: newKpis,
       last_updated: new Date().toISOString()
     }));
@@ -545,6 +646,7 @@ export default function App() {
     { id: "dashboard", name: "Dashboard", icon: <LayoutDashboard size={16} /> },
     { id: "morning_bookend", name: "Morning Bookend (60s)", icon: <Sun size={16} />, badge: "Setup" },
     { id: "supplier_log", name: "Supplier Log (5s)", icon: <Truck size={16} />, badge: "Bulk→Micro" },
+    { id: "receipt_scanner", name: "Upload Receipts (OCR)", icon: <Camera size={16} />, badge: "Supply Stock" },
     { id: "pending_drafts", name: "Pending Voice Drafts", icon: <Radio size={16} />, badge: "3 Intents" },
     { id: "multilingual_voice", name: "5-Dialect Voice Studio", icon: <Languages size={16} />, badge: "5 Nairobi Dialects" },
     { id: "evening_reconciliation", name: "Evening Reconciliation", icon: <Scale size={16} />, badge: "Reverse Math" },
@@ -606,19 +708,24 @@ export default function App() {
             <span className="hidden sm:inline">Pull Your Own App</span>
           </button>
 
-          {currentView === "workspace" ? (
+          {currentView !== "landing" && (
             <button
               onClick={() => setCurrentView("landing")}
-              className="text-slate-400 hover:text-white transition flex items-center gap-1 font-medium cursor-pointer text-xs"
+              className="px-2.5 sm:px-3 py-1.5 bg-[#0f1d16] hover:bg-[#152a20] text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-mono font-bold transition cursor-pointer"
             >
-              <Globe size={14} /> <span className="hidden md:inline">Agency Home</span>
+              &larr; Blueprints
             </button>
-          ) : (
+          )}
+
+          {currentView !== "workspace" && (
             <button
-              onClick={() => setCurrentView("workspace")}
+              onClick={() => {
+                setCurrentView("workspace");
+                setActiveTab("dashboard");
+              }}
               className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-lg text-xs transition cursor-pointer"
             >
-              Open Alacio Workspace
+              Open Alacio Pilot (Retail B2C)
             </button>
           )}
 
@@ -639,10 +746,32 @@ export default function App() {
           blueprints={PLATFORM_BLUEPRINTS}
           projectCaseStudy={PROJECT_ALACIO_CASE_STUDY}
           onSelectBlueprint={(blueprintId) => {
-            setCurrentView("workspace");
-            setActiveTab("inventory");
+            if (blueprintId === "duka_fmcg") {
+              // Alacio Mini Shop is the live example of this Retail B2C template
+              setCurrentView("workspace");
+              setActiveTab("dashboard");
+            } else {
+              // Other templates lead to developing / under construction view
+              const bp = PLATFORM_BLUEPRINTS.find((b) => b.id === blueprintId) || PLATFORM_BLUEPRINTS[1];
+              setActiveDevelopingBlueprint(bp);
+              setCurrentView("developing");
+            }
           }}
           onOpenProjectCaseStudy={() => {
+            setCurrentView("workspace");
+            setActiveTab("dashboard");
+          }}
+        />
+      )}
+
+      {/* ========================================================= */}
+      {/* VIEW C: TEMPLATE UNDER CONSTRUCTION / IN DEVELOPMENT     */}
+      {/* ========================================================= */}
+      {currentView === "developing" && activeDevelopingBlueprint && (
+        <TemplateInDevelopmentView
+          blueprint={activeDevelopingBlueprint}
+          onBackToLanding={() => setCurrentView("landing")}
+          onLaunchAlacioPilot={() => {
             setCurrentView("workspace");
             setActiveTab("dashboard");
           }}
@@ -659,10 +788,15 @@ export default function App() {
           <aside className="w-64 bg-[#0a130f] border-r border-emerald-950 flex flex-col justify-between shrink-0 select-none">
             <div>
               <div className="p-4 border-b border-emerald-950/80">
-                <span className="text-xs font-bold text-white block font-serif">Alacio Mini Shop</span>
-                <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1.5 mt-0.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white block font-serif">Alacio Mini Shop</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                    Retail B2C Pilot
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1.5 mt-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Consented Live Client Telemetry
+                  Live Branch: Direct to Consumer
                 </span>
               </div>
               <div className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Navigation</div>
@@ -694,8 +828,8 @@ export default function App() {
             </div>
             
             <div className="p-4 border-t border-emerald-950 text-[10px] font-mono text-slate-500 flex justify-between items-center">
-              <span>Client: alacio-mini-shop</span>
-              <span className="text-amber-400 font-bold">CDO Platform</span>
+              <span>Branch: Alacio Mini Shop</span>
+              <span className="text-amber-400 font-bold">B2C Retail Pilot</span>
             </div>
           </aside>
 
@@ -733,7 +867,14 @@ export default function App() {
             {activeTab === "supplier_log" && (
               <SupplierLogTab
                 state={alacioState}
-                onLogSupplyDelivery={handleLogSupplyDelivery}
+                onLogMultiDelivery={handleLogMultiSupplyDelivery}
+              />
+            )}
+
+            {activeTab === "receipt_scanner" && (
+              <ReceiptUploadScannerTab
+                state={alacioState}
+                onCommitProcessedReceipt={handleCommitProcessedReceipt}
               />
             )}
 
