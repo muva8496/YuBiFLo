@@ -1,24 +1,27 @@
 import React, { useState } from "react";
-import { Users, Plus, CheckCircle2, DollarSign, Phone, ShieldAlert, ArrowDownLeft, X } from "lucide-react";
+import { Users, Plus, CheckCircle2, DollarSign, Phone, ShieldAlert, ArrowDownLeft, X, CreditCard, Building2, Copy, Check } from "lucide-react";
 import { CustomerDebtor } from "../../types/alacio";
 
 interface CustomersCreditTabProps {
   currency: string;
   customers: CustomerDebtor[];
   onRepayDebt: (customerId: string, amount: number) => void;
-  onAddDebtor: (newDebtor: { name: string; phone: string; credit_limit: number; initial_debt: number; notes: string }) => void;
+  onAddDebtor: (newDebtor: { name: string; phone: string; national_id?: string; credit_limit: number; initial_debt: number; notes: string }) => void;
 }
 
 export default function CustomersCreditTab({ currency, customers, onRepayDebt, onAddDebtor }: CustomersCreditTabProps) {
   const [isRepayOpen, setIsRepayOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isDepositRefOpen, setIsDepositRefOpen] = useState(false);
   const [selectedCust, setSelectedCust] = useState<CustomerDebtor | null>(null);
   const [repayAmount, setRepayAmount] = useState("");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState(false);
 
   // New debtor form states
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [newNationalId, setNewNationalId] = useState("");
   const [newLimit, setNewLimit] = useState("1000");
   const [newDebt, setNewDebt] = useState("0");
   const [newNotes, setNewNotes] = useState("");
@@ -30,6 +33,12 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
     setSelectedCust(cust);
     setRepayAmount(String(cust.debt_balance));
     setIsRepayOpen(true);
+  };
+
+  const handleOpenDepositRef = (cust: CustomerDebtor) => {
+    setSelectedCust(cust);
+    setIsDepositRefOpen(true);
+    setCopiedId(false);
   };
 
   const handleExecuteRepay = (e: React.FormEvent) => {
@@ -51,6 +60,7 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
     onAddDebtor({
       name: newName.trim(),
       phone: newPhone.trim() || "07XX XXX XXX",
+      national_id: newNationalId.trim() || undefined,
       credit_limit: parseFloat(newLimit) || 1000,
       initial_debt: parseFloat(newDebt) || 0,
       notes: newNotes.trim() || "Neighborhood customer"
@@ -59,9 +69,10 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
     setIsAddOpen(false);
     setNewName("");
     setNewPhone("");
+    setNewNationalId("");
     setNewDebt("0");
     setNewNotes("");
-    setToastMsg(`Debtor account created for ${newName}!`);
+    setToastMsg(`Debtor account created for ${newName} with National ID ${newNationalId || "not provided"}!`);
     setTimeout(() => setToastMsg(null), 4000);
   };
 
@@ -73,7 +84,7 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
             <Users className="text-purple-400" size={22} /> Customer Credit &amp; Deni Ledger
           </h2>
           <p className="text-xs text-slate-400">
-            Track trusted customer credit, repayment history, and prevent counter debt overextension.
+            Track trusted customer credit, National IDs for OTC/Agency banking cash deposits, and repayment ledgers.
           </p>
         </div>
 
@@ -99,37 +110,40 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
           <div className="text-2xl font-black font-mono text-purple-300 mt-1">
             {currency} {totalOutstanding.toLocaleString()}
           </div>
-          <span className="text-[11px] text-slate-500 mt-1 block">Tied up in trusted neighborhood accounts</span>
+          <span className="text-[11px] text-slate-500 mt-1 block">Across {customers.length} registered credit customers</span>
         </div>
 
         <div className="bg-[#121822] border border-slate-800 rounded-2xl p-5 shadow-lg">
-          <span className="text-[10px] font-mono uppercase text-slate-400 font-bold block">Total Authorized Credit Limit</span>
+          <span className="text-[10px] font-mono uppercase text-slate-400 font-bold block">National ID Registered Rate</span>
+          <div className="text-2xl font-black font-mono text-emerald-400 mt-1">
+            {Math.round((customers.filter(c => c.national_id).length / Math.max(1, customers.length)) * 100)}%
+          </div>
+          <span className="text-[11px] text-slate-500 mt-1 block">
+            {customers.filter(c => c.national_id).length} of {customers.length} have verified ID for agent deposits
+          </span>
+        </div>
+
+        <div className="bg-[#121822] border border-slate-800 rounded-2xl p-5 shadow-lg">
+          <span className="text-[10px] font-mono uppercase text-slate-400 font-bold block">Total Credit Authorization</span>
           <div className="text-2xl font-black font-mono text-white mt-1">
             {currency} {totalCreditLimit.toLocaleString()}
           </div>
-          <span className="text-[11px] text-slate-500 mt-1 block">Max combined exposure allowed</span>
-        </div>
-
-        <div className="bg-[#121822] border border-slate-800 rounded-2xl p-5 shadow-lg">
-          <span className="text-[10px] font-mono uppercase text-slate-400 font-bold block">Active Debtors</span>
-          <div className="text-2xl font-black font-mono text-emerald-400 mt-1">
-            {customers.length} Accounts
-          </div>
-          <span className="text-[11px] text-slate-500 mt-1 block">Audited weekly</span>
+          <span className="text-[11px] text-slate-500 mt-1 block">Max shop counter credit risk capacity</span>
         </div>
       </div>
 
-      {/* DEBTORS TABLE */}
+      {/* CUSTOMERS TABLE */}
       <div className="bg-[#121822] border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[650px]">
-            <thead className="bg-[#161d29] text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800 font-mono">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-[#0a0d12] border-b border-slate-800 text-slate-400 font-mono uppercase text-[10px]">
               <tr>
-                <th className="py-3.5 px-4 font-semibold">Debtor Name</th>
-                <th className="py-3.5 px-4 font-semibold">Phone Contact</th>
+                <th className="py-3.5 px-4 font-semibold">Customer / Debtor</th>
+                <th className="py-3.5 px-4 font-semibold">National ID</th>
+                <th className="py-3.5 px-4 font-semibold">Phone / WhatsApp</th>
                 <th className="py-3.5 px-4 font-semibold text-right">Current Balance</th>
                 <th className="py-3.5 px-4 font-semibold text-right">Credit Limit</th>
-                <th className="py-3.5 px-4 font-semibold text-center">Exposure Gauge</th>
+                <th className="py-3.5 px-4 font-semibold text-center">Exposure</th>
                 <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
@@ -142,9 +156,29 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
                       <div className="font-bold text-white text-sm">{cust.name}</div>
                       <div className="text-[10px] text-slate-500">{cust.notes}</div>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-400 flex items-center gap-1.5 pt-4">
-                      <Phone size={12} className="text-slate-500" />
-                      {cust.phone}
+                    <td className="py-3.5 px-4">
+                      {cust.national_id ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-bold text-[11px]">
+                            {cust.national_id}
+                          </span>
+                          <button
+                            onClick={() => handleOpenDepositRef(cust)}
+                            className="text-[10px] text-slate-400 hover:text-emerald-400 underline cursor-pointer"
+                            title="View Agency Banking deposit reference"
+                          >
+                            Deposit Ref
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-slate-600 text-[11px] italic">Not on file</span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-400">
+                      <div className="flex items-center gap-1.5">
+                        <Phone size={12} className="text-slate-500" />
+                        {cust.phone}
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 text-right font-black text-purple-300 text-sm">
                       {currency} {cust.debt_balance.toLocaleString()}
@@ -153,7 +187,7 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
                       {currency} {cust.credit_limit.toLocaleString()}
                     </td>
                     <td className="py-3.5 px-4">
-                      <div className="w-28 mx-auto space-y-1">
+                      <div className="w-24 mx-auto space-y-1">
                         <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${ratio > 80 ? "bg-red-500" : ratio > 50 ? "bg-amber-400" : "bg-emerald-400"}`}
@@ -161,17 +195,19 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
                           />
                         </div>
                         <div className="text-[9px] text-slate-500 text-center font-mono">
-                          {ratio.toFixed(0)}% limit utilized
+                          {ratio.toFixed(0)}%
                         </div>
                       </div>
                     </td>
                     <td className="py-3.5 px-4 text-right font-sans">
-                      <button
-                        onClick={() => handleOpenRepay(cust)}
-                        className="px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold rounded-lg transition cursor-pointer"
-                      >
-                        Record Repayment
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleOpenRepay(cust)}
+                          className="px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold rounded-lg transition cursor-pointer"
+                        >
+                          Repay
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -181,6 +217,69 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
         </div>
       </div>
 
+      {/* AGENCY BANKING & OTC DEPOSIT REFERENCE MODAL */}
+      {isDepositRefOpen && selectedCust && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#121822] border border-slate-700 w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Building2 size={16} className="text-emerald-400" />
+                <h3 className="text-sm font-bold text-white">Agency / OTC Cash Deposit Reference</h3>
+              </div>
+              <button onClick={() => setIsDepositRefOpen(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={16} /></button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              When depositing cash directly to <strong>{selectedCust.name}</strong> over the counter or at an Equity Agent / KCB Mtaani / Co-op Kwa Jirani agent:
+            </p>
+
+            <div className="p-4 bg-[#0a0d12] border border-slate-800 rounded-xl space-y-2.5 font-mono text-xs">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                <span className="text-slate-400">Customer Name:</span>
+                <strong className="text-white">{selectedCust.name}</strong>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                <span className="text-slate-400">National ID No:</span>
+                <span className="text-emerald-400 font-bold text-sm bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  {selectedCust.national_id || "None Registered"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                <span className="text-slate-400">Phone / Account:</span>
+                <span className="text-white">{selectedCust.phone}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Current Deni Balance:</span>
+                <strong className="text-purple-300">{currency} {selectedCust.debt_balance.toLocaleString()}</strong>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={() => {
+                  if (selectedCust.national_id) {
+                    navigator.clipboard.writeText(selectedCust.national_id);
+                    setCopiedId(true);
+                    setTimeout(() => setCopiedId(false), 2000);
+                  }
+                }}
+                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+              >
+                {copiedId ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                <span>{copiedId ? "ID Copied!" : "Copy National ID"}</span>
+              </button>
+
+              <button
+                onClick={() => setIsDepositRefOpen(false)}
+                className="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* REPAYMENT MODAL */}
       {isRepayOpen && selectedCust && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -189,8 +288,16 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
               <h3 className="text-sm font-bold text-white">Record Deni Repayment: {selectedCust.name}</h3>
               <button onClick={() => setIsRepayOpen(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={16} /></button>
             </div>
-            <div className="text-xs text-slate-400">
-              Current total balance owed: <strong className="text-purple-300 font-mono">{currency} {selectedCust.debt_balance.toLocaleString()}</strong>
+            
+            <div className="p-3 bg-[#0a0d12] border border-slate-800 rounded-xl text-xs space-y-1 font-mono">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Current Balance Owed:</span>
+                <strong className="text-purple-300">{currency} {selectedCust.debt_balance.toLocaleString()}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Registered National ID:</span>
+                <span className="text-emerald-400 font-bold">{selectedCust.national_id || "Unregistered"}</span>
+              </div>
             </div>
 
             <form onSubmit={handleExecuteRepay} className="space-y-4">
@@ -199,27 +306,27 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
                 <input
                   type="number"
                   required
-                  min={1}
+                  min="1"
                   max={selectedCust.debt_balance}
                   value={repayAmount}
                   onChange={(e) => setRepayAmount(e.target.value)}
-                  className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-lg font-bold"
                 />
               </div>
 
-              <div className="flex gap-2 justify-end pt-2">
+              <div className="flex gap-2 justify-end pt-3">
                 <button
                   type="button"
                   onClick={() => setIsRepayOpen(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 text-xs rounded-xl cursor-pointer"
+                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl cursor-pointer text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl cursor-pointer"
+                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl cursor-pointer text-xs shadow-lg shadow-emerald-500/20"
                 >
-                  Confirm &amp; Add to Register
+                  Confirm Repayment ({currency} {repayAmount || 0})
                 </button>
               </div>
             </form>
@@ -227,16 +334,18 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
         </div>
       )}
 
-      {/* ADD DEBTOR MODAL */}
+      {/* ADD NEW DEBTOR MODAL */}
       {isAddOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-[#121822] border border-slate-700 w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-white">Add New Customer Account</h3>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Plus size={16} className="text-purple-400" /> Open Debtor Account
+              </h3>
               <button onClick={() => setIsAddOpen(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={16} /></button>
             </div>
 
-            <form onSubmit={handleCreateDebtor} className="space-y-3 text-xs">
+            <form onSubmit={handleCreateDebtor} className="space-y-3.5 text-xs">
               <div>
                 <label className="text-slate-300 font-semibold block mb-1">Customer / Party Name</label>
                 <input
@@ -247,6 +356,18 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
                   onChange={(e) => setNewName(e.target.value)}
                   className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white"
                 />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">National ID / Huduma No. (for OTC &amp; Agency Deposits)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 24891044"
+                  value={newNationalId}
+                  onChange={(e) => setNewNationalId(e.target.value)}
+                  className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                />
+                <span className="text-[10px] text-slate-500 font-mono">Used when depositing cash directly to their ID at bank/M-Pesa agent</span>
               </div>
 
               <div>

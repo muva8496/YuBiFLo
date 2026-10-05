@@ -25,6 +25,8 @@ export interface MultiSupplyDeliveryItem {
 export interface MultiSupplyDelivery {
   id: string;
   supplierName: string;
+  supplierNationalId?: string; // Kenyan National ID for Agent & Bank OTC deposits
+  supplierPhone?: string;
   deliveryNoteNumber: string;
   paymentMode: "CASH" | "MPESA" | "CREDIT" | "EQUITEL";
   timestamp: string;
@@ -51,6 +53,8 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
 
   // Supplier & Shipment Header
   const [supplierName, setSupplierName] = useState("Brookside Dairy Delivery");
+  const [supplierNationalId, setSupplierNationalId] = useState("22940184");
+  const [supplierPhone, setSupplierPhone] = useState("0722 849 101");
   const [deliveryNoteNumber, setDeliveryNoteNumber] = useState("DN-8841");
   const [paymentMode, setPaymentMode] = useState<"CASH" | "MPESA" | "CREDIT" | "EQUITEL">("MPESA");
   const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -210,6 +214,8 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
   const applyMultiPreset = (presetType: "BROOKSIDE" | "BROADWAY" | "MEGA_WHOLESALE") => {
     if (presetType === "BROOKSIDE") {
       setSupplierName("Brookside Dairy Kenya Ltd");
+      setSupplierNationalId("22940184");
+      setSupplierPhone("0722 849 101");
       setDeliveryNoteNumber(`BK-${Math.floor(1000 + Math.random() * 9000)}`);
       setPaymentMode("MPESA");
       setDeliveryItems([
@@ -258,6 +264,8 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
       ]);
     } else if (presetType === "BROADWAY") {
       setSupplierName("Broadway Bakeries Ltd");
+      setSupplierNationalId("26884019");
+      setSupplierPhone("0733 901 442");
       setDeliveryNoteNumber(`BW-${Math.floor(1000 + Math.random() * 9000)}`);
       setPaymentMode("CASH");
       setDeliveryItems([
@@ -306,6 +314,8 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
       ]);
     } else if (presetType === "MEGA_WHOLESALE") {
       setSupplierName("Nairobi Mega Wholesalers & Distributors");
+      setSupplierNationalId("28419203");
+      setSupplierPhone("0711 445 890");
       setDeliveryNoteNumber(`NW-${Math.floor(1000 + Math.random() * 9000)}`);
       setPaymentMode("MPESA");
       setDeliveryItems([
@@ -364,6 +374,8 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
     const newDelivery: MultiSupplyDelivery = {
       id: `deliv_${Date.now()}`,
       supplierName,
+      supplierNationalId: supplierNationalId.trim() || undefined,
+      supplierPhone: supplierPhone.trim() || undefined,
       deliveryNoteNumber,
       paymentMode,
       timestamp: `Today, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
@@ -463,8 +475,8 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
       <form onSubmit={handleSubmitMultiDelivery} className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-5">
         
         {/* SHIPMENT & SUPPLIER HEADER FIELDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pb-4 border-b border-slate-800 text-xs">
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3 pb-4 border-b border-slate-800 text-xs">
+          <div className="sm:col-span-2">
             <label className="text-slate-400 block mb-1 font-mono uppercase text-[10px]">Supplier / Distributor Name</label>
             <input
               type="text"
@@ -477,7 +489,32 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1 font-mono uppercase text-[10px]">Invoice / Delivery Note #</label>
+            <label className="text-slate-400 block mb-1 font-mono uppercase text-[10px] flex items-center justify-between">
+              <span>National ID (Rep/Driver)</span>
+              <span className="text-[9px] text-emerald-400">For OTC Deposit</span>
+            </label>
+            <input
+              type="text"
+              value={supplierNationalId}
+              onChange={(e) => setSupplierNationalId(e.target.value)}
+              placeholder="e.g. 22940184"
+              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:border-cyan-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400 block mb-1 font-mono uppercase text-[10px]">Supplier Phone</label>
+            <input
+              type="text"
+              value={supplierPhone}
+              onChange={(e) => setSupplierPhone(e.target.value)}
+              placeholder="e.g. 0722 849 101"
+              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:border-cyan-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400 block mb-1 font-mono uppercase text-[10px]">Delivery Note #</label>
             <input
               type="text"
               value={deliveryNoteNumber}
@@ -488,7 +525,7 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
           </div>
 
           <div>
-            <label className="text-slate-400 block mb-1 font-mono uppercase text-[10px]">Settlement / Payment Channel</label>
+            <label className="text-slate-400 block mb-1 font-mono uppercase text-[10px]">Settlement Channel</label>
             <select
               value={paymentMode}
               onChange={(e: any) => setPaymentMode(e.target.value)}
@@ -499,16 +536,6 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
               <option value="EQUITEL">Equitel Paybill Line</option>
               <option value="CREDIT">Supplier Credit (Pay Later)</option>
             </select>
-          </div>
-
-          <div>
-            <label className="text-slate-400 block mb-1 font-mono uppercase text-[10px]">Delivery Date</label>
-            <input
-              type="date"
-              value={deliveryDate}
-              onChange={(e) => setDeliveryDate(e.target.value)}
-              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:border-cyan-500"
-            />
           </div>
         </div>
 
@@ -713,6 +740,11 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
                     {delivery.items.length} Products
                   </span>
+                  {delivery.supplierNationalId && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold">
+                      National ID: {delivery.supplierNationalId}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3 font-mono">

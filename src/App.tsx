@@ -268,11 +268,12 @@ export default function App() {
   };
 
   // Add Debtor Execution
-  const handleAddDebtor = (newDebtor: { name: string; phone: string; credit_limit: number; initial_debt: number; notes: string }) => {
-    const created = {
+  const handleAddDebtor = (newDebtor: { name: string; phone: string; national_id?: string; credit_limit: number; initial_debt: number; notes: string }) => {
+    const created: CustomerDebtor = {
       id: `cust_${Date.now()}`,
       name: newDebtor.name,
       phone: newDebtor.phone,
+      national_id: newDebtor.national_id,
       debt_balance: newDebtor.initial_debt,
       credit_limit: newDebtor.credit_limit,
       last_transaction_date: "Today",

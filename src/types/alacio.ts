@@ -16,10 +16,23 @@ export interface CustomerDebtor {
   id: string;
   name: string;
   phone: string;
+  national_id?: string; // Kenya National ID / Huduma No. for OTC & Agency deposits
   debt_balance: number;
   credit_limit: number;
   last_transaction_date: string;
   notes?: string;
+}
+
+export interface SupplierProfile {
+  id: string;
+  name: string;
+  company: string;
+  phone: string;
+  national_id: string; // Kenyan National ID for Agent & Bank OTC deposits
+  category: string;
+  total_orders_cost: number;
+  last_delivery_date: string;
+  payment_preference: "NATIONAL_ID_DEPOSIT" | "MPESA_TILL" | "CASH_DRAWER";
 }
 
 export interface FloatDenomination {
@@ -79,6 +92,8 @@ export interface WarehouseBatch {
   category: string;
   batch_number: string;
   supplier_name: string;
+  supplier_phone?: string;
+  supplier_national_id?: string; // Driver/Supplier National ID for agent cash deposit
   bulk_quantity: number;
   unit_type: string;
   bulk_cost_per_unit: number;

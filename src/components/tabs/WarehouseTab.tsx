@@ -31,6 +31,7 @@ export default function WarehouseTab({
   // New Shipment form state
   const [itemName, setItemName] = useState("Unga Jogoo 2kg");
   const [supplier, setSupplier] = useState("");
+  const [supplierNationalId, setSupplierNationalId] = useState("");
   const [batchNo, setBatchNo] = useState("");
   const [bulkQty, setBulkQty] = useState("");
   const [unitType, setUnitType] = useState("bales");
@@ -80,6 +81,7 @@ export default function WarehouseTab({
       category: matchedInv ? matchedInv.category : "General",
       batch_number: batchNo.trim() || `BN-${Date.now().toString().slice(-4)}`,
       supplier_name: supplier.trim() || "Local Wholesaler",
+      supplier_national_id: supplierNationalId.trim() || undefined,
       bulk_quantity: qty,
       unit_type: unitType,
       bulk_cost_per_unit: cost,
@@ -215,7 +217,12 @@ export default function WarehouseTab({
                       <div className="text-[10px] text-emerald-400 font-mono">{batch.batch_number} &bull; {batch.category}</div>
                     </td>
                     <td className="py-3.5 px-4 text-slate-400 text-xs">
-                      <div>{batch.supplier_name}</div>
+                      <div className="font-semibold text-white">{batch.supplier_name}</div>
+                      {batch.supplier_national_id && (
+                        <div className="text-[10px] text-emerald-400 font-mono font-bold">
+                          ID Deposit: {batch.supplier_national_id}
+                        </div>
+                      )}
                       <div className="text-[10px] text-slate-500 font-mono">{batch.storage_location}</div>
                     </td>
                     <td className="py-3.5 px-4 text-center">
@@ -338,7 +345,7 @@ export default function WarehouseTab({
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-slate-300 font-semibold block mb-1">Supplier Name</label>
                   <input
@@ -348,6 +355,16 @@ export default function WarehouseTab({
                     value={supplier}
                     onChange={(e) => setSupplier(e.target.value)}
                     className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-sans"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Supplier National ID</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 28419203 (OTC Deposit)"
+                    value={supplierNationalId}
+                    onChange={(e) => setSupplierNationalId(e.target.value)}
+                    className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
                   />
                 </div>
                 <div>

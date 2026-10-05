@@ -7,7 +7,8 @@ import {
   Blueprint,
   ProjectCaseStudy,
   PayoutOrDrawing,
-  MpesaStatementRecord
+  MpesaStatementRecord,
+  SupplierProfile
 } from "../types/alacio";
 import { db, handleFirestoreError, OperationType } from "./firebase";
 import { doc, setDoc } from "firebase/firestore";
@@ -476,9 +477,67 @@ export const INITIAL_INVENTORY_43: InventoryItem[] = [
 ];
 
 export const INITIAL_CUSTOMERS: CustomerDebtor[] = [
-  { id: "cust_1", name: "Mama Boi", phone: "0712 345 678", debt_balance: 340, credit_limit: 1000, last_transaction_date: "Today, 08:30 AM", notes: "Regular morning milk & bread credit" },
-  { id: "cust_2", name: "Baba Junior", phone: "0723 456 789", debt_balance: 180, credit_limit: 800, last_transaction_date: "Yesterday", notes: "Clears balance every Friday" },
-  { id: "cust_3", name: "Mama Stacy", phone: "0734 567 890", debt_balance: 520, credit_limit: 1500, last_transaction_date: "2 days ago", notes: "Grocery credit, prompt payer" }
+  { id: "cust_1", name: "Mama Boi", phone: "0712 345 678", national_id: "24891044", debt_balance: 340, credit_limit: 1000, last_transaction_date: "Today, 08:30 AM", notes: "Regular morning milk & bread credit &bull; Verified ID for OTC deposits" },
+  { id: "cust_2", name: "Baba Junior", phone: "0723 456 789", national_id: "29440182", debt_balance: 180, credit_limit: 800, last_transaction_date: "Yesterday", notes: "Clears balance every Friday via Equity Agent" },
+  { id: "cust_3", name: "Mama Stacy", phone: "0734 567 890", national_id: "31802941", debt_balance: 520, credit_limit: 1500, last_transaction_date: "2 days ago", notes: "Grocery credit, prompt payer" }
+];
+
+export const INITIAL_SUPPLIERS: SupplierProfile[] = [
+  {
+    id: "supp_001",
+    name: "Brookside Dairy Logistics",
+    company: "Brookside Dairy Ltd (Ruiru Hub)",
+    phone: "0722 849 101",
+    national_id: "22940184",
+    category: "Dairy & Chilled",
+    total_orders_cost: 38450,
+    last_delivery_date: "2026-10-03",
+    payment_preference: "NATIONAL_ID_DEPOSIT"
+  },
+  {
+    id: "supp_002",
+    name: "Broadway Bakeries Thika",
+    company: "Broadway Bakeries Ltd",
+    phone: "0733 901 442",
+    national_id: "26884019",
+    category: "Bakery",
+    total_orders_cost: 21300,
+    last_delivery_date: "2026-10-04",
+    payment_preference: "MPESA_TILL"
+  },
+  {
+    id: "supp_003",
+    name: "Unga Millers Eldoret",
+    company: "Unga Group Distribution",
+    phone: "0711 445 890",
+    national_id: "28419203",
+    category: "Flour & Cereals",
+    total_orders_cost: 45000,
+    last_delivery_date: "2026-09-28",
+    payment_preference: "NATIONAL_ID_DEPOSIT"
+  },
+  {
+    id: "supp_004",
+    name: "Bidco Africa Van",
+    company: "Bidco Africa Ltd",
+    phone: "0720 338 901",
+    national_id: "25194022",
+    category: "Cooking Oils & Soaps",
+    total_orders_cost: 28900,
+    last_delivery_date: "2026-09-30",
+    payment_preference: "NATIONAL_ID_DEPOSIT"
+  },
+  {
+    id: "supp_005",
+    name: "Gikomba Dry Grain Wholesaler",
+    company: "Kamau & Sons Cereals Gikomba",
+    phone: "0708 776 210",
+    national_id: "19804211",
+    category: "Grains & Pulses",
+    total_orders_cost: 18500,
+    last_delivery_date: "2026-10-01",
+    payment_preference: "NATIONAL_ID_DEPOSIT"
+  }
 ];
 
 export const INITIAL_FLOAT_DENOMINATIONS: FloatDenomination[] = [
