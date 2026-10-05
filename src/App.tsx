@@ -33,11 +33,9 @@ import SupplierLogTab, { MultiSupplyDelivery } from "./components/tabs/SupplierL
 import ReceiptUploadScannerTab from "./components/tabs/ReceiptUploadScannerTab";
 import { ProcessedReceipt } from "./services/receiptOcrService";
 import EveningReconciliationTab from "./components/tabs/EveningReconciliationTab";
-import PendingDraftsQueueTab, { VoiceDraftRecord } from "./components/tabs/PendingDraftsQueueTab";
-import MultilingualVoiceTab from "./components/tabs/MultilingualVoiceTab";
+import UnifiedVoiceLedgerTab from "./components/tabs/UnifiedVoiceLedgerTab";
+import { VoiceDraftRecord } from "./components/tabs/PendingDraftsQueueTab";
 import WarehouseTab from "./components/tabs/WarehouseTab";
-import VoiceLedgerTab from "./components/tabs/VoiceLedgerTab";
-import AmbientLedgerTab from "./components/tabs/AmbientLedgerTab";
 import QuickDumpTab from "./components/tabs/QuickDumpTab";
 import OpeningFloatTab from "./components/tabs/OpeningFloatTab";
 import InventoryTab from "./components/tabs/InventoryTab";
@@ -54,7 +52,7 @@ import FreemiumBanner from "./components/FreemiumBanner";
 import { VoiceTransactionPayload } from "./components/VoiceLedger";
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<"landing" | "workspace" | "developing">("landing");
+  const [currentView, setCurrentView] = useState<"landing" | "workspace" | "developing">("workspace");
   const [activeDevelopingBlueprint, setActiveDevelopingBlueprint] = useState<Blueprint | null>(null);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
 
@@ -647,15 +645,12 @@ export default function App() {
     { id: "morning_bookend", name: "Morning Bookend (60s)", icon: <Sun size={16} />, badge: "Setup" },
     { id: "supplier_log", name: "Supplier Log (5s)", icon: <Truck size={16} />, badge: "Bulk→Micro" },
     { id: "receipt_scanner", name: "Upload Receipts (OCR)", icon: <Camera size={16} />, badge: "Supply Stock" },
-    { id: "pending_drafts", name: "Pending Voice Drafts", icon: <Radio size={16} />, badge: "3 Intents" },
-    { id: "multilingual_voice", name: "5-Dialect Voice Studio", icon: <Languages size={16} />, badge: "5 Nairobi Dialects" },
+    { id: "voice_ledger", name: "Voice Ledger (VCR Studio)", icon: <Mic size={16} />, badge: "Unified Hub" },
     { id: "evening_reconciliation", name: "Evening Reconciliation", icon: <Scale size={16} />, badge: "Reverse Math" },
-    { id: "ambient_ledger", name: "Ambient Ledger (Muva)", icon: <Radio size={16} />, badge: "AEC & VAD" },
     { id: "warehouse", name: "Warehouse & Bulk Supply", icon: <Building2 size={16} />, badge: `${alacioState.warehouse.length} bulk` },
-    { id: "voice_ledger", name: "VCR: Voice Ledger", icon: <Mic size={16} />, badge: "Free Starter" },
     { id: "inventory", name: "Inventory & Batches", icon: <Package size={16} />, badge: `${alacioState.inventory.length}` },
     { id: "customers", name: "Customers & Credit", icon: <Users size={16} />, badge: `${alacioState.customers.length} debt` },
-    { id: "analytics", name: "Analytics & Expansion", icon: <BarChart2 size={16} />, badge: "Tier 3" }
+    { id: "analytics", name: "Analytics & Expansion", icon: <BarChart2 size={16} />, badge: "Insights" }
   ];
 
   return (
@@ -877,17 +872,15 @@ export default function App() {
               />
             )}
 
-            {activeTab === "pending_drafts" && (
-              <PendingDraftsQueueTab
+            {(activeTab === "voice_ledger" || activeTab === "pending_drafts" || activeTab === "multilingual_voice" || activeTab === "ambient_ledger") && (
+              <UnifiedVoiceLedgerTab
                 state={alacioState}
-                onApproveDraft={handleApproveVoiceDraft}
-              />
-            )}
-
-            {activeTab === "multilingual_voice" && (
-              <MultilingualVoiceTab
-                state={alacioState}
+                onCommitTransaction={handleVoiceTransaction}
                 onCommitParsedSale={handleApproveAmbientDraft}
+                onApproveDraft={handleApproveVoiceDraft}
+                lastLoggedMessage={lastVoiceLog}
+                customerConsent={alacioState.vcr_customer_consent}
+                onToggleConsent={(val) => setAlacioState((prev) => ({ ...prev, vcr_customer_consent: val }))}
               />
             )}
 
@@ -899,13 +892,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === "ambient_ledger" && (
-              <AmbientLedgerTab
-                state={alacioState}
-                onApproveDraftSale={handleApproveAmbientDraft}
-              />
-            )}
-
             {activeTab === "warehouse" && (
               <WarehouseTab
                 currency={alacioState.currency}
@@ -913,17 +899,6 @@ export default function App() {
                 inventory={alacioState.inventory}
                 onTransferToShelf={handleTransferToShelf}
                 onReceiveShipment={handleReceiveShipment}
-              />
-            )}
-
-            {activeTab === "voice_ledger" && (
-              <VoiceLedgerTab
-                currency={alacioState.currency}
-                onCommitTransaction={handleVoiceTransaction}
-                lastLoggedMessage={lastVoiceLog}
-                vcrCount={alacioState.vcr_daily_count}
-                customerConsent={alacioState.vcr_customer_consent}
-                onToggleConsent={(val) => setAlacioState((prev) => ({ ...prev, vcr_customer_consent: val }))}
               />
             )}
 
