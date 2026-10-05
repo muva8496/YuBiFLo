@@ -3,7 +3,7 @@ import {
   Building2, Globe, Plus, ChevronDown, Copy, X, ArrowRight, Sparkles, 
   AlertTriangle, Layers, Database, BarChart3, BrainCircuit, Eye, 
   LayoutDashboard, Mic, Zap, Clock, Package, Users, Scale, RefreshCw, BarChart2,
-  Smartphone, HelpCircle, Download, Radio, Sun, Truck, Languages, Camera
+  Smartphone, HelpCircle, Download, Radio, Sun, Truck, Languages, Camera, CheckCircle2
 } from "lucide-react";
 
 import { 
@@ -25,6 +25,7 @@ import {
   loadAlacioState, 
   saveAlacioState, 
   calculateKpis,
+  resetAlacioToZeroSlate,
   PLATFORM_BLUEPRINTS,
   PROJECT_ALACIO_CASE_STUDY
 } from "./services/alacioStorage";
@@ -72,7 +73,18 @@ export default function App() {
   const [isPullOwnAppOpen, setIsPullOwnAppOpen] = useState(false);
   const [isOneTapGapOpen, setIsOneTapGapOpen] = useState(false);
   const [isMpesaImportOpen, setIsMpesaImportOpen] = useState(false);
+  const [isZeroSlateModalOpen, setIsZeroSlateModalOpen] = useState(false);
+  const [zeroSlateToast, setZeroSlateToast] = useState<string | null>(null);
   const [lastVoiceLog, setLastVoiceLog] = useState<string | null>(null);
+
+  const handleExecuteZeroSlate = () => {
+    const cleanZeroState = resetAlacioToZeroSlate();
+    setAlacioState(cleanZeroState);
+    saveAlacioState(cleanZeroState);
+    setIsZeroSlateModalOpen(false);
+    setZeroSlateToast("All numbers condensed to 0! Shelf stocks, drawer cash, floats, customer deni, and ledgers are now fresh and ready for today's live business data.");
+    setTimeout(() => setZeroSlateToast(null), 8000);
+  };
 
   // Sync to localStorage and Firestore on change
   useEffect(() => {
@@ -753,6 +765,16 @@ export default function App() {
             <span className="hidden sm:inline">Pull Your Own App</span>
           </button>
 
+          {/* CONDENSE TO ZERO (CLEAN PRODUCTION SLATE) */}
+          <button
+            onClick={() => setIsZeroSlateModalOpen(true)}
+            className="px-2.5 sm:px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs"
+            title="Condense all balances, debt, and shelf counts to 0 for live start"
+          >
+            <RefreshCw size={13} className="text-amber-400" />
+            <span className="hidden sm:inline">Condense to Zero</span>
+          </button>
+
           {currentView !== "landing" && (
             <button
               onClick={() => setCurrentView("landing")}
@@ -880,6 +902,22 @@ export default function App() {
           {/* MAIN WORKSPACE CONTENT ROUTER */}
           <main className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6">
             
+            {/* ZERO CLEAN SLATE CONFIRMATION TOAST */}
+            {zeroSlateToast && (
+              <div className="p-4 bg-amber-500/15 border-2 border-amber-500/40 text-amber-200 rounded-2xl text-xs flex items-center justify-between gap-3 animate-in fade-in font-mono shadow-xl">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 size={18} className="text-amber-400 shrink-0" />
+                  <span>{zeroSlateToast}</span>
+                </div>
+                <button
+                  onClick={() => setZeroSlateToast(null)}
+                  className="text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
             {/* FREEMIUM LADDER & FINANCIAL HEALTH NOTIFICATION BANNER */}
             <FreemiumBanner
               currentTier={alacioState.tier}
@@ -1153,6 +1191,57 @@ export default function App() {
                 className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl cursor-pointer shadow"
               >
                 Provision Isolated Client Workspace
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONDENSE TO ZERO CONFIRMATION MODAL */}
+      {isZeroSlateModalOpen && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#121822] border-2 border-amber-500/50 w-full max-w-md rounded-2xl p-6 space-y-4 text-xs font-sans shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2 font-serif">
+                <RefreshCw size={18} className="text-amber-400" /> Condense All Numbers to Zero?
+              </h3>
+              <button onClick={() => setIsZeroSlateModalOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-slate-300 text-xs leading-relaxed">
+              <p>
+                You are transitioning <strong>Alacio Mini Shop</strong> into live operational trading with real store data starting today.
+              </p>
+              <div className="bg-[#0a0d12] p-3 rounded-xl border border-slate-800 space-y-1 font-mono text-[11px]">
+                <div className="text-amber-300 font-bold">What will be condensed to 0:</div>
+                <div className="text-slate-400">• Opening cash drawer float &bull; KSh 0</div>
+                <div className="text-slate-400">• M-Pesa float &amp; Equitel line balances &bull; KSh 0</div>
+                <div className="text-slate-400">• Shelf stocks across all 43 products &bull; 0 units</div>
+                <div className="text-slate-400">• Customer credit (deni) ledger &bull; KSh 0 balance</div>
+                <div className="text-slate-400">• Previous sales and transaction drafts &bull; Cleared</div>
+                <div className="text-slate-400">• Supplier order totals &bull; KSh 0</div>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Your 43 product catalog items, prices, registered customer profiles, and supplier distributor contacts remain completely intact.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsZeroSlateModalOpen(false)}
+                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteZeroSlate}
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl cursor-pointer shadow-lg shadow-amber-500/20 font-mono"
+              >
+                Confirm: Condense All to 0
               </button>
             </div>
           </div>

@@ -34,14 +34,14 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend }: Mo
     customers, 
     cash_register_balance, 
     mpesa_float_balance, 
-    equitel_account_balance = 14250,
+    equitel_account_balance = 0,
     floatDenominations 
   } = state;
 
   // 1. Morning Balances State
-  const [cashFloat, setCashFloat] = useState<string>(String(cash_register_balance || 655));
-  const [mpesaFloat, setMpesaFloat] = useState<string>(String(mpesa_float_balance || 3850));
-  const [equitelBalance, setEquitelBalance] = useState<string>(String(equitel_account_balance || 14250));
+  const [cashFloat, setCashFloat] = useState<string>(String(cash_register_balance ?? 0));
+  const [mpesaFloat, setMpesaFloat] = useState<string>(String(mpesa_float_balance ?? 0));
+  const [equitelBalance, setEquitelBalance] = useState<string>(String(equitel_account_balance ?? 0));
 
   // 2. Debt Editor State with Flexible Date Selection
   const [debtorsList, setDebtorsList] = useState<CustomerDebtor[]>(() => JSON.parse(JSON.stringify(customers)));

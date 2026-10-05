@@ -61,12 +61,23 @@ export default function OpeningFloatTab({ currency, denominations, onUpdateDenom
             Audit denominations before turning the key. Prevents blending morning change capital with daily operational revenue.
           </p>
         </div>
-        <button
-          onClick={handleResetToStandardAlacio}
-          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition cursor-pointer flex items-center gap-1.5"
-        >
-          <RefreshCw size={13} /> Reset to Alacio Standard (KSh 655)
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const zeroed = localDenoms.map((d) => ({ ...d, count: 0 }));
+              setLocalDenoms(zeroed);
+            }}
+            className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5"
+          >
+            Zero All (0 KSh)
+          </button>
+          <button
+            onClick={handleResetToStandardAlacio}
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition cursor-pointer flex items-center gap-1.5"
+          >
+            <RefreshCw size={13} /> Preset (KSh 655)
+          </button>
+        </div>
       </div>
 
       {savedSuccess && (
