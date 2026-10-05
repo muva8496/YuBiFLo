@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { 
   Truck, ArrowRight, CheckCircle2, Package, Sparkles, 
   RefreshCw, DollarSign, Layers, Plus, Trash2, Check, 
-  Calculator, ListPlus, FileText, ShoppingBag, AlertCircle
+  Calculator, ListPlus, FileText, ShoppingBag, AlertCircle,
+  Building2, Copy, X, Phone, Users, ShieldCheck
 } from "lucide-react";
-import { AlacioMasterState, InventoryItem } from "../../types/alacio";
+import { AlacioMasterState, InventoryItem, SupplierProfile } from "../../types/alacio";
 import { BulkConversionEngine } from "../../services/bulkConversionEngine";
+import { INITIAL_SUPPLIERS } from "../../services/alacioStorage";
 
 export interface MultiSupplyDeliveryItem {
   id: string;
@@ -46,10 +48,22 @@ export type SupplyLogEntry = MultiSupplyDeliveryItem & {
 interface SupplierLogTabProps {
   state: AlacioMasterState;
   onLogMultiDelivery: (delivery: MultiSupplyDelivery) => void;
+  onAddSupplier?: (newSupplier: {
+    name: string;
+    company: string;
+    driver_name?: string;
+    phone: string;
+    national_id: string;
+    category: string;
+    payment_preference: "NATIONAL_ID_DEPOSIT" | "MPESA_TILL" | "CASH_DRAWER" | "BANK_TRANSFER";
+    till_or_account?: string;
+    payment_terms?: string;
+  }) => void;
 }
 
-export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLogTabProps) {
+export default function SupplierLogTab({ state, onLogMultiDelivery, onAddSupplier }: SupplierLogTabProps) {
   const { currency, inventory } = state;
+  const suppliersList = state.suppliers && state.suppliers.length > 0 ? state.suppliers : INITIAL_SUPPLIERS;
 
   // Supplier & Shipment Header
   const [supplierName, setSupplierName] = useState("Brookside Dairy Delivery");
@@ -58,6 +72,18 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
   const [deliveryNoteNumber, setDeliveryNoteNumber] = useState("DN-8841");
   const [paymentMode, setPaymentMode] = useState<"CASH" | "MPESA" | "CREDIT" | "EQUITEL">("MPESA");
   const [deliveryDate, setDeliveryDate] = useState(() => new Date().toISOString().slice(0, 10));
+
+  // Add Supplier Modal state
+  const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
+  const [newCompName, setNewCompName] = useState("");
+  const [newDriverName, setNewDriverName] = useState("");
+  const [newNationalId, setNewNationalId] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newCategory, setNewCategory] = useState("Dairy");
+  const [newPreference, setNewPreference] = useState<"NATIONAL_ID_DEPOSIT" | "MPESA_TILL" | "CASH_DRAWER" | "BANK_TRANSFER">("NATIONAL_ID_DEPOSIT");
+  const [newTill, setNewTill] = useState("");
+  const [newTerms, setNewTerms] = useState("Cash on Delivery");
+  const [copiedSupplierId, setCopiedSupplierId] = useState<string | null>(null);
 
   // Multi-Item Delivery Items List
   const [deliveryItems, setDeliveryItems] = useState<MultiSupplyDeliveryItem[]>([
@@ -397,6 +423,48 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
     setTimeout(() => setSuccessMsg(null), 8000);
   };
 
+  // Add New Supplier Handler
+  const handleCreateSupplier = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCompName.trim() || !newNationalId.trim()) return;
+
+    if (onAddSupplier) {
+      onAddSupplier({
+        name: newDriverName.trim() || newCompName.trim(),
+        company: newCompName.trim(),
+        driver_name: newDriverName.trim() || undefined,
+        phone: newPhone.trim() || "07XX XXX XXX",
+        national_id: newNationalId.trim(),
+        category: newCategory,
+        payment_preference: newPreference,
+        till_or_account: newTill.trim() || undefined,
+        payment_terms: newTerms
+      });
+    }
+
+    // Auto-populate current delivery form
+    setSupplierName(newCompName.trim());
+    setSupplierNationalId(newNationalId.trim());
+    setSupplierPhone(newPhone.trim() || "07XX XXX XXX");
+
+    setIsAddSupplierOpen(false);
+    setNewCompName("");
+    setNewDriverName("");
+    setNewNationalId("");
+    setNewPhone("");
+    setNewTill("");
+    setSuccessMsg(`Registered new supplier "${newCompName.trim()}" with National ID ${newNationalId.trim()}! Details loaded into current delivery note.`);
+    setTimeout(() => setSuccessMsg(null), 7000);
+  };
+
+  const handleSelectExistingSupplier = (suppId: string) => {
+    const s = suppliersList.find((sup) => sup.id === suppId);
+    if (!s) return;
+    setSupplierName(s.company || s.name);
+    setSupplierNationalId(s.national_id);
+    setSupplierPhone(s.phone);
+  };
+
   return (
     <div className="space-y-6 max-w-6xl">
       
@@ -474,6 +542,41 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
       {/* MULTI-ITEM DELIVERY LOGGING FORM */}
       <form onSubmit={handleSubmitMultiDelivery} className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-5">
         
+        {/* REGISTERED SUPPLIERS SELECTOR & ADD SUPPLIER BAR */}
+        <div className="p-3 bg-[#060c09] rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 flex-1">
+            <span className="font-mono text-slate-400 text-[11px] font-bold uppercase shrink-0">
+              Quick Load Supplier:
+            </span>
+            <select
+              onChange={(e) => {
+                if (e.target.value === "ADD_NEW") {
+                  setIsAddSupplierOpen(true);
+                } else if (e.target.value) {
+                  handleSelectExistingSupplier(e.target.value);
+                }
+              }}
+              className="bg-[#0a1610] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-xs w-full max-w-md focus:border-cyan-500 cursor-pointer"
+            >
+              <option value="">-- Choose from Registered Suppliers ({suppliersList.length}) --</option>
+              {suppliersList.map((sup) => (
+                <option key={sup.id} value={sup.id}>
+                  {sup.company || sup.name} (National ID: {sup.national_id}) &bull; {sup.category}
+                </option>
+              ))}
+              <option value="ADD_NEW">+ Add New Supplier / Distributor...</option>
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsAddSupplierOpen(true)}
+            className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer shrink-0"
+          >
+            <Plus size={14} /> Add New Supplier
+          </button>
+        </div>
+
         {/* SHIPMENT & SUPPLIER HEADER FIELDS */}
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3 pb-4 border-b border-slate-800 text-xs">
           <div className="sm:col-span-2">
@@ -771,6 +874,273 @@ export default function SupplierLogTab({ state, onLogMultiDelivery }: SupplierLo
           ))}
         </div>
       </div>
+
+      {/* ======================================================== */}
+      {/* SUPPLIERS & DISTRIBUTORS DIRECTORY (OTC & AGENCY DEPOSITS) */}
+      {/* ======================================================== */}
+      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Building2 className="text-cyan-400" size={18} />
+              <h3 className="text-sm font-bold text-white uppercase font-mono tracking-wider">
+                Suppliers &amp; Distributors Directory ({suppliersList.length} Partners)
+              </h3>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Verified distributors, delivery drivers, and National IDs used for cash deposits at Equity Agent, KCB Mtaani, and Co-op Kwa Jirani.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsAddSupplierOpen(true)}
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow shrink-0"
+          >
+            <Plus size={15} /> Add New Supplier / Distributor
+          </button>
+        </div>
+
+        {/* SUPPLIER CARDS GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {suppliersList.map((sup) => (
+            <div
+              key={sup.id}
+              className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-2.5 text-xs hover:border-slate-700 transition"
+            >
+              <div className="flex items-start justify-between gap-2 border-b border-slate-800/80 pb-2">
+                <div>
+                  <div className="font-bold text-white text-sm font-sans">{sup.company || sup.name}</div>
+                  {sup.driver_name && (
+                    <div className="text-[11px] text-slate-400">Rep / Driver: {sup.driver_name}</div>
+                  )}
+                  <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20 inline-block mt-0.5">
+                    {sup.category}
+                  </span>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500 font-mono block">Pref. Payment</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-bold">
+                    {sup.payment_preference.replace(/_/g, " ")}
+                  </span>
+                </div>
+              </div>
+
+              {/* National ID & Phone */}
+              <div className="space-y-1 font-mono text-[11px]">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">National ID:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      {sup.national_id}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(sup.national_id);
+                        setCopiedSupplierId(sup.id);
+                        setTimeout(() => setCopiedSupplierId(null), 2000);
+                      }}
+                      className="text-[10px] text-slate-400 hover:text-emerald-400 cursor-pointer"
+                      title="Copy National ID"
+                    >
+                      {copiedSupplierId === sup.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Phone:</span>
+                  <span className="text-white">{sup.phone}</span>
+                </div>
+
+                {sup.till_or_account && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Till / Acc:</span>
+                    <span className="text-amber-400">{sup.till_or_account}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 border-t border-slate-800/80 flex justify-between items-center">
+                <span className="text-[10px] text-slate-500 font-mono">
+                  Orders: {currency} {(sup.total_orders_cost || 0).toLocaleString()}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSelectExistingSupplier(sup.id);
+                    const el = document.getElementById("multi-delivery-form");
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono font-bold rounded-lg transition cursor-pointer"
+                >
+                  Load into Delivery &uarr;
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* ADD NEW SUPPLIER / DISTRIBUTOR MODAL                     */}
+      {/* ======================================================== */}
+      {isAddSupplierOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#121822] border border-slate-700 w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2 font-serif">
+                <Building2 size={18} className="text-emerald-400" /> Register New Supplier / Distributor
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setIsAddSupplierOpen(false)} 
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300">
+              Register suppliers with verified <strong>National ID numbers</strong> so your counter staff can deposit directly to delivery drivers over the counter or at agency banking points.
+            </p>
+
+            <form onSubmit={handleCreateSupplier} className="space-y-3.5 text-xs">
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Company / Business Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Unga Group Eldoret, Kapa Oil, Broadway Bakeries"
+                  value={newCompName}
+                  onChange={(e) => setNewCompName(e.target.value)}
+                  className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Driver / Contact Rep Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Peter Mwangi (Route Van 3)"
+                    value={newDriverName}
+                    onChange={(e) => setNewDriverName(e.target.value)}
+                    className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">
+                    National ID Number * <span className="text-[10px] text-emerald-400">(For OTC Deposit)</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 28419203"
+                    value={newNationalId}
+                    onChange={(e) => setNewNationalId(e.target.value)}
+                    className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Contact Phone / WhatsApp *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 0722 849 101"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Supply Category</label>
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white"
+                  >
+                    <option value="Dairy">Dairy &amp; Chilled (Milk, Mala, Yoghurt)</option>
+                    <option value="Bakery">Bakery (Bread, Scones, Cakes)</option>
+                    <option value="Flour & Cereals">Flour &amp; Cereals (Maize, Wheat Unga)</option>
+                    <option value="Cooking Oils">Cooking Oils &amp; Fats</option>
+                    <option value="Sugar & Sweeteners">Sugar &amp; Sweeteners</option>
+                    <option value="Household">Household &amp; Cleaning</option>
+                    <option value="Beverages">Beverages &amp; Soft Drinks</option>
+                    <option value="General Wholesale">General Wholesale Commodities</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Payment Channel Preference</label>
+                  <select
+                    value={newPreference}
+                    onChange={(e: any) => setNewPreference(e.target.value)}
+                    className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white"
+                  >
+                    <option value="NATIONAL_ID_DEPOSIT">National ID Direct Deposit (Agency/OTC)</option>
+                    <option value="MPESA_TILL">M-Pesa Buy Goods / Till Number</option>
+                    <option value="CASH_DRAWER">Physical Cash from Drawer</option>
+                    <option value="BANK_TRANSFER">Bank Account Deposit</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Till / Paybill / Account #</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Till 884910"
+                    value={newTill}
+                    onChange={(e) => setNewTill(e.target.value)}
+                    className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Default Payment Terms</label>
+                <select
+                  value={newTerms}
+                  onChange={(e) => setNewTerms(e.target.value)}
+                  className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white"
+                >
+                  <option value="Cash on Delivery">Cash on Delivery (Pay upon delivery)</option>
+                  <option value="Weekly Settlement">Weekly Friday Settlement</option>
+                  <option value="Net 7 Days">Net 7 Days Credit</option>
+                  <option value="Net 14 Days">Net 14 Days Credit</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsAddSupplierOpen(false)}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl cursor-pointer text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl cursor-pointer text-xs shadow-lg shadow-emerald-500/20"
+                >
+                  Register Supplier
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

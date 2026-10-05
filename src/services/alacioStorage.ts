@@ -8,7 +8,8 @@ import {
   ProjectCaseStudy,
   PayoutOrDrawing,
   MpesaStatementRecord,
-  SupplierProfile
+  SupplierProfile,
+  MorningBookendRecord
 } from "../types/alacio";
 import { db, handleFirestoreError, OperationType } from "./firebase";
 import { doc, setDoc } from "firebase/firestore";
@@ -553,10 +554,45 @@ export const INITIAL_FLOAT_DENOMINATIONS: FloatDenomination[] = [
   { value: 1, type: "coin", label: "1 Coin", count: 0 }
 ]; // 2*200(400) + 1*100(100) + 2*50(100) + 2*20(40) + 1*10(10) + 1*5(5) = 655 KSh
 
+export const INITIAL_MORNING_BOOKENDS: MorningBookendRecord[] = [
+  {
+    id: "mb_today",
+    date: "Today",
+    timestamp: "05:57 AM (Dawn Lock)",
+    cash_float: 655,
+    mpesa_float: 3850,
+    equitel_balance: 14250,
+    total_liquidity: 18755,
+    debtors_count: 3,
+    total_customer_debt: 1040,
+    opening_shelf_units: 324,
+    opening_shelf_value: 35545,
+    status: "LOCKED_DAWN",
+    notes: "Dawn baseline sealed: Cash drawer verified across 10 denominations, M-Pesa till active, yesterday deni calibrated."
+  },
+  {
+    id: "mb_yesterday",
+    date: "Yesterday",
+    timestamp: "05:58 AM (Dawn Lock)",
+    cash_float: 720,
+    mpesa_float: 4100,
+    equitel_balance: 13500,
+    total_liquidity: 18320,
+    debtors_count: 3,
+    total_customer_debt: 990,
+    opening_shelf_units: 338,
+    opening_shelf_value: 36800,
+    status: "LOCKED_DAWN",
+    notes: "Prior day baseline sealed cleanly."
+  }
+];
+
 export const INITIAL_ALACIO_STATE: AlacioMasterState = {
   inventory: INITIAL_INVENTORY_43,
   warehouse: INITIAL_WAREHOUSE_BATCHES,
   customers: INITIAL_CUSTOMERS,
+  suppliers: INITIAL_SUPPLIERS,
+  morning_bookends: INITIAL_MORNING_BOOKENDS,
   floatDenominations: INITIAL_FLOAT_DENOMINATIONS,
   salesLedger: [
     { id: "sl_1", timestamp: "08:15 AM", customer_name: "Walk-in", items_summary: "Brookside Milk 500ml x2", total_amount: 130, cash_paid: 130, mpesa_paid: 0, debt_amount: 0, payment_method: "CASH" },

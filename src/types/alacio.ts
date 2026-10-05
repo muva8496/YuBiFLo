@@ -27,12 +27,31 @@ export interface SupplierProfile {
   id: string;
   name: string;
   company: string;
+  driver_name?: string;
   phone: string;
   national_id: string; // Kenyan National ID for Agent & Bank OTC deposits
   category: string;
   total_orders_cost: number;
   last_delivery_date: string;
-  payment_preference: "NATIONAL_ID_DEPOSIT" | "MPESA_TILL" | "CASH_DRAWER";
+  payment_preference: "NATIONAL_ID_DEPOSIT" | "MPESA_TILL" | "CASH_DRAWER" | "BANK_TRANSFER";
+  till_or_account?: string;
+  payment_terms?: string;
+}
+
+export interface MorningBookendRecord {
+  id: string;
+  date: string;
+  timestamp: string;
+  cash_float: number;
+  mpesa_float: number;
+  equitel_balance: number;
+  total_liquidity: number;
+  debtors_count: number;
+  total_customer_debt: number;
+  opening_shelf_units: number;
+  opening_shelf_value: number;
+  status: "LOCKED_DAWN" | "IN_PROGRESS";
+  notes?: string;
 }
 
 export interface FloatDenomination {
@@ -153,6 +172,8 @@ export interface AlacioMasterState {
   inventory: InventoryItem[];
   warehouse: WarehouseBatch[];
   customers: CustomerDebtor[];
+  suppliers?: SupplierProfile[];
+  morning_bookends?: MorningBookendRecord[];
   floatDenominations: FloatDenomination[];
   salesLedger: SalesLedgerItem[];
   payouts: PayoutOrDrawing[];

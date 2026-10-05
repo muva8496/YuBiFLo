@@ -2,7 +2,7 @@ import React from "react";
 import { 
   Package, TrendingUp, AlertTriangle, ArrowRight, 
   Zap, Clock, Scale, Users, CheckCircle2, ShieldCheck, RefreshCw, Mic,
-  Building2
+  Building2, Sun, Truck, Plus, Coins, Smartphone
 } from "lucide-react";
 import { AlacioMasterState } from "../../types/alacio";
 
@@ -19,20 +19,35 @@ export default function DashboardTab({ state, onNavigateTab, onOpenRestock }: Da
   const whBulkVal = warehouse?.reduce((acc, b) => acc + (b.bulk_quantity * b.bulk_cost_per_unit), 0) || 0;
   const lowStockItems = inventory.filter((item) => item.current_stock <= 5);
   const highVelocityItems = inventory.filter((item) => item.velocity_badge === "High Velocity");
+  const suppliersCount = state.suppliers?.length || 5;
 
   return (
     <div className="space-y-6">
-      {/* HEADER BANNER */}
+      {/* HEADER BANNER WITH QUICK ADD ACTIONS */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2 font-serif">
             <Package className="text-emerald-400" size={22} /> Alacio Mini Shop Telemetry
           </h2>
           <p className="text-xs text-slate-400">
-            Real-time shelf value, invested wholesale capital, velocity triggers, and daily retail cash control.
+            Real-time shelf value, morning bookend baselines, customer deni tracking, and quick supplier management.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => onNavigateTab("customers")}
+            className="px-3 py-1.5 bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+            title="Add a new customer with National ID for credit"
+          >
+            <Users size={14} /> + Customer
+          </button>
+          <button
+            onClick={() => onNavigateTab("supplier_log")}
+            className="px-3 py-1.5 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+            title="Add a new supplier distributor with National ID"
+          >
+            <Truck size={14} /> + Supplier
+          </button>
           <button
             onClick={() => onNavigateTab("voice_ledger")}
             className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer"
@@ -45,6 +60,74 @@ export default function DashboardTab({ state, onNavigateTab, onOpenRestock }: Da
           >
             <RefreshCw size={14} /> Restock Batch
           </button>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* MORNING BOOKEND SUMMARY TRACKING WIDGET (DAWN BASELINE)   */}
+      {/* ======================================================== */}
+      <div className="bg-[#0b1611] border-2 border-amber-500/40 rounded-2xl p-4 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30 shrink-0">
+              <Sun size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white font-mono uppercase tracking-wider">
+                  Morning Bookend Summary (Dawn Baseline Tracker)
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40">
+                  05:57 AM Dawn Lock
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Dawn anchor liquidity and carried-over customer deni against which evening reconciliation measures leakage.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => onNavigateTab("morning_bookend")}
+            className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shrink-0 self-start sm:self-auto font-mono"
+          >
+            <span>Track Morning Bookend</span>
+            <ArrowRight size={13} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 text-xs font-mono">
+          <div className="p-2.5 bg-[#060c09] rounded-xl border border-slate-800">
+            <span className="text-[10px] text-slate-500 uppercase block">Starting Liquidity</span>
+            <strong className="text-emerald-400 text-sm">
+              {currency} {(floatTotal + (state.mpesa_float_balance || 3850) + (state.equitel_account_balance || 14250)).toLocaleString()}
+            </strong>
+            <span className="text-[10px] text-slate-400 block mt-0.5">Cash + M-Pesa + Equitel</span>
+          </div>
+
+          <div className="p-2.5 bg-[#060c09] rounded-xl border border-slate-800">
+            <span className="text-[10px] text-slate-500 uppercase block">Drawer Cash Float</span>
+            <strong className="text-white text-sm">
+              {currency} {floatTotal.toLocaleString()}
+            </strong>
+            <span className="text-[10px] text-slate-400 block mt-0.5">10 Denominations</span>
+          </div>
+
+          <div className="p-2.5 bg-[#060c09] rounded-xl border border-slate-800">
+            <span className="text-[10px] text-slate-500 uppercase block">Carried-Over Deni</span>
+            <strong className="text-purple-300 text-sm">
+              {currency} {totalDebt.toLocaleString()}
+            </strong>
+            <span className="text-[10px] text-slate-400 block mt-0.5">{customers.length} Family Accounts</span>
+          </div>
+
+          <div className="p-2.5 bg-[#060c09] rounded-xl border border-slate-800">
+            <span className="text-[10px] text-slate-500 uppercase block">Opening Shelf Units</span>
+            <strong className="text-cyan-400 text-sm">
+              {inventory.reduce((a, b) => a + b.current_stock, 0)} Units
+            </strong>
+            <span className="text-[10px] text-slate-400 block mt-0.5">{inventory.length} Stocked FMCG Items</span>
+          </div>
         </div>
       </div>
 

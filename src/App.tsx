@@ -17,7 +17,9 @@ import {
   PayoutOrDrawing,
   MpesaStatementRecord,
   FreemiumTier,
-  Blueprint
+  Blueprint,
+  SupplierProfile,
+  MorningBookendRecord
 } from "./types/alacio";
 import { 
   loadAlacioState, 
@@ -449,6 +451,26 @@ export default function App() {
       return inv;
     });
     const newKpis = calculateKpis(updatedInventory, alacioState.warehouse);
+
+    const totalLiquidity = payload.cashFloat + payload.mpesaFloat + payload.equitelBalance;
+    const totalDeni = payload.updatedCustomers.reduce((acc, c) => acc + c.debt_balance, 0);
+    const totalUnits = updatedInventory.reduce((acc, i) => acc + i.current_stock, 0);
+    const newBookendRecord: MorningBookendRecord = {
+      id: `mb_${Date.now()}`,
+      date: "Today",
+      timestamp: `Today, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+      cash_float: payload.cashFloat,
+      mpesa_float: payload.mpesaFloat,
+      equitel_balance: payload.equitelBalance,
+      total_liquidity: totalLiquidity,
+      debtors_count: payload.updatedCustomers.length,
+      total_customer_debt: totalDeni,
+      opening_shelf_units: totalUnits,
+      opening_shelf_value: newKpis.total_active_shelf_retail_value,
+      status: "LOCKED_DAWN",
+      notes: "Dawn baseline locked for trading: cash drawer, electronic float, and customer credit calibrated."
+    };
+
     setAlacioState((prev) => ({
       ...prev,
       inventory: updatedInventory,
@@ -456,7 +478,34 @@ export default function App() {
       cash_register_balance: payload.cashFloat,
       mpesa_float_balance: payload.mpesaFloat,
       equitel_account_balance: payload.equitelBalance,
+      morning_bookends: [newBookendRecord, ...(prev.morning_bookends || [])],
       kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Add Supplier Execution
+  const handleAddSupplier = (newSupplier: {
+    name: string;
+    company: string;
+    driver_name?: string;
+    phone: string;
+    national_id: string;
+    category: string;
+    payment_preference: "NATIONAL_ID_DEPOSIT" | "MPESA_TILL" | "CASH_DRAWER" | "BANK_TRANSFER";
+    till_or_account?: string;
+    payment_terms?: string;
+  }) => {
+    const created: SupplierProfile = {
+      ...newSupplier,
+      id: `supp_${Date.now()}`,
+      total_orders_cost: 0,
+      last_delivery_date: "Never"
+    };
+
+    setAlacioState((prev) => ({
+      ...prev,
+      suppliers: [created, ...(prev.suppliers || [])],
       last_updated: new Date().toISOString()
     }));
   };
@@ -863,6 +912,7 @@ export default function App() {
               <SupplierLogTab
                 state={alacioState}
                 onLogMultiDelivery={handleLogMultiSupplyDelivery}
+                onAddSupplier={handleAddSupplier}
               />
             )}
 

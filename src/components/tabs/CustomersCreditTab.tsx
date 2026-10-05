@@ -90,10 +90,31 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
 
         <button
           onClick={() => setIsAddOpen(true)}
-          className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow"
+          className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-purple-600/20"
         >
-          <Plus size={14} /> Add New Debtor
+          <Plus size={15} /> Add New Customer / Debtor
         </button>
+      </div>
+
+      {/* QUICK GUIDE ON HOW CUSTOMERS & NATIONAL ID DEPOSITS WORK */}
+      <div className="bg-[#121822] border border-purple-500/30 rounded-2xl p-4 text-xs font-sans space-y-2">
+        <div className="flex items-center gap-2 text-purple-300 font-bold font-mono text-[11px] uppercase">
+          <Users size={14} /> How Adding Customers &amp; National ID Deposits Work:
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-[11px] text-slate-300">
+          <div className="p-2.5 bg-[#0a0d12] rounded-xl border border-slate-800">
+            <span className="text-purple-400 font-bold block mb-0.5">1. Add Customer Account</span>
+            Click <strong>+ Add New Customer</strong> to register their name, phone, and counter credit limit.
+          </div>
+          <div className="p-2.5 bg-[#0a0d12] rounded-xl border border-slate-800">
+            <span className="text-emerald-400 font-bold block mb-0.5">2. Register National ID</span>
+            Attach their Kenyan National ID so you can deposit repayments directly at any banking agent.
+          </div>
+          <div className="p-2.5 bg-[#0a0d12] rounded-xl border border-slate-800">
+            <span className="text-cyan-400 font-bold block mb-0.5">3. 1-Click Agency Reference</span>
+            Click <strong>Deposit Ref</strong> on any card to copy their National ID for Equity, KCB, or Co-op Agent slips.
+          </div>
+        </div>
       </div>
 
       {toastMsg && (
