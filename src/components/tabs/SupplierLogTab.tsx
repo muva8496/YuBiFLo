@@ -3,7 +3,8 @@ import {
   Truck, ArrowRight, CheckCircle2, Package, Sparkles, 
   RefreshCw, DollarSign, Layers, Plus, Trash2, Check, 
   Calculator, ListPlus, FileText, ShoppingBag, AlertCircle,
-  Building2, Copy, X, Phone, Users, ShieldCheck
+  Building2, Copy, X, Phone, Users, ShieldCheck,
+  Calendar, Edit3
 } from "lucide-react";
 import { AlacioMasterState, InventoryItem, SupplierProfile } from "../../types/alacio";
 import { BulkConversionEngine } from "../../services/bulkConversionEngine";
@@ -31,6 +32,7 @@ export interface MultiSupplyDelivery {
   supplierPhone?: string;
   deliveryNoteNumber: string;
   paymentMode: "CASH" | "MPESA" | "CREDIT" | "EQUITEL";
+  date?: string; // YYYY-MM-DD editable date (for logging yesterday's receipts today)
   timestamp: string;
   totalCost: number;
   totalRetailValue: number;
@@ -391,12 +393,35 @@ export default function SupplierLogTab({ state, onLogMultiDelivery, onAddSupplie
     }
   };
 
+  // State for updating past delivery dates
+  const [editingDeliveryId, setEditingDeliveryId] = useState<string | null>(null);
+  const [editDeliveryDateVal, setEditDeliveryDateVal] = useState("");
+
+  const handleSaveDeliveryDate = (deliveryId: string) => {
+    if (!editDeliveryDateVal) return;
+    setRecentDeliveries((prev) =>
+      prev.map((d) =>
+        d.id === deliveryId
+          ? {
+              ...d,
+              date: editDeliveryDateVal,
+              timestamp: `${editDeliveryDateVal}, ${d.timestamp.includes(",") ? d.timestamp.split(",")[1].trim() : "12:00 PM"}`
+            }
+          : d
+      )
+    );
+    setEditingDeliveryId(null);
+    setSuccessMsg(`Delivery date updated to ${editDeliveryDateVal} successfully!`);
+    setTimeout(() => setSuccessMsg(null), 4000);
+  };
+
   // Submit complete multi-item delivery to master state
   const handleSubmitMultiDelivery = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (deliveryItems.length === 0) return;
 
+    const dateLabel = deliveryDate === new Date().toISOString().slice(0, 10) ? "Today" : deliveryDate;
     const newDelivery: MultiSupplyDelivery = {
       id: `deliv_${Date.now()}`,
       supplierName,
@@ -404,7 +429,8 @@ export default function SupplierLogTab({ state, onLogMultiDelivery, onAddSupplie
       supplierPhone: supplierPhone.trim() || undefined,
       deliveryNoteNumber,
       paymentMode,
-      timestamp: `Today, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+      date: deliveryDate,
+      timestamp: `${dateLabel}, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
       totalCost: totalDeliveryCost,
       totalRetailValue,
       items: deliveryItems
@@ -418,7 +444,7 @@ export default function SupplierLogTab({ state, onLogMultiDelivery, onAddSupplie
       .join(", ");
 
     setSuccessMsg(
-      `Multi-item delivery logged! ${deliveryItems.length} products from ${supplierName} recorded (${itemsSummary}). Added ${currency} ${totalRetailValue.toLocaleString()} to active shelf value. Margin: +${currency} ${totalExpectedProfit.toLocaleString()} (${overallMarkup}%).`
+      `Multi-item delivery logged on ${deliveryDate}! ${deliveryItems.length} products from ${supplierName} recorded (${itemsSummary}). Added ${currency} ${totalRetailValue.toLocaleString()} to active shelf value. Margin: +${currency} ${totalExpectedProfit.toLocaleString()} (${overallMarkup}%).`
     );
     setTimeout(() => setSuccessMsg(null), 8000);
   };
@@ -578,8 +604,57 @@ export default function SupplierLogTab({ state, onLogMultiDelivery, onAddSupplie
         </div>
 
         {/* SHIPMENT & SUPPLIER HEADER FIELDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3 pb-4 border-b border-slate-800 text-xs">
-          <div className="sm:col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pb-4 border-b border-slate-800 text-xs">
+          
+          {/* EDITABLE DELIVERY / RECEIPT DATE */}
+          <div className="bg-[#060c09] border-2 border-amber-500/50 rounded-xl p-2.5 space-y-1.5 lg:col-span-2">
+            <div className="flex items-center justify-between">
+              <label className="text-amber-300 font-mono uppercase text-[10px] font-bold flex items-center gap-1">
+                <Calendar size={13} className="text-amber-400" />
+                Delivery / Receipt Date *
+              </label>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setDeliveryDate(new Date().toISOString().slice(0, 10))}
+                  className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold cursor-pointer transition ${
+                    deliveryDate === new Date().toISOString().slice(0, 10)
+                      ? "bg-amber-500 text-slate-950 font-black"
+                      : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  }`}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+                    setDeliveryDate(y);
+                  }}
+                  className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold cursor-pointer transition ${
+                    deliveryDate === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+                      ? "bg-amber-500 text-slate-950 font-black"
+                      : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  }`}
+                  title="Doing yesterday's receipts today"
+                >
+                  Yesterday
+                </button>
+              </div>
+            </div>
+            <input
+              type="date"
+              required
+              value={deliveryDate}
+              onChange={(e) => setDeliveryDate(e.target.value)}
+              className="w-full bg-[#0a1610] border border-amber-500/40 rounded-lg p-1.5 text-white font-mono text-xs focus:border-amber-400"
+            />
+            <span className="text-[10px] text-slate-400 font-mono block">
+              Editable date for backdating yesterday's delivery receipts
+            </span>
+          </div>
+
+          <div className="sm:col-span-2 lg:col-span-2">
             <label className="text-slate-400 block mb-1 font-mono uppercase text-[10px]">Supplier / Distributor Name</label>
             <input
               type="text"
@@ -593,36 +668,14 @@ export default function SupplierLogTab({ state, onLogMultiDelivery, onAddSupplie
 
           <div>
             <label className="text-slate-400 block mb-1 font-mono uppercase text-[10px] flex items-center justify-between">
-              <span>National ID (Rep/Driver)</span>
-              <span className="text-[9px] text-emerald-400">For OTC Deposit</span>
+              <span>National ID (Driver)</span>
+              <span className="text-[9px] text-emerald-400">OTC Deposit</span>
             </label>
             <input
               type="text"
               value={supplierNationalId}
               onChange={(e) => setSupplierNationalId(e.target.value)}
               placeholder="e.g. 22940184"
-              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:border-cyan-500"
-            />
-          </div>
-
-          <div>
-            <label className="text-slate-400 block mb-1 font-mono uppercase text-[10px]">Supplier Phone</label>
-            <input
-              type="text"
-              value={supplierPhone}
-              onChange={(e) => setSupplierPhone(e.target.value)}
-              placeholder="e.g. 0722 849 101"
-              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:border-cyan-500"
-            />
-          </div>
-
-          <div>
-            <label className="text-slate-400 block mb-1 font-mono uppercase text-[10px]">Delivery Note #</label>
-            <input
-              type="text"
-              value={deliveryNoteNumber}
-              onChange={(e) => setDeliveryNoteNumber(e.target.value)}
-              placeholder="e.g. DN-8841"
               className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:border-cyan-500"
             />
           </div>
@@ -851,7 +904,44 @@ export default function SupplierLogTab({ state, onLogMultiDelivery, onAddSupplie
                 </div>
 
                 <div className="flex items-center gap-3 font-mono">
-                  <span className="text-slate-400 text-[11px]">{delivery.timestamp}</span>
+                  {editingDeliveryId === delivery.id ? (
+                    <div className="flex items-center gap-1.5 bg-[#0a1610] p-1 rounded-lg border border-amber-500/50">
+                      <input
+                        type="date"
+                        value={editDeliveryDateVal}
+                        onChange={(e) => setEditDeliveryDateVal(e.target.value)}
+                        className="bg-[#060c09] text-white text-[11px] px-1.5 py-0.5 rounded border border-slate-700"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveDeliveryDate(delivery.id)}
+                        className="px-2 py-0.5 bg-amber-500 text-slate-950 rounded text-[10px] font-bold cursor-pointer"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingDeliveryId(null)}
+                        className="text-slate-400 hover:text-white text-[10px] cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingDeliveryId(delivery.id);
+                        setEditDeliveryDateVal(delivery.date || (delivery.timestamp.match(/\d{4}-\d{2}-\d{2}/) ? delivery.timestamp.match(/\d{4}-\d{2}-\d{2}/)![0] : new Date().toISOString().slice(0, 10)));
+                      }}
+                      className="text-slate-300 hover:text-amber-300 text-[11px] flex items-center gap-1 bg-slate-800/80 hover:bg-slate-800 px-2 py-0.5 rounded cursor-pointer transition border border-transparent hover:border-amber-500/30"
+                      title="Click to edit date"
+                    >
+                      <Calendar size={11} className="text-amber-400" />
+                      <span>{delivery.timestamp}</span>
+                      <Edit3 size={10} className="text-slate-500 hover:text-amber-300 ml-0.5" />
+                    </button>
+                  )}
                   <span className="font-bold text-cyan-400">
                     Total: {currency} {delivery.totalCost.toLocaleString()} ({delivery.paymentMode})
                   </span>

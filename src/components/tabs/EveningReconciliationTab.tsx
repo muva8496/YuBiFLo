@@ -34,6 +34,7 @@ export default function EveningReconciliationTab({
   // Actual collected: M-Pesa 2,500 + Cash 1,355 = 3,855 KSh -> Gap = -300 KSh!
   const [actualMpesa, setActualMpesa] = useState<string>("2500");
   const [actualCash, setActualCash] = useState<string>("1355");
+  const [reconDate, setReconDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [auditSuccess, setAuditSuccess] = useState<string | null>(null);
 
   // Items to audit
@@ -76,7 +77,7 @@ export default function EveningReconciliationTab({
 
     const audit: ReconciliationAudit = {
       id: `recon_${Date.now()}`,
-      date: new Date().toLocaleDateString("en-KE", { month: "short", day: "numeric", year: "numeric" }),
+      date: reconDate || new Date().toISOString().slice(0, 10),
       expected_stock_sales: report.totalExpectedRevenue,
       physical_cash: report.actualCashCollected,
       mpesa_statement: report.actualMpesaCollected,
@@ -222,11 +223,44 @@ export default function EveningReconciliationTab({
         )}
       </div>
 
-      {/* FINANCIAL INPUTS: MPESA & CASH */}
+      {/* FINANCIAL INPUTS: MPESA & CASH & EDITABLE CLOSING DATE */}
       <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
-        <h3 className="text-xs font-bold text-white uppercase font-mono tracking-wider border-b border-slate-800 pb-2">
-          Realized Collections (Till &amp; Cash Count)
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-2 gap-2">
+          <h3 className="text-xs font-bold text-white uppercase font-mono tracking-wider">
+            Realized Collections (Till &amp; Cash Count)
+          </h3>
+
+          {/* EDITABLE AUDIT DATE SPACE */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-mono text-amber-400 font-semibold flex items-center gap-1">
+              <Calendar size={13} /> Audit Date:
+            </span>
+            <input
+              type="date"
+              value={reconDate}
+              onChange={(e) => setReconDate(e.target.value)}
+              className="bg-[#060c09] border border-amber-500/50 rounded-lg px-2.5 py-1 text-xs text-amber-300 font-mono font-bold focus:border-amber-400 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const y = new Date();
+                y.setDate(y.getDate() - 1);
+                setReconDate(y.toISOString().slice(0, 10));
+              }}
+              className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-[10px] font-mono font-bold transition"
+            >
+              Yesterday
+            </button>
+            <button
+              type="button"
+              onClick={() => setReconDate(new Date().toISOString().slice(0, 10))}
+              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-mono transition"
+            >
+              Today
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>

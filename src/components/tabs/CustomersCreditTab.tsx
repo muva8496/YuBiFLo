@@ -1,12 +1,24 @@
 import React, { useState } from "react";
-import { Users, Plus, CheckCircle2, DollarSign, Phone, ShieldAlert, ArrowDownLeft, X, CreditCard, Building2, Copy, Check } from "lucide-react";
+import { 
+  Users, Plus, CheckCircle2, DollarSign, Phone, ShieldAlert, 
+  ArrowDownLeft, X, CreditCard, Building2, Copy, Check,
+  Calendar, Edit3
+} from "lucide-react";
 import { CustomerDebtor } from "../../types/alacio";
 
 interface CustomersCreditTabProps {
   currency: string;
   customers: CustomerDebtor[];
-  onRepayDebt: (customerId: string, amount: number) => void;
-  onAddDebtor: (newDebtor: { name: string; phone: string; national_id?: string; credit_limit: number; initial_debt: number; notes: string }) => void;
+  onRepayDebt: (customerId: string, amount: number, date?: string) => void;
+  onAddDebtor: (newDebtor: { 
+    name: string; 
+    phone: string; 
+    national_id?: string; 
+    credit_limit: number; 
+    initial_debt: number; 
+    notes: string;
+    date?: string;
+  }) => void;
 }
 
 export default function CustomersCreditTab({ currency, customers, onRepayDebt, onAddDebtor }: CustomersCreditTabProps) {
@@ -15,6 +27,7 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
   const [isDepositRefOpen, setIsDepositRefOpen] = useState(false);
   const [selectedCust, setSelectedCust] = useState<CustomerDebtor | null>(null);
   const [repayAmount, setRepayAmount] = useState("");
+  const [repayDate, setRepayDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState(false);
 
@@ -24,6 +37,7 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
   const [newNationalId, setNewNationalId] = useState("");
   const [newLimit, setNewLimit] = useState("1000");
   const [newDebt, setNewDebt] = useState("0");
+  const [newDebtDate, setNewDebtDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [newNotes, setNewNotes] = useState("");
 
   const totalOutstanding = customers.reduce((acc, c) => acc + c.debt_balance, 0);
@@ -32,6 +46,7 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
   const handleOpenRepay = (cust: CustomerDebtor) => {
     setSelectedCust(cust);
     setRepayAmount(String(cust.debt_balance));
+    setRepayDate(new Date().toISOString().slice(0, 10));
     setIsRepayOpen(true);
   };
 
@@ -47,9 +62,9 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
     const amount = parseFloat(repayAmount);
     if (amount <= 0) return;
 
-    onRepayDebt(selectedCust.id, amount);
+    onRepayDebt(selectedCust.id, amount, repayDate);
     setIsRepayOpen(false);
-    setToastMsg(`Repayment of ${currency} ${amount.toLocaleString()} received from ${selectedCust.name}! Added to cash register.`);
+    setToastMsg(`Repayment of ${currency} ${amount.toLocaleString()} received on ${repayDate} from ${selectedCust.name}! Added to cash register.`);
     setTimeout(() => setToastMsg(null), 4000);
   };
 
@@ -63,7 +78,8 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
       national_id: newNationalId.trim() || undefined,
       credit_limit: parseFloat(newLimit) || 1000,
       initial_debt: parseFloat(newDebt) || 0,
-      notes: newNotes.trim() || "Neighborhood customer"
+      notes: newNotes.trim() || "Neighborhood customer",
+      date: newDebtDate
     });
 
     setIsAddOpen(false);
@@ -72,7 +88,7 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
     setNewNationalId("");
     setNewDebt("0");
     setNewNotes("");
-    setToastMsg(`Debtor account created for ${newName} with National ID ${newNationalId || "not provided"}!`);
+    setToastMsg(`Debtor account created for ${newName} on ${newDebtDate}!`);
     setTimeout(() => setToastMsg(null), 4000);
   };
 
@@ -322,6 +338,53 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
             </div>
 
             <form onSubmit={handleExecuteRepay} className="space-y-4">
+              {/* EDITABLE REPAYMENT DATE */}
+              <div className="bg-[#0a0d12] border border-amber-500/40 rounded-xl p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-amber-300 text-xs font-semibold flex items-center gap-1 font-mono">
+                    <Calendar size={12} className="text-amber-400" /> Payment Date * (Editable)
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setRepayDate(new Date().toISOString().slice(0, 10))}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono cursor-pointer transition ${
+                        repayDate === new Date().toISOString().slice(0, 10)
+                          ? "bg-amber-500 text-slate-950 font-bold"
+                          : "bg-slate-800 text-slate-300"
+                      }`}
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+                        setRepayDate(y);
+                      }}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono cursor-pointer transition ${
+                        repayDate === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+                          ? "bg-amber-500 text-slate-950 font-bold"
+                          : "bg-slate-800 text-slate-300"
+                      }`}
+                      title="Customer paid yesterday"
+                    >
+                      Yesterday
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="date"
+                  required
+                  value={repayDate}
+                  onChange={(e) => setRepayDate(e.target.value)}
+                  className="w-full bg-[#070e0b] border border-amber-500/30 rounded-lg p-2 text-white font-mono text-xs focus:border-amber-400"
+                />
+                <span className="text-[10px] text-slate-400 font-mono block">
+                  Backdate here if recording yesterday's cash repayment
+                </span>
+              </div>
+
               <div>
                 <label className="text-slate-300 text-xs font-semibold block mb-1">Repayment Cash Amount ({currency})</label>
                 <input
@@ -420,6 +483,27 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
                     onChange={(e) => setNewDebt(e.target.value)}
                     className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1 font-mono uppercase text-[10px]">
+                  Opening / Credit Date (Editable)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={newDebtDate}
+                    onChange={(e) => setNewDebtDate(e.target.value)}
+                    className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-xs focus:border-purple-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setNewDebtDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10))}
+                    className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-[10px] font-mono shrink-0 cursor-pointer"
+                  >
+                    Yesterday
+                  </button>
                 </div>
               </div>
 

@@ -496,20 +496,45 @@ export function calculateKpis(inventory: InventoryItem[], warehouse: WarehouseBa
 
 export function loadAlacioState(): AlacioMasterState {
   try {
-    // Purge legacy demo test state so the live shop starts with clean zeros
-    localStorage.removeItem("yubiflo_alacio_state_v1");
-
-    const raw = localStorage.getItem(STORAGE_KEY_ALACIO);
+    // Safely check storage keys so the user's existing data is never lost
+    const raw = localStorage.getItem(STORAGE_KEY_ALACIO) || 
+                localStorage.getItem("yubiflo_alacio_state_live_v1") || 
+                localStorage.getItem("yubiflo_alacio_state_v1");
     if (!raw) return INITIAL_ALACIO_STATE;
     const parsed = JSON.parse(raw);
-    if (parsed && Array.isArray(parsed.inventory) && parsed.inventory.length > 0) {
+    if (parsed && typeof parsed === "object") {
+      const inv = Array.isArray(parsed.inventory) && parsed.inventory.length > 0 
+        ? parsed.inventory 
+        : INITIAL_INVENTORY_43;
       const wh = Array.isArray(parsed.warehouse) ? parsed.warehouse : INITIAL_WAREHOUSE_BATCHES;
+      const cust = Array.isArray(parsed.customers) ? parsed.customers : INITIAL_CUSTOMERS;
+      const supp = Array.isArray(parsed.suppliers) ? parsed.suppliers : INITIAL_SUPPLIERS;
+      const mb = Array.isArray(parsed.morning_bookends) ? parsed.morning_bookends : INITIAL_MORNING_BOOKENDS;
+      const fd = Array.isArray(parsed.floatDenominations) ? parsed.floatDenominations : INITIAL_FLOAT_DENOMINATIONS;
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const normalizedSales = (Array.isArray(parsed.salesLedger) ? parsed.salesLedger : []).map((s: any) => ({
+        ...s,
+        date: s.date || (s.timestamp && s.timestamp.match(/^\d{4}-\d{2}-\d{2}/) ? s.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0] : todayStr)
+      }));
+      const normalizedPayouts = (Array.isArray(parsed.payouts) ? parsed.payouts : []).map((p: any) => ({
+        ...p,
+        date: p.date || (p.timestamp && p.timestamp.match(/^\d{4}-\d{2}-\d{2}/) ? p.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0] : todayStr)
+      }));
+
       return {
         ...INITIAL_ALACIO_STATE,
         ...parsed,
+        inventory: inv,
         warehouse: wh,
-        payouts: Array.isArray(parsed.payouts) ? parsed.payouts : [],
+        customers: cust,
+        suppliers: supp,
+        morning_bookends: mb,
+        floatDenominations: fd,
+        salesLedger: normalizedSales,
+        payouts: normalizedPayouts,
         mpesaStatements: Array.isArray(parsed.mpesaStatements) ? parsed.mpesaStatements : [],
+        reconciliations: Array.isArray(parsed.reconciliations) ? parsed.reconciliations : [],
         mpesa_float_balance: parsed.mpesa_float_balance ?? 0,
         cash_register_balance: parsed.cash_register_balance ?? 0,
         equitel_account_balance: parsed.equitel_account_balance ?? 0,
@@ -517,15 +542,12 @@ export function loadAlacioState(): AlacioMasterState {
         vcr_daily_count: parsed.vcr_daily_count ?? 0,
         vcr_customer_consent: parsed.vcr_customer_consent ?? true,
         clean_trading_days: parsed.clean_trading_days ?? 0,
-        kpis: calculateKpis(parsed.inventory, wh)
+        kpis: calculateKpis(inv, wh)
       };
     }
     return INITIAL_ALACIO_STATE;
   } catch (error) {
-    console.warn("[YuBiFlo Storage] Corrupted alacio state detected. Resetting to defaults:", error);
-    try {
-      localStorage.removeItem(STORAGE_KEY_ALACIO);
-    } catch {}
+    console.warn("[YuBiFlo Storage] Error loading alacio state. Preserving state:", error);
     return INITIAL_ALACIO_STATE;
   }
 }

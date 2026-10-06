@@ -2,7 +2,8 @@ import React, { useState, useRef } from "react";
 import { 
   Camera, Upload, FileText, CheckCircle2, AlertCircle, Sparkles, 
   ArrowRight, Check, RefreshCw, Eye, Trash2, Plus, 
-  Layers, Package, DollarSign, Scan, ShieldCheck, Image as ImageIcon
+  Layers, Package, DollarSign, Scan, ShieldCheck, Image as ImageIcon,
+  Calendar, Edit3
 } from "lucide-react";
 import { AlacioMasterState, InventoryItem } from "../../types/alacio";
 import { 
@@ -191,6 +192,16 @@ export default function ReceiptUploadScannerTab({
     });
   };
 
+  // Update receipt date (for doing yesterday's receipts today)
+  const handleUpdateReceiptDate = (newDate: string) => {
+    if (!activeReceipt) return;
+    setActiveReceipt({
+      ...activeReceipt,
+      receiptDate: newDate,
+      processedAt: `${newDate} (Verified Receipt)`
+    });
+  };
+
   // Commit and ingest receipt into inventory
   const handleCommitReceipt = () => {
     if (!activeReceipt) return;
@@ -370,6 +381,51 @@ export default function ReceiptUploadScannerTab({
                 <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 font-bold">
                   {activeReceipt?.paymentMode}
                 </span>
+              </div>
+            </div>
+
+            {/* EDITABLE RECEIPT / EXPENSE DATE SPACE */}
+            <div className="p-3 bg-[#060c09] border-2 border-amber-500/50 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+              <div className="flex items-center gap-2">
+                <Calendar size={15} className="text-amber-400 shrink-0" />
+                <div>
+                  <span className="text-[11px] font-bold text-amber-300 block uppercase">
+                    Receipt / Expense Date (Editable):
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Doing yesterday's receipts today? Set the exact invoice date below:
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateReceiptDate(new Date().toISOString().slice(0, 10))}
+                    className="px-2 py-1 rounded text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+                      handleUpdateReceiptDate(y);
+                    }}
+                    className="px-2 py-1 rounded text-[10px] font-bold bg-amber-500 text-slate-950 font-black cursor-pointer shadow-sm"
+                    title="Doing yesterday's receipts today"
+                  >
+                    Yesterday
+                  </button>
+                </div>
+
+                <input
+                  type="date"
+                  value={activeReceipt?.receiptDate && /^\d{4}-\d{2}-\d{2}$/.test(activeReceipt.receiptDate) ? activeReceipt.receiptDate : new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => handleUpdateReceiptDate(e.target.value)}
+                  className="bg-[#0a1610] border border-amber-500/40 rounded-lg px-2.5 py-1 text-white font-mono text-xs focus:border-amber-400"
+                />
               </div>
             </div>
 

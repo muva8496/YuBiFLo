@@ -3,7 +3,8 @@ import {
   Building2, Globe, Plus, ChevronDown, Copy, X, ArrowRight, Sparkles, 
   AlertTriangle, Layers, Database, BarChart3, BrainCircuit, Eye, 
   LayoutDashboard, Mic, Zap, Clock, Package, Users, Scale, RefreshCw, BarChart2,
-  Smartphone, HelpCircle, Download, Radio, Sun, Truck, Languages, Camera, CheckCircle2
+  Smartphone, HelpCircle, Download, Radio, Sun, Truck, Languages, Camera, CheckCircle2,
+  ArrowUpDown
 } from "lucide-react";
 
 import { 
@@ -183,6 +184,7 @@ export default function App() {
 
     const newSalesRecord: SalesLedgerItem = {
       id: `sl_${Date.now()}`,
+      date: new Date().toISOString().slice(0, 10),
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       customer_name: payload.customer,
       items_summary: itemsSummary || "Assorted items",
@@ -212,7 +214,7 @@ export default function App() {
   };
 
   // Quick Dump Execution
-  const handleQuickSale = (itemName: string, qty: number, amount: number, method: "CASH" | "MPESA") => {
+  const handleQuickSale = (itemName: string, qty: number, amount: number, method: "CASH" | "MPESA", saleDate?: string) => {
     let updatedInventory = [...alacioState.inventory];
     const idx = updatedInventory.findIndex((i) => i.name.toLowerCase().includes(itemName.toLowerCase()));
     if (idx !== -1) {
@@ -226,9 +228,11 @@ export default function App() {
       };
     }
 
+    const effectiveDate = saleDate || new Date().toISOString().slice(0, 10);
     const newSalesRecord: SalesLedgerItem = {
       id: `sl_${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      date: effectiveDate,
+      timestamp: `${effectiveDate} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
       customer_name: "Counter Walk-in",
       items_summary: `${qty}x ${itemName}`,
       total_amount: amount,
@@ -262,8 +266,10 @@ export default function App() {
 
   // Deni Repayment Execution
   const handleRepayDebt = (customerId: string, amount: number) => {
+    let customerName = "Credit Customer";
     const updatedCustomers = alacioState.customers.map((c) => {
       if (c.id === customerId) {
+        customerName = c.name;
         return {
           ...c,
           debt_balance: Math.max(0, c.debt_balance - amount),
@@ -273,9 +279,23 @@ export default function App() {
       return c;
     });
 
+    const repaymentSale: SalesLedgerItem = {
+      id: `sl_repay_${Date.now()}`,
+      date: new Date().toISOString().slice(0, 10),
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      customer_name: customerName,
+      items_summary: `Debt Repayment (${customerName})`,
+      total_amount: amount,
+      cash_paid: amount,
+      mpesa_paid: 0,
+      debt_amount: 0,
+      payment_method: "CASH"
+    };
+
     setAlacioState((prev) => ({
       ...prev,
       customers: updatedCustomers,
+      salesLedger: [repaymentSale, ...prev.salesLedger],
       cash_register_balance: prev.cash_register_balance + amount,
       last_updated: new Date().toISOString()
     }));
@@ -573,9 +593,23 @@ export default function App() {
       newEquitelBalance = Math.max(0, newEquitelBalance - delivery.totalCost);
     }
 
+    let updatedPayouts = [...alacioState.payouts];
+    if (delivery.totalCost > 0) {
+      const deliveryPayout: PayoutOrDrawing = {
+        id: `payout_supp_${Date.now()}`,
+        date: new Date().toISOString().slice(0, 10),
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        amount: delivery.totalCost,
+        type: "SUPPLIER_PAYOUT",
+        notes: `Supplier Delivery: ${delivery.supplierName} (${delivery.items.length} items paid via ${delivery.paymentMode})`
+      };
+      updatedPayouts = [deliveryPayout, ...updatedPayouts];
+    }
+
     setAlacioState((prev) => ({
       ...prev,
       inventory: updatedInventory,
+      payouts: updatedPayouts,
       cash_register_balance: newCashBalance,
       mpesa_float_balance: newMpesaBalance,
       equitel_account_balance: newEquitelBalance,
@@ -631,9 +665,23 @@ export default function App() {
       newMpesaBalance = Math.max(0, newMpesaBalance - receipt.totalCost);
     }
 
+    let updatedPayouts = [...alacioState.payouts];
+    if (receipt.totalCost > 0) {
+      const receiptPayout: PayoutOrDrawing = {
+        id: `payout_rcpt_${Date.now()}`,
+        date: new Date().toISOString().slice(0, 10),
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        amount: receipt.totalCost,
+        type: "SUPPLIER_PAYOUT",
+        notes: `Receipt Restock: ${receipt.supplierName} (${receipt.items.length} items paid via ${receipt.paymentMode})`
+      };
+      updatedPayouts = [receiptPayout, ...updatedPayouts];
+    }
+
     setAlacioState((prev) => ({
       ...prev,
       inventory: updatedInventory,
+      payouts: updatedPayouts,
       cash_register_balance: newCashBalance,
       mpesa_float_balance: newMpesaBalance,
       kpis: newKpis,
@@ -699,6 +747,67 @@ export default function App() {
         last_updated: new Date().toISOString()
       }));
     }
+  };
+
+  // Transactions Ledger: Editable Dates for all Inflows & Outflows
+  const handleUpdateSaleDate = (saleId: string, newDate: string, newTime?: string) => {
+    setAlacioState((prev) => ({
+      ...prev,
+      salesLedger: prev.salesLedger.map((s) =>
+        s.id === saleId
+          ? { ...s, date: newDate, timestamp: newTime ? `${newDate} ${newTime}` : s.timestamp }
+          : s
+      ),
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  const handleUpdatePayoutDate = (payoutId: string, newDate: string, newTime?: string) => {
+    setAlacioState((prev) => ({
+      ...prev,
+      payouts: prev.payouts.map((p) =>
+        p.id === payoutId
+          ? { ...p, date: newDate, timestamp: newTime ? `${newDate} ${newTime}` : p.timestamp }
+          : p
+      ),
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  const handleAddCustomSale = (saleData: Omit<SalesLedgerItem, "id">) => {
+    const newSale: SalesLedgerItem = {
+      ...saleData,
+      id: `sl_${Date.now()}`
+    };
+    setAlacioState((prev) => ({
+      ...prev,
+      salesLedger: [newSale, ...prev.salesLedger],
+      cash_register_balance: saleData.cash_paid > 0 ? prev.cash_register_balance + saleData.cash_paid : prev.cash_register_balance,
+      mpesa_float_balance: saleData.mpesa_paid > 0 ? prev.mpesa_float_balance + saleData.mpesa_paid : prev.mpesa_float_balance,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  const handleAddCustomPayout = (payoutData: Omit<PayoutOrDrawing, "id">) => {
+    const newPayout: PayoutOrDrawing = {
+      ...payoutData,
+      id: `payout_${Date.now()}`
+    };
+    setAlacioState((prev) => ({
+      ...prev,
+      payouts: [newPayout, ...prev.payouts],
+      cash_register_balance: Math.max(0, prev.cash_register_balance - newPayout.amount),
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  const handleDeleteTransaction = (type: "sale" | "payout", id: string) => {
+    setAlacioState((prev) => ({
+      ...prev,
+      salesLedger: type === "sale" ? prev.salesLedger.filter((s) => s.id !== id) : prev.salesLedger,
+      payouts: type === "payout" ? prev.payouts.filter((p) => p.id !== id) : prev.payouts,
+      last_updated: new Date().toISOString()
+    }));
   };
 
   // Navigation Items (YuBiFlo Core Operating Cycle)
@@ -997,6 +1106,7 @@ export default function App() {
                 inventory={alacioState.inventory}
                 recentSales={alacioState.salesLedger}
                 onQuickSale={handleQuickSale}
+                onUpdateSaleDate={handleUpdateSaleDate}
               />
             )}
 

@@ -64,6 +64,7 @@ export interface FloatDenomination {
 export interface SalesLedgerItem {
   id: string;
   timestamp: string;
+  date?: string; // YYYY-MM-DD format for editable reporting
   customer_name: string;
   items_summary: string;
   total_amount: number;
@@ -76,10 +77,25 @@ export interface SalesLedgerItem {
 export interface PayoutOrDrawing {
   id: string;
   timestamp: string;
+  date?: string; // YYYY-MM-DD format for editable reporting
   amount: number;
   type: "BUSINESS_EXPENSE" | "OWNER_DRAWING" | "SUPPLIER_PAYOUT";
   notes: string;
   resolved_gap_id?: string;
+}
+
+export interface UnifiedTransaction {
+  id: string;
+  flow: "IN" | "OUT";
+  category: "SALE" | "DENI_REPAYMENT" | "BUSINESS_EXPENSE" | "OWNER_DRAWING" | "SUPPLIER_PAYOUT";
+  date: string;
+  time: string;
+  timestamp: string;
+  party: string;
+  description: string;
+  amount: number;
+  payment_method: string;
+  rawType: "sale" | "payout" | "repayment";
 }
 
 export interface MpesaStatementRecord {
