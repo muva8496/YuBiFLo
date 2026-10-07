@@ -469,6 +469,9 @@ export default function App() {
     equitelBalance: number;
     updatedCustomers: CustomerDebtor[];
     openingCounts: { id: string | number; openingStock: number }[];
+    baselineDate?: string;
+    baselineTime?: string;
+    notes?: string;
   }) => {
     const updatedInventory = alacioState.inventory.map((inv) => {
       const match = payload.openingCounts.find((o) => String(o.id) === String(inv.id));
@@ -487,10 +490,28 @@ export default function App() {
     const totalLiquidity = payload.cashFloat + payload.mpesaFloat + payload.equitelBalance;
     const totalDeni = payload.updatedCustomers.reduce((acc, c) => acc + c.debt_balance, 0);
     const totalUnits = updatedInventory.reduce((acc, i) => acc + i.current_stock, 0);
+
+    const todayIso = new Date().toISOString().slice(0, 10);
+    let recordDateLabel = "Today";
+    if (payload.baselineDate) {
+      if (payload.baselineDate === todayIso) {
+        recordDateLabel = "Today";
+      } else {
+        const parsedD = new Date(payload.baselineDate + "T12:00:00");
+        recordDateLabel = !isNaN(parsedD.getTime())
+          ? parsedD.toLocaleDateString("en-KE", { weekday: "short", month: "short", day: "numeric", year: "numeric" })
+          : payload.baselineDate;
+      }
+    }
+
+    const timestampLabel = payload.baselineTime
+      ? `${recordDateLabel}, ${payload.baselineTime}`
+      : `${recordDateLabel}, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+
     const newBookendRecord: MorningBookendRecord = {
       id: `mb_${Date.now()}`,
-      date: "Today",
-      timestamp: `Today, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+      date: recordDateLabel,
+      timestamp: timestampLabel,
       cash_float: payload.cashFloat,
       mpesa_float: payload.mpesaFloat,
       equitel_balance: payload.equitelBalance,
@@ -500,7 +521,7 @@ export default function App() {
       opening_shelf_units: totalUnits,
       opening_shelf_value: newKpis.total_active_shelf_retail_value,
       status: "LOCKED_DAWN",
-      notes: "Dawn baseline locked for trading: cash drawer, electronic float, and customer credit calibrated."
+      notes: payload.notes || `Dawn baseline locked for trading (${recordDateLabel}): cash drawer, electronic float, and customer credit calibrated.`
     };
 
     setAlacioState((prev) => ({
@@ -512,6 +533,24 @@ export default function App() {
       equitel_account_balance: payload.equitelBalance,
       morning_bookends: [newBookendRecord, ...(prev.morning_bookends || [])],
       kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Morning Bookend: Retrospective / Inline Date Correction for Historical Audit Entries
+  const handleUpdateMorningBookendDate = (recordId: string, newDate: string, newTimestamp?: string, newNotes?: string) => {
+    setAlacioState((prev) => ({
+      ...prev,
+      morning_bookends: (prev.morning_bookends || []).map((mb) =>
+        mb.id === recordId
+          ? {
+              ...mb,
+              date: newDate,
+              timestamp: newTimestamp ?? mb.timestamp,
+              notes: newNotes !== undefined ? newNotes : mb.notes
+            }
+          : mb
+      ),
       last_updated: new Date().toISOString()
     }));
   };
@@ -749,7 +788,7 @@ export default function App() {
     }
   };
 
-  // Transactions Ledger: Editable Dates for all Inflows & Outflows
+  // Quick Sales & Inflow Date Updates
   const handleUpdateSaleDate = (saleId: string, newDate: string, newTime?: string) => {
     setAlacioState((prev) => ({
       ...prev,
@@ -758,54 +797,6 @@ export default function App() {
           ? { ...s, date: newDate, timestamp: newTime ? `${newDate} ${newTime}` : s.timestamp }
           : s
       ),
-      last_updated: new Date().toISOString()
-    }));
-  };
-
-  const handleUpdatePayoutDate = (payoutId: string, newDate: string, newTime?: string) => {
-    setAlacioState((prev) => ({
-      ...prev,
-      payouts: prev.payouts.map((p) =>
-        p.id === payoutId
-          ? { ...p, date: newDate, timestamp: newTime ? `${newDate} ${newTime}` : p.timestamp }
-          : p
-      ),
-      last_updated: new Date().toISOString()
-    }));
-  };
-
-  const handleAddCustomSale = (saleData: Omit<SalesLedgerItem, "id">) => {
-    const newSale: SalesLedgerItem = {
-      ...saleData,
-      id: `sl_${Date.now()}`
-    };
-    setAlacioState((prev) => ({
-      ...prev,
-      salesLedger: [newSale, ...prev.salesLedger],
-      cash_register_balance: saleData.cash_paid > 0 ? prev.cash_register_balance + saleData.cash_paid : prev.cash_register_balance,
-      mpesa_float_balance: saleData.mpesa_paid > 0 ? prev.mpesa_float_balance + saleData.mpesa_paid : prev.mpesa_float_balance,
-      last_updated: new Date().toISOString()
-    }));
-  };
-
-  const handleAddCustomPayout = (payoutData: Omit<PayoutOrDrawing, "id">) => {
-    const newPayout: PayoutOrDrawing = {
-      ...payoutData,
-      id: `payout_${Date.now()}`
-    };
-    setAlacioState((prev) => ({
-      ...prev,
-      payouts: [newPayout, ...prev.payouts],
-      cash_register_balance: Math.max(0, prev.cash_register_balance - newPayout.amount),
-      last_updated: new Date().toISOString()
-    }));
-  };
-
-  const handleDeleteTransaction = (type: "sale" | "payout", id: string) => {
-    setAlacioState((prev) => ({
-      ...prev,
-      salesLedger: type === "sale" ? prev.salesLedger.filter((s) => s.id !== id) : prev.salesLedger,
-      payouts: type === "payout" ? prev.payouts.filter((p) => p.id !== id) : prev.payouts,
       last_updated: new Date().toISOString()
     }));
   };
@@ -1052,6 +1043,7 @@ export default function App() {
               <MorningBookendTab
                 state={alacioState}
                 onConfirmMorningBookend={handleConfirmMorningBookend}
+                onUpdateMorningBookendDate={handleUpdateMorningBookendDate}
               />
             )}
 

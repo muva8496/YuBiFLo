@@ -13,11 +13,15 @@ export interface MorningBookendPayload {
   equitelBalance: number;
   updatedCustomers: CustomerDebtor[];
   openingCounts: { id: string | number; openingStock: number }[];
+  baselineDate?: string;
+  baselineTime?: string;
+  notes?: string;
 }
 
 interface MorningBookendTabProps {
   state: AlacioMasterState;
   onConfirmMorningBookend: (payload: MorningBookendPayload) => void;
+  onUpdateMorningBookendDate?: (recordId: string, newDate: string, newTimestamp?: string, newNotes?: string) => void;
 }
 
 // Date helpers
@@ -27,7 +31,35 @@ const getOffsetDateIso = (offsetDays: number = 0) => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function MorningBookendTab({ state, onConfirmMorningBookend }: MorningBookendTabProps) {
+// Returns most recent Monday (or today if today is Monday)
+const getRecentMondayIso = () => {
+  const d = new Date();
+  const day = d.getDay(); // 0 is Sun, 1 is Mon, 2 is Tue, 3 is Wed, 4 is Thu, 5 is Fri, 6 is Sat
+  const diff = day >= 1 ? day - 1 : 6;
+  d.setDate(d.getDate() - diff);
+  return d.toISOString().slice(0, 10);
+};
+
+// Formats an ISO string (YYYY-MM-DD) into a human friendly label
+const formatHumanDate = (dateIso: string) => {
+  if (!dateIso) return "Today";
+  const today = getOffsetDateIso(0);
+  const yesterday = getOffsetDateIso(1);
+  const monday = getRecentMondayIso();
+
+  const parts = dateIso.split("-");
+  if (parts.length === 3) {
+    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    const formatted = d.toLocaleDateString("en-KE", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+    if (dateIso === today) return `Today (${formatted})`;
+    if (dateIso === yesterday) return `Yesterday (${formatted})`;
+    if (dateIso === monday) return `Monday (${formatted})`;
+    return formatted;
+  }
+  return dateIso;
+};
+
+export default function MorningBookendTab({ state, onConfirmMorningBookend, onUpdateMorningBookendDate }: MorningBookendTabProps) {
   const { 
     currency, 
     inventory, 
@@ -37,6 +69,16 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend }: Mo
     equitel_account_balance = 0,
     floatDenominations 
   } = state;
+
+  // 0. Baseline Operating Date & Shift (Editable for retrospective catch-up entry e.g. input Monday details on Wednesday)
+  const [baselineDate, setBaselineDate] = useState<string>(() => getOffsetDateIso(0));
+  const [baselineTime, setBaselineTime] = useState<string>("05:57 AM (Dawn Lock)");
+  const [baselineNotes, setBaselineNotes] = useState<string>("");
+
+  // Historical Records inline date editor state
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [editRecordDate, setEditRecordDate] = useState<string>("");
+  const [editRecordTime, setEditRecordTime] = useState<string>("");
 
   // 1. Morning Balances State
   const [cashFloat, setCashFloat] = useState<string>(String(cash_register_balance ?? 0));
@@ -166,6 +208,39 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend }: Mo
     setTimeout(() => setDebtSuccessNote(null), 4000);
   };
 
+  // Historical Morning Baseline: Start Inline Editing Date
+  const handleStartEditRecord = (record: { id: string; date: string; timestamp: string }) => {
+    setEditingRecordId(record.id);
+    let iso = getOffsetDateIso(0);
+    if (record.date === "Yesterday") {
+      iso = getOffsetDateIso(1);
+    } else if (record.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      iso = record.date;
+    }
+    setEditRecordDate(iso);
+    setEditRecordTime(record.timestamp || "05:57 AM (Dawn Lock)");
+  };
+
+  // Historical Morning Baseline: Save Date & Timestamp
+  const handleSaveRecordDate = (recordId: string) => {
+    if (onUpdateMorningBookendDate) {
+      const parts = editRecordDate.split("-");
+      let formattedLabel = editRecordDate;
+      if (parts.length === 3) {
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        formattedLabel = d.toLocaleDateString("en-KE", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+      }
+      onUpdateMorningBookendDate(
+        recordId, 
+        formattedLabel, 
+        editRecordTime ? `${formattedLabel}, ${editRecordTime}` : formattedLabel
+      );
+    }
+    setEditingRecordId(null);
+    setDebtSuccessNote("Historical baseline date updated successfully!");
+    setTimeout(() => setDebtSuccessNote(null), 4000);
+  };
+
   // Lock Morning Baseline & Open Shop
   const handleConfirmAll = () => {
     const payloadOpeningCounts = Object.keys(openingCounts).map((id) => ({
@@ -178,13 +253,17 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend }: Mo
       mpesaFloat: mpesaNum,
       equitelBalance: equitelNum,
       updatedCustomers: debtorsList,
-      openingCounts: payloadOpeningCounts
+      openingCounts: payloadOpeningCounts,
+      baselineDate,
+      baselineTime,
+      notes: baselineNotes || `Dawn baseline locked for trading (${formatHumanDate(baselineDate)})`
     });
 
+    const isRetro = baselineDate !== getOffsetDateIso(0);
     setSuccessMsg(
-      `Morning bookend sealed! Cash (${currency} ${cashNum.toLocaleString()}), M-Pesa (${currency} ${mpesaNum.toLocaleString()}), Equitel Paybill (${currency} ${equitelNum.toLocaleString()}) and ${debtorsList.length} customer debts calibrated for today.`
+      `Morning bookend for ${formatHumanDate(baselineDate)} sealed! Cash (${currency} ${cashNum.toLocaleString()}), M-Pesa (${currency} ${mpesaNum.toLocaleString()}), Equitel Paybill (${currency} ${equitelNum.toLocaleString()}) and ${debtorsList.length} customer debts calibrated.${isRetro ? " (Retrospective entry logged in Dawn Baseline Audit Trail)." : ""}`
     );
-    setTimeout(() => setSuccessMsg(null), 7000);
+    setTimeout(() => setSuccessMsg(null), 8000);
   };
 
   return (
@@ -232,7 +311,7 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend }: Mo
             </div>
             <div>
               <h3 className="text-sm font-bold text-white flex items-center gap-2 font-mono">
-                Morning Bookend Baseline Tracker (05:57 AM Dawn Lock)
+                Morning Bookend Baseline Tracker ({formatHumanDate(baselineDate)} &bull; {baselineTime})
               </h3>
               <p className="text-[11px] text-slate-400">
                 Sealed opening baseline for cash drawer, M-Pesa till, carried-over deni, and shelf stock.
@@ -243,7 +322,7 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend }: Mo
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Dawn Baseline Sealed &bull; Active
+              {baselineDate === getOffsetDateIso(0) ? "Dawn Baseline Sealed • Active" : `Baseline: ${formatHumanDate(baselineDate)}`}
             </span>
           </div>
         </div>
@@ -332,15 +411,179 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend }: Mo
             </div>
             <button
               onClick={() => {
-                const el = document.getElementById("step1-liquidity");
+                const el = document.getElementById("step0-date-section");
                 if (el) el.scrollIntoView({ behavior: "smooth" });
               }}
               className="text-[10px] text-emerald-400 hover:text-emerald-300 font-mono font-bold underline cursor-pointer text-left pt-1"
             >
-              Re-calibrate Today's Balances &darr;
+              Re-calibrate Date &amp; Balances &darr;
             </button>
           </div>
 
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* STEP 0: BASELINE OPERATING DATE & SHIFT (EDITABLE / RETROSPECTIVE) */}
+      {/* ======================================================== */}
+      <div id="step0-date-section" className="bg-[#0e1713] border-2 border-amber-500/50 rounded-2xl p-5 shadow-2xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-950/80 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30 shrink-0">
+              <Calendar size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider">
+                  Baseline Operating Date &amp; Dawn Shift (Editable)
+                </h3>
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30">
+                  {baselineDate === getOffsetDateIso(0) ? "Today's Baseline" : "Retrospective / Catch-up Entry"}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 mt-0.5">
+                Inputting Monday's details on Wednesday? Choose any operating date below. The morning cash floats, customer debts, and shelf counts will be calibrated under this chosen day.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-right shrink-0">
+            <div className="px-3.5 py-1.5 rounded-xl bg-[#060c09] border border-amber-500/40 text-xs font-mono">
+              <span className="text-slate-400 block text-[10px] uppercase font-semibold">Active Baseline Date</span>
+              <span className="text-amber-300 font-bold">{formatHumanDate(baselineDate)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* QUICK PRESET BUTTONS (TODAY, YESTERDAY, MONDAY, 2 DAYS AGO) */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="text-xs text-slate-400 font-mono font-bold flex items-center gap-1 mr-1">
+            <Clock size={13} className="text-amber-400" /> Quick Presets:
+          </span>
+          <button
+            type="button"
+            onClick={() => setBaselineDate(getOffsetDateIso(0))}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              baselineDate === getOffsetDateIso(0)
+                ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30"
+                : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700"
+            }`}
+          >
+            Today ({getOffsetDateIso(0)})
+          </button>
+          <button
+            type="button"
+            onClick={() => setBaselineDate(getOffsetDateIso(1))}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              baselineDate === getOffsetDateIso(1)
+                ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30"
+                : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700"
+            }`}
+          >
+            Yesterday ({getOffsetDateIso(1)})
+          </button>
+          <button
+            type="button"
+            onClick={() => setBaselineDate(getRecentMondayIso())}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              baselineDate === getRecentMondayIso() && baselineDate !== getOffsetDateIso(0)
+                ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30"
+                : "bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40"
+            }`}
+          >
+            Monday ({getRecentMondayIso()}) &bull; Catch-up
+          </button>
+          <button
+            type="button"
+            onClick={() => setBaselineDate(getOffsetDateIso(2))}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              baselineDate === getOffsetDateIso(2)
+                ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30"
+                : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700"
+            }`}
+          >
+            2 Days Ago ({getOffsetDateIso(2)})
+          </button>
+        </div>
+
+        {/* INPUT FIELDS: CALENDAR PICKER + TIME SHIFT + NOTES */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+          {/* 1. Date Picker */}
+          <div className="p-3.5 bg-[#060c09] rounded-xl border border-slate-800 space-y-1.5">
+            <label className="text-[11px] font-mono text-slate-300 uppercase font-bold flex items-center gap-1.5">
+              <Calendar size={13} className="text-amber-400" />
+              1. Operating Date (Picker)
+            </label>
+            <input
+              type="date"
+              value={baselineDate}
+              onChange={(e) => setBaselineDate(e.target.value)}
+              className="w-full bg-[#0a1510] border border-slate-700 rounded-lg p-2 text-white font-mono text-sm font-bold focus:border-amber-400 focus:outline-none"
+            />
+            <span className="text-[10px] text-amber-300/80 font-mono block">
+              Selected: {formatHumanDate(baselineDate)}
+            </span>
+          </div>
+
+          {/* 2. Dawn Lock Time */}
+          <div className="p-3.5 bg-[#060c09] rounded-xl border border-slate-800 space-y-1.5">
+            <label className="text-[11px] font-mono text-slate-300 uppercase font-bold flex items-center gap-1.5">
+              <Clock size={13} className="text-amber-400" />
+              2. Baseline Time / Shift
+            </label>
+            <input
+              type="text"
+              value={baselineTime}
+              onChange={(e) => setBaselineTime(e.target.value)}
+              placeholder="e.g. 05:57 AM (Dawn Lock)"
+              className="w-full bg-[#0a1510] border border-slate-700 rounded-lg p-2 text-white font-mono text-sm focus:border-amber-400 focus:outline-none font-bold"
+            />
+            <div className="flex gap-1.5 pt-0.5">
+              {["05:57 AM (Dawn Lock)", "06:30 AM (Opening)", "07:30 AM (Rush)"].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setBaselineTime(t)}
+                  className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono cursor-pointer"
+                >
+                  {t.split(" ")[0]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 3. Retrospective Notes */}
+          <div className="p-3.5 bg-[#060c09] rounded-xl border border-slate-800 space-y-1.5">
+            <label className="text-[11px] font-mono text-slate-300 uppercase font-bold flex items-center gap-1.5">
+              <Edit3 size={13} className="text-amber-400" />
+              3. Operational Notes (Optional)
+            </label>
+            <input
+              type="text"
+              value={baselineNotes}
+              onChange={(e) => setBaselineNotes(e.target.value)}
+              placeholder="e.g. Entering Monday opening details on Wednesday..."
+              className="w-full bg-[#0a1510] border border-slate-700 rounded-lg p-2 text-white font-sans text-xs focus:border-amber-400 focus:outline-none"
+            />
+            <span className="text-[10px] text-slate-400 font-mono block">
+              Saved with this morning baseline record
+            </span>
+          </div>
+        </div>
+
+        {/* DYNAMIC CONFIRMATION BANNER */}
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between text-xs font-mono text-amber-200 gap-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
+            <span>
+              Baseline Target Date: <strong className="text-white font-bold">{formatHumanDate(baselineDate)}</strong> at <strong className="text-white font-bold">{baselineTime}</strong>
+            </span>
+          </div>
+          {baselineDate !== getOffsetDateIso(0) && (
+            <span className="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold self-start sm:self-auto">
+              RETROSPECTIVE BACKDATE ACTIVE
+            </span>
+          )}
         </div>
       </div>
 
@@ -805,10 +1048,10 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend }: Mo
           ]).map((record) => (
             <div
               key={record.id}
-              className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-2 text-xs font-mono"
+              className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-2.5 text-xs font-mono"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold text-white font-sans text-sm">{record.date}</span>
                   <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
                     {record.timestamp}
@@ -816,6 +1059,14 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend }: Mo
                   <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
                     {record.status === "LOCKED_DAWN" ? "✓ Baseline Sealed" : "In Progress"}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => handleStartEditRecord(record)}
+                    className="text-[10px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 flex items-center gap-1 transition cursor-pointer font-sans"
+                    title="Edit date and time for this historical morning baseline"
+                  >
+                    <Edit3 size={11} /> Edit Date
+                  </button>
                 </div>
 
                 <div className="text-right">
@@ -823,6 +1074,88 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend }: Mo
                   <strong className="text-emerald-400 text-sm">{currency} {record.total_liquidity.toLocaleString()}</strong>
                 </div>
               </div>
+
+              {/* INLINE DATE & TIME EDITOR FOR THIS HISTORICAL RECORD */}
+              {editingRecordId === record.id && (
+                <div className="p-3 bg-[#0a1510] border border-amber-500/50 rounded-xl space-y-3 animate-in fade-in">
+                  <div className="flex items-center justify-between text-xs text-amber-300 font-mono font-bold">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar size={13} /> Edit Baseline Date &amp; Shift Timestamp
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-normal">ID: {record.id}</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">
+                        Operating Date
+                      </label>
+                      <input
+                        type="date"
+                        value={editRecordDate}
+                        onChange={(e) => setEditRecordDate(e.target.value)}
+                        className="w-full bg-[#060c09] border border-slate-700 rounded-lg p-2 text-white font-mono text-xs focus:border-amber-400 focus:outline-none font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-slate-400 uppercase font-bold block mb-1">
+                        Shift / Dawn Lock Time
+                      </label>
+                      <input
+                        type="text"
+                        value={editRecordTime}
+                        onChange={(e) => setEditRecordTime(e.target.value)}
+                        placeholder="e.g. 05:57 AM (Dawn Lock) or 07:28 PM"
+                        className="w-full bg-[#060c09] border border-slate-700 rounded-lg p-2 text-white font-mono text-xs focus:border-amber-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800">
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      <span className="text-[10px] text-slate-400 font-mono">Quick:</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditRecordDate(getOffsetDateIso(0))}
+                        className="text-[10px] px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 font-mono cursor-pointer"
+                      >
+                        Today
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditRecordDate(getOffsetDateIso(1))}
+                        className="text-[10px] px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 font-mono cursor-pointer"
+                      >
+                        Yesterday
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditRecordDate(getRecentMondayIso())}
+                        className="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-mono cursor-pointer"
+                      >
+                        Monday ({getRecentMondayIso()})
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingRecordId(null)}
+                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveRecordDate(record.id)}
+                        className="px-3 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs font-mono cursor-pointer shadow"
+                      >
+                        Save Date
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Breakdown Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 text-[11px]">

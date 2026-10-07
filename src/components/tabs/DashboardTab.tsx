@@ -78,7 +78,9 @@ export default function DashboardTab({ state, onNavigateTab, onOpenRestock }: Da
                   Morning Bookend Summary (Dawn Baseline Tracker)
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40">
-                  05:57 AM Dawn Lock
+                  {state.morning_bookends && state.morning_bookends.length > 0 
+                    ? `${state.morning_bookends[0].date} • ${state.morning_bookends[0].timestamp?.split(",")[1]?.trim() || "Dawn Lock"}`
+                    : "05:57 AM Dawn Lock"}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
