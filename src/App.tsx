@@ -30,6 +30,12 @@ import {
   PLATFORM_BLUEPRINTS,
   PROJECT_ALACIO_CASE_STUDY
 } from "./services/alacioStorage";
+import { 
+  upsertMorningBookend, 
+  deduplicateMorningBookends, 
+  resolveRecordIsoDate, 
+  formatRecordDisplayLabel 
+} from "./utils/morningBookendHelper";
 
 import DashboardTab from "./components/tabs/DashboardTab";
 import MorningBookendTab from "./components/tabs/MorningBookendTab";
@@ -321,13 +327,16 @@ export default function App() {
     }));
   };
 
-  // Reconciliation Execution
+  // Reconciliation Execution: Later overwrites former if entered twice for same date
   const handleCommitReconciliation = (audit: ReconciliationAudit) => {
-    setAlacioState((prev) => ({
-      ...prev,
-      reconciliations: [audit, ...prev.reconciliations],
-      last_updated: new Date().toISOString()
-    }));
+    setAlacioState((prev) => {
+      const filtered = (prev.reconciliations || []).filter((r) => r.date !== audit.date);
+      return {
+        ...prev,
+        reconciliations: [audit, ...filtered],
+        last_updated: new Date().toISOString()
+      };
+    });
   };
 
   // Update Inventory Stock from Daily Closing Count
@@ -463,6 +472,7 @@ export default function App() {
   };
 
   // Morning Bookend: Confirm Starting Balances (Cash, M-Pesa, Equitel Paybill), Yesterday Deni, & Shelf Counts
+  // RULE: If values were entered twice for the same date, always consider later information to overwrite former (no losing data)
   const handleConfirmMorningBookend = (payload: {
     cashFloat: number;
     mpesaFloat: number;
@@ -492,17 +502,8 @@ export default function App() {
     const totalUnits = updatedInventory.reduce((acc, i) => acc + i.current_stock, 0);
 
     const todayIso = new Date().toISOString().slice(0, 10);
-    let recordDateLabel = "Today";
-    if (payload.baselineDate) {
-      if (payload.baselineDate === todayIso) {
-        recordDateLabel = "Today";
-      } else {
-        const parsedD = new Date(payload.baselineDate + "T12:00:00");
-        recordDateLabel = !isNaN(parsedD.getTime())
-          ? parsedD.toLocaleDateString("en-KE", { weekday: "short", month: "short", day: "numeric", year: "numeric" })
-          : payload.baselineDate;
-      }
-    }
+    const targetIsoDate = payload.baselineDate || todayIso;
+    const recordDateLabel = formatRecordDisplayLabel(targetIsoDate);
 
     const timestampLabel = payload.baselineTime
       ? `${recordDateLabel}, ${payload.baselineTime}`
@@ -510,6 +511,7 @@ export default function App() {
 
     const newBookendRecord: MorningBookendRecord = {
       id: `mb_${Date.now()}`,
+      iso_date: targetIsoDate,
       date: recordDateLabel,
       timestamp: timestampLabel,
       cash_float: payload.cashFloat,
@@ -521,38 +523,59 @@ export default function App() {
       opening_shelf_units: totalUnits,
       opening_shelf_value: newKpis.total_active_shelf_retail_value,
       status: "LOCKED_DAWN",
-      notes: payload.notes || `Dawn baseline locked for trading (${recordDateLabel}): cash drawer, electronic float, and customer credit calibrated.`
+      notes: payload.notes || `Dawn baseline locked for trading (${recordDateLabel}): cash drawer, electronic float, and customer credit calibrated.`,
+      updated_at: new Date().toISOString()
     };
 
-    setAlacioState((prev) => ({
-      ...prev,
-      inventory: updatedInventory,
-      customers: payload.updatedCustomers,
-      cash_register_balance: payload.cashFloat,
-      mpesa_float_balance: payload.mpesaFloat,
-      equitel_account_balance: payload.equitelBalance,
-      morning_bookends: [newBookendRecord, ...(prev.morning_bookends || [])],
-      kpis: newKpis,
-      last_updated: new Date().toISOString()
-    }));
+    setAlacioState((prev) => {
+      // Later information overwrites former if date entered twice; all other dates preserved!
+      const { records: updatedMorningBookends } = upsertMorningBookend(prev.morning_bookends || [], newBookendRecord);
+
+      return {
+        ...prev,
+        inventory: updatedInventory,
+        customers: payload.updatedCustomers,
+        cash_register_balance: payload.cashFloat,
+        mpesa_float_balance: payload.mpesaFloat,
+        equitel_account_balance: payload.equitelBalance,
+        morning_bookends: updatedMorningBookends,
+        kpis: newKpis,
+        last_updated: new Date().toISOString()
+      };
+    });
   };
 
   // Morning Bookend: Retrospective / Inline Date Correction for Historical Audit Entries
-  const handleUpdateMorningBookendDate = (recordId: string, newDate: string, newTimestamp?: string, newNotes?: string) => {
-    setAlacioState((prev) => ({
-      ...prev,
-      morning_bookends: (prev.morning_bookends || []).map((mb) =>
-        mb.id === recordId
-          ? {
-              ...mb,
-              date: newDate,
-              timestamp: newTimestamp ?? mb.timestamp,
-              notes: newNotes !== undefined ? newNotes : mb.notes
-            }
-          : mb
-      ),
-      last_updated: new Date().toISOString()
-    }));
+  // If date is updated to match another record, later information overwrites former without data loss
+  const handleUpdateMorningBookendDate = (recordId: string, newDate: string, newTimestamp?: string, newNotes?: string, newIsoDate?: string) => {
+    setAlacioState((prev) => {
+      const existingRecords = prev.morning_bookends || [];
+      const targetRecord = existingRecords.find((mb) => mb.id === recordId);
+      if (!targetRecord) return prev;
+
+      const targetIso = newIsoDate || (newDate.match(/^\d{4}-\d{2}-\d{2}$/) ? newDate : resolveRecordIsoDate({ ...targetRecord, date: newDate }));
+      const displayLabel = formatRecordDisplayLabel(targetIso);
+
+      const updatedRecord: MorningBookendRecord = {
+        ...targetRecord,
+        iso_date: targetIso,
+        date: displayLabel,
+        timestamp: newTimestamp ?? (targetRecord.timestamp.includes(",") ? `${displayLabel}, ${targetRecord.timestamp.split(",").slice(1).join(",").trim()}` : displayLabel),
+        notes: newNotes !== undefined ? newNotes : targetRecord.notes,
+        updated_at: new Date().toISOString(),
+        was_overwritten: true
+      };
+
+      // Filter out this record and any former record that shared targetIso (later overwrites former)
+      const others = existingRecords.filter((mb) => mb.id !== recordId && resolveRecordIsoDate(mb) !== targetIso);
+      const updatedList = [updatedRecord, ...others];
+
+      return {
+        ...prev,
+        morning_bookends: deduplicateMorningBookends(updatedList),
+        last_updated: new Date().toISOString()
+      };
+    });
   };
 
   // Add Supplier Execution

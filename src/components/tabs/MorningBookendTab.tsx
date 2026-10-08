@@ -5,7 +5,13 @@ import {
   Users, Edit3, Plus, AlertTriangle, Layers, DollarSign, HelpCircle,
   Calendar, CheckSquare
 } from "lucide-react";
-import { AlacioMasterState, CustomerDebtor, InventoryItem } from "../../types/alacio";
+import { AlacioMasterState, CustomerDebtor, InventoryItem, MorningBookendRecord } from "../../types/alacio";
+import { 
+  deduplicateMorningBookends, 
+  resolveRecordIsoDate, 
+  formatRecordDisplayLabel, 
+  formatCanonicalDisplayDate 
+} from "../../utils/morningBookendHelper";
 
 export interface MorningBookendPayload {
   cashFloat: number;
@@ -21,7 +27,7 @@ export interface MorningBookendPayload {
 interface MorningBookendTabProps {
   state: AlacioMasterState;
   onConfirmMorningBookend: (payload: MorningBookendPayload) => void;
-  onUpdateMorningBookendDate?: (recordId: string, newDate: string, newTimestamp?: string, newNotes?: string) => void;
+  onUpdateMorningBookendDate?: (recordId: string, newDate: string, newTimestamp?: string, newNotes?: string, newIsoDate?: string) => void;
 }
 
 // Date helpers
@@ -209,44 +215,43 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend, onUp
   };
 
   // Historical Morning Baseline: Start Inline Editing Date
-  const handleStartEditRecord = (record: { id: string; date: string; timestamp: string }) => {
+  const handleStartEditRecord = (record: { id: string; date: string; timestamp: string; iso_date?: string; notes?: string }) => {
     setEditingRecordId(record.id);
-    let iso = getOffsetDateIso(0);
-    if (record.date === "Yesterday") {
-      iso = getOffsetDateIso(1);
-    } else if (record.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      iso = record.date;
-    }
+    const iso = resolveRecordIsoDate(record);
     setEditRecordDate(iso);
-    setEditRecordTime(record.timestamp || "05:57 AM (Dawn Lock)");
+    setEditRecordTime(record.timestamp ? (record.timestamp.includes(",") ? record.timestamp.split(",").slice(1).join(",").trim() : record.timestamp) : "05:57 AM (Dawn Lock)");
   };
 
   // Historical Morning Baseline: Save Date & Timestamp
+  // If date was entered twice, later information overwrites former without data loss
   const handleSaveRecordDate = (recordId: string) => {
     if (onUpdateMorningBookendDate) {
-      const parts = editRecordDate.split("-");
-      let formattedLabel = editRecordDate;
-      if (parts.length === 3) {
-        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-        formattedLabel = d.toLocaleDateString("en-KE", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
-      }
+      const displayLabel = formatRecordDisplayLabel(editRecordDate);
       onUpdateMorningBookendDate(
         recordId, 
-        formattedLabel, 
-        editRecordTime ? `${formattedLabel}, ${editRecordTime}` : formattedLabel
+        displayLabel, 
+        editRecordTime ? `${displayLabel}, ${editRecordTime}` : displayLabel,
+        undefined,
+        editRecordDate
       );
     }
     setEditingRecordId(null);
-    setDebtSuccessNote("Historical baseline date updated successfully!");
-    setTimeout(() => setDebtSuccessNote(null), 4000);
+    setDebtSuccessNote(`Historical baseline date updated to ${formatCanonicalDisplayDate(editRecordDate)}! If this date already existed, later values overwrote former with zero data loss.`);
+    setTimeout(() => setDebtSuccessNote(null), 5000);
   };
 
   // Lock Morning Baseline & Open Shop
+  // RULE: If date was entered twice, later information overwrites former (no loss of any data)
   const handleConfirmAll = () => {
     const payloadOpeningCounts = Object.keys(openingCounts).map((id) => ({
       id,
       openingStock: openingCounts[id]
     }));
+
+    const existingForDate = (state.morning_bookends || []).find(
+      (mb) => resolveRecordIsoDate(mb) === baselineDate
+    );
+    const isOverwriting = Boolean(existingForDate);
 
     onConfirmMorningBookend({
       cashFloat: cashNum,
@@ -261,7 +266,13 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend, onUp
 
     const isRetro = baselineDate !== getOffsetDateIso(0);
     setSuccessMsg(
-      `Morning bookend for ${formatHumanDate(baselineDate)} sealed! Cash (${currency} ${cashNum.toLocaleString()}), M-Pesa (${currency} ${mpesaNum.toLocaleString()}), Equitel Paybill (${currency} ${equitelNum.toLocaleString()}) and ${debtorsList.length} customer debts calibrated.${isRetro ? " (Retrospective entry logged in Dawn Baseline Audit Trail)." : ""}`
+      `Morning bookend for ${formatHumanDate(baselineDate)} sealed! Cash (${currency} ${cashNum.toLocaleString()}), M-Pesa (${currency} ${mpesaNum.toLocaleString()}), Equitel (${currency} ${equitelNum.toLocaleString()}) and ${debtorsList.length} debts calibrated. ${
+        isOverwriting 
+          ? "Notice: Overwrote former entry for this date with your latest numbers. All other dates remain intact." 
+          : isRetro 
+          ? "(Retrospective catch-up entry logged cleanly)." 
+          : ""
+      }`
     );
     setTimeout(() => setSuccessMsg(null), 8000);
   };
@@ -570,6 +581,46 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend, onUp
             </span>
           </div>
         </div>
+
+        {/* EXISTING BASELINE NOTICE: Later info overwrites former (zero data loss) */}
+        {(() => {
+          const existing = (state.morning_bookends || []).find(
+            (mb) => resolveRecordIsoDate(mb) === baselineDate
+          );
+          if (!existing) return null;
+          return (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/40 rounded-xl space-y-1 text-xs font-mono">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                  <AlertTriangle size={14} className="text-amber-400 shrink-0" />
+                  Baseline already logged for {formatCanonicalDisplayDate(baselineDate)}
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
+                  Rule: Later entry will overwrite former
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Former Total Starting Liquidity: <strong className="text-emerald-400">{currency} {existing.total_liquidity.toLocaleString()}</strong> (Cash: {currency} {existing.cash_float.toLocaleString()} &bull; Float: {currency} {existing.mpesa_float.toLocaleString()} &bull; Equitel: {currency} {existing.equitel_balance.toLocaleString()}).
+                Submitting will overwrite the former entry with your latest inputs. All other dates remain completely safe with zero data loss.
+              </p>
+              <div className="pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCashFloat(existing.cash_float.toString());
+                    setMpesaFloat(existing.mpesa_float.toString());
+                    setEquitelBalance(existing.equitel_balance.toString());
+                    setDebtSuccessNote(`Loaded former balances for ${formatCanonicalDisplayDate(baselineDate)} into inputs for editing.`);
+                    setTimeout(() => setDebtSuccessNote(null), 4000);
+                  }}
+                  className="text-[11px] text-amber-300 hover:text-amber-200 underline font-bold cursor-pointer font-sans"
+                >
+                  &larr; Load these former numbers into inputs to adjust
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* DYNAMIC CONFIRMATION BANNER */}
         <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between text-xs font-mono text-amber-200 gap-2">
@@ -1008,13 +1059,13 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend, onUp
               Morning Bookends History &amp; Dawn Baseline Audit Trail
             </h3>
           </div>
-          <span className="text-[10px] text-slate-500 font-mono">
-            {state.morning_bookends?.length || 2} Recorded Morning Baselines
+          <span className="text-[10px] text-slate-400 font-mono">
+            {deduplicateMorningBookends(state.morning_bookends || []).length || 2} Recorded Baselines (Latest values active)
           </span>
         </div>
 
         <div className="space-y-3">
-          {(state.morning_bookends && state.morning_bookends.length > 0 ? state.morning_bookends : [
+          {deduplicateMorningBookends(state.morning_bookends && state.morning_bookends.length > 0 ? state.morning_bookends : [
             {
               id: "mb_today",
               date: "Today",
@@ -1045,20 +1096,29 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend, onUp
               status: "LOCKED_DAWN" as const,
               notes: "Prior day baseline sealed cleanly."
             }
-          ]).map((record) => (
+          ]).map((record) => {
+            const recordIso = resolveRecordIsoDate(record);
+            const displayTitle = formatRecordDisplayLabel(recordIso);
+
+            return (
             <div
               key={record.id}
               className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-2.5 text-xs font-mono"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-white font-sans text-sm">{record.date}</span>
+                  <span className="font-bold text-white font-sans text-sm">{displayTitle}</span>
                   <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
                     {record.timestamp}
                   </span>
                   <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
                     {record.status === "LOCKED_DAWN" ? "✓ Baseline Sealed" : "In Progress"}
                   </span>
+                  {record.was_overwritten && (
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-bold">
+                      ✓ Latest (Overwrote Former)
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleStartEditRecord(record)}
@@ -1110,6 +1170,24 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend, onUp
                       />
                     </div>
                   </div>
+
+                  {(() => {
+                    const conflict = (state.morning_bookends || []).find(
+                      (r) => r.id !== record.id && resolveRecordIsoDate(r) === editRecordDate
+                    );
+                    if (!conflict) return null;
+                    return (
+                      <div className="p-2 rounded bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300 space-y-0.5">
+                        <span className="font-bold flex items-center gap-1">
+                          <AlertTriangle size={12} />
+                          Note: A baseline already exists for {formatCanonicalDisplayDate(editRecordDate)} ({currency} {conflict.total_liquidity.toLocaleString()})
+                        </span>
+                        <p className="text-[10px] text-slate-300">
+                          Saving will overwrite that former baseline with this record's numbers as per your rule. No other dates will be affected.
+                        </p>
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800">
                     <div className="flex flex-wrap gap-1.5 items-center">
@@ -1186,7 +1264,8 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend, onUp
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

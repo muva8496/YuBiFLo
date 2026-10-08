@@ -164,10 +164,13 @@ export default function SupplierLogTab({ state, onLogMultiDelivery, onAddSupplie
     }
   ]);
 
-  // Aggregate totals across all items in current delivery
-  const totalDeliveryCost = deliveryItems.reduce((acc, item) => acc + (item.lineCost || 0), 0);
+  // Aggregate totals across all items in current delivery (numeric safe addition)
+  const totalDeliveryCost = deliveryItems.reduce(
+    (acc, item) => acc + (Number(item.lineCost) || 0), 
+    0
+  );
   const totalRetailValue = deliveryItems.reduce(
-    (acc, item) => acc + (item.retailUnitsAdded * item.retailPrice || 0), 
+    (acc, item) => acc + ((Number(item.retailUnitsAdded) || 0) * (Number(item.retailPrice) || 0)), 
     0
   );
   const totalExpectedProfit = totalRetailValue - totalDeliveryCost;
@@ -202,28 +205,42 @@ export default function SupplierLogTab({ state, onLogMultiDelivery, onAddSupplie
       prev.map((item) => {
         if (item.id !== id) return item;
 
-        const updated = { ...item, [field]: value };
+        let parsedVal = value;
+        if (field === "lineCost" || field === "retailPrice" || field === "supplyUnitsReceived" || field === "conversionRatio") {
+          parsedVal = value === "" ? 0 : Number(value) || 0;
+        }
+
+        const updated = { ...item, [field]: parsedVal };
 
         // Recalculate derived units & costs if quantities change
         if (field === "supplyUnitsReceived" || field === "conversionRatio") {
-          const sQty = field === "supplyUnitsReceived" ? parseFloat(value) || 0 : item.supplyUnitsReceived;
-          const ratio = field === "conversionRatio" ? parseFloat(value) || 1 : item.conversionRatio;
+          const sQty = field === "supplyUnitsReceived" ? Number(parsedVal) || 0 : Number(item.supplyUnitsReceived) || 0;
+          const ratio = field === "conversionRatio" ? Number(parsedVal) || 1 : Number(item.conversionRatio) || 1;
           const totalMicro = BulkConversionEngine.convertSupplyToRetailUnits(sQty, ratio);
           updated.retailUnitsAdded = totalMicro;
-          if (totalMicro > 0 && updated.lineCost > 0) {
-            updated.unitCostAtDelivery = Math.round((updated.lineCost / totalMicro) * 100) / 100;
+          const c = Number(updated.lineCost) || 0;
+          if (totalMicro > 0 && c > 0) {
+            updated.unitCostAtDelivery = Math.round((c / totalMicro) * 100) / 100;
+          }
+          if (updated.retailPrice) {
+            updated.expectedMargin = Math.max(0, Number(updated.retailPrice) - updated.unitCostAtDelivery);
           }
         }
 
         if (field === "lineCost") {
-          const cost = parseFloat(value) || 0;
+          const cost = Number(parsedVal) || 0;
+          updated.lineCost = cost;
           if (updated.retailUnitsAdded > 0) {
             updated.unitCostAtDelivery = Math.round((cost / updated.retailUnitsAdded) * 100) / 100;
+          }
+          if (updated.retailPrice) {
+            updated.expectedMargin = Math.max(0, Number(updated.retailPrice) - updated.unitCostAtDelivery);
           }
         }
 
         if (field === "retailPrice") {
-          const ret = parseFloat(value) || 0;
+          const ret = Number(parsedVal) || 0;
+          updated.retailPrice = ret;
           updated.expectedMargin = Math.max(0, ret - updated.unitCostAtDelivery);
         }
 

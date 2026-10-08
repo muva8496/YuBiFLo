@@ -11,6 +11,7 @@ import {
   SupplierProfile,
   MorningBookendRecord
 } from "../types/alacio";
+import { deduplicateMorningBookends } from "../utils/morningBookendHelper";
 import { db, handleFirestoreError, OperationType } from "./firebase";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -509,7 +510,8 @@ export function loadAlacioState(): AlacioMasterState {
       const wh = Array.isArray(parsed.warehouse) ? parsed.warehouse : INITIAL_WAREHOUSE_BATCHES;
       const cust = Array.isArray(parsed.customers) ? parsed.customers : INITIAL_CUSTOMERS;
       const supp = Array.isArray(parsed.suppliers) ? parsed.suppliers : INITIAL_SUPPLIERS;
-      const mb = Array.isArray(parsed.morning_bookends) ? parsed.morning_bookends : INITIAL_MORNING_BOOKENDS;
+      const rawMb = Array.isArray(parsed.morning_bookends) ? parsed.morning_bookends : INITIAL_MORNING_BOOKENDS;
+      const mb = deduplicateMorningBookends(rawMb);
       const fd = Array.isArray(parsed.floatDenominations) ? parsed.floatDenominations : INITIAL_FLOAT_DENOMINATIONS;
 
       const todayStr = new Date().toISOString().slice(0, 10);
@@ -521,6 +523,17 @@ export function loadAlacioState(): AlacioMasterState {
         ...p,
         date: p.date || (p.timestamp && p.timestamp.match(/^\d{4}-\d{2}-\d{2}/) ? p.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0] : todayStr)
       }));
+
+      // Evening Reconciliations: If entered twice for the same date, later overwrites former
+      const rawRecons = Array.isArray(parsed.reconciliations) ? parsed.reconciliations : [];
+      const reconsMap = new Map<string, any>();
+      rawRecons.forEach((r: any) => {
+        const d = r.date || r.timestamp?.slice(0, 10) || "today";
+        if (!reconsMap.has(d)) {
+          reconsMap.set(d, r);
+        }
+      });
+      const normalizedReconciliations = Array.from(reconsMap.values());
 
       return {
         ...INITIAL_ALACIO_STATE,
@@ -534,7 +547,7 @@ export function loadAlacioState(): AlacioMasterState {
         salesLedger: normalizedSales,
         payouts: normalizedPayouts,
         mpesaStatements: Array.isArray(parsed.mpesaStatements) ? parsed.mpesaStatements : [],
-        reconciliations: Array.isArray(parsed.reconciliations) ? parsed.reconciliations : [],
+        reconciliations: normalizedReconciliations,
         mpesa_float_balance: parsed.mpesa_float_balance ?? 0,
         cash_register_balance: parsed.cash_register_balance ?? 0,
         equitel_account_balance: parsed.equitel_account_balance ?? 0,

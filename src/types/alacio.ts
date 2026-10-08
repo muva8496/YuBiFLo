@@ -42,6 +42,7 @@ export interface MorningBookendRecord {
   id: string;
   date: string;
   timestamp: string;
+  iso_date?: string; // Canonical YYYY-MM-DD operating date
   cash_float: number;
   mpesa_float: number;
   equitel_balance: number;
@@ -52,6 +53,8 @@ export interface MorningBookendRecord {
   opening_shelf_value: number;
   status: "LOCKED_DAWN" | "IN_PROGRESS";
   notes?: string;
+  updated_at?: string;
+  was_overwritten?: boolean;
 }
 
 export interface FloatDenomination {
