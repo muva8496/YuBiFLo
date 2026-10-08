@@ -100,22 +100,22 @@ export default function EveningReconciliationTab({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold text-white flex items-center gap-2 font-serif">
-              <Scale className="text-amber-400" size={24} /> Evening Reconciliation Dashboard
+              <Scale className="text-amber-400" size={24} /> Closing Audit Protocol // Reverse Math
             </h2>
             <span className="text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-bold">
-              Reverse Inventory Math
+              Gamma Calculus &bull; 0-Drift
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            <strong>Implied Sales Volume = (Opening Stock + Incoming Supply) &minus; Ending Stock</strong>. Compares expected revenue against real M-Pesa statements and drawer cash.
+            Cold calculus: <strong>Implied Sales = (Opening + Inbound) &minus; Ending</strong>. Tested against real drawer cash &amp; M-Pesa statements. Zero excuses.
           </p>
         </div>
 
         <button
           onClick={handleCommit}
-          className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0"
+          className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0 font-mono"
         >
-          <Check size={16} /> Seal Daily Audit
+          <Check size={16} /> Seal Closing Audit
         </button>
       </div>
 

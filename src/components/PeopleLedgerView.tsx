@@ -625,27 +625,49 @@ export const PeopleLedgerView: React.FC<PeopleLedgerViewProps> = ({
   const [newSuppTerms, setNewSuppTerms] = useState<
     "CASH_ON_DELIVERY" | "CREDIT_7_DAYS" | "CREDIT_14_DAYS" | "CREDIT_30_DAYS"
   >("CREDIT_7_DAYS");
+  const [isSubmittingSupplierLedger, setIsSubmittingSupplierLedger] = useState(false);
 
   const handleCreateSupplier = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSuppName) return;
+    if (isSubmittingSupplierLedger) return;
+    if (!newSuppName.trim()) return;
 
-    const supplier: Supplier = {
-      id: `supp-${Date.now()}`,
-      merchant_id: merchant.id,
-      name: newSuppName,
-      phone: newSuppPhone,
-      national_id: newSuppNationalId.trim() || undefined,
-      contact_person: newSuppContact,
-      category: newSuppCategory,
-      location: newSuppLocation,
-      payment_terms: newSuppTerms,
-      total_supplied_value: 0,
-      total_paid_value: 0,
-      outstanding_balance_owed: 0,
-      bank_or_paybill_details: newSuppPayDetails,
-      created_at: new Date().toISOString(),
-    };
+    setIsSubmittingSupplierLedger(true);
+
+    const normName = newSuppName.trim().toLowerCase();
+    const nid = newSuppNationalId.trim();
+    const existing = suppliers.find(
+      (s) => (nid && s.national_id && s.national_id.trim() === nid) ||
+             (s.name && s.name.trim().toLowerCase() === normName)
+    );
+
+    const supplier: Supplier = existing
+      ? {
+          ...existing,
+          phone: newSuppPhone.trim() !== "+254" ? newSuppPhone : existing.phone,
+          national_id: nid || existing.national_id,
+          contact_person: newSuppContact || existing.contact_person,
+          category: newSuppCategory || existing.category,
+          location: newSuppLocation || existing.location,
+          payment_terms: newSuppTerms || existing.payment_terms,
+          bank_or_paybill_details: newSuppPayDetails || existing.bank_or_paybill_details,
+        }
+      : {
+          id: `supp-${Date.now()}`,
+          merchant_id: merchant.id,
+          name: newSuppName.trim(),
+          phone: newSuppPhone,
+          national_id: nid || undefined,
+          contact_person: newSuppContact,
+          category: newSuppCategory,
+          location: newSuppLocation,
+          payment_terms: newSuppTerms,
+          total_supplied_value: 0,
+          total_paid_value: 0,
+          outstanding_balance_owed: 0,
+          bank_or_paybill_details: newSuppPayDetails,
+          created_at: new Date().toISOString(),
+        };
 
     onAddSupplier(supplier);
     setShowAddSupplierModal(false);
@@ -653,6 +675,7 @@ export const PeopleLedgerView: React.FC<PeopleLedgerViewProps> = ({
     setNewSuppPhone("+254 ");
     setNewSuppNationalId("");
     setNewSuppContact("");
+    setIsSubmittingSupplierLedger(false);
   };
 
   // --- NEW CUSTOMER MODAL STATE ---

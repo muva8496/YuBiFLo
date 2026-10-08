@@ -27,38 +27,52 @@ export default function DashboardTab({ state, onNavigateTab, onOpenRestock }: Da
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800">
         <div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2 font-serif">
-            <Package className="text-emerald-400" size={22} /> Alacio Mini Shop Telemetry
+            <Package className="text-emerald-400" size={22} /> Command Terminal // Operational Telemetry
           </h2>
           <p className="text-xs text-slate-400">
-            Real-time shelf value, morning bookend baselines, customer deni tracking, and quick supplier management.
+            Cold precision. Real-time shelf capital, sealed dawn baselines, and counter liquidity.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => onNavigateTab("customers")}
-            className="px-3 py-1.5 bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer"
-            title="Add a new customer with National ID for credit"
+            onClick={() => onNavigateTab("sales_supply")}
+            className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer font-mono"
+            title="Crystallize implied sales on new supply box arrival"
           >
-            <Users size={14} /> + Customer
+            <Truck size={14} className="text-emerald-400" /> + Box Sale
           </button>
           <button
-            onClick={() => onNavigateTab("supplier_log")}
-            className="px-3 py-1.5 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer"
-            title="Add a new supplier distributor with National ID"
+            onClick={() => onNavigateTab("ledgers_accounts")}
+            className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer font-mono"
+            title="Open Personal, Real & Nominal T-Ledger accounts"
           >
-            <Truck size={14} /> + Supplier
+            <Scale size={14} className="text-amber-400" /> Ledgers (P/R/N)
+          </button>
+          <button
+            onClick={() => onNavigateTab("customers")}
+            className="px-3 py-1.5 bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer font-mono"
+            title="Register debtor account"
+          >
+            <Users size={14} /> + Debtor
+          </button>
+          <button
+            onClick={() => onNavigateTab("supply_stock_vault")}
+            className="px-3 py-1.5 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer font-mono"
+            title="Supply, Stock & Warehouse Hub"
+          >
+            <Building2 size={14} /> Supply Vault
           </button>
           <button
             onClick={() => onNavigateTab("voice_ledger")}
-            className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer font-mono"
           >
             <Mic size={14} /> Voice Ingest
           </button>
           <button
             onClick={onOpenRestock}
-            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow"
+            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow font-mono"
           >
-            <RefreshCw size={14} /> Restock Batch
+            <RefreshCw size={14} /> Restock SKU
           </button>
         </div>
       </div>
@@ -75,7 +89,7 @@ export default function DashboardTab({ state, onNavigateTab, onOpenRestock }: Da
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-white font-mono uppercase tracking-wider">
-                  Morning Bookend Summary (Dawn Baseline Tracker)
+                  Dawn Lock Protocol // Daybreak Vector
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40">
                   {state.morning_bookends && state.morning_bookends.length > 0 
@@ -84,7 +98,7 @@ export default function DashboardTab({ state, onNavigateTab, onOpenRestock }: Da
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Dawn anchor liquidity and carried-over customer deni against which evening reconciliation measures leakage.
+                Sealed anchor liquidity. Zero baseline drift tolerated before shop doors unlock.
               </p>
             </div>
           </div>
@@ -93,7 +107,7 @@ export default function DashboardTab({ state, onNavigateTab, onOpenRestock }: Da
             onClick={() => onNavigateTab("morning_bookend")}
             className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shrink-0 self-start sm:self-auto font-mono"
           >
-            <span>Track Morning Bookend</span>
+            <span>Dawn Protocol</span>
             <ArrowRight size={13} />
           </button>
         </div>
@@ -148,9 +162,9 @@ export default function DashboardTab({ state, onNavigateTab, onOpenRestock }: Da
           <div className="mt-3 text-3xl font-black text-emerald-400 font-mono tracking-tight">
             {currency} {kpis.total_active_shelf_retail_value.toLocaleString()}
           </div>
-          <p className="text-[11px] text-slate-500 mt-2 flex items-center gap-1">
+          <p className="text-[11px] text-slate-400 mt-2 flex items-center gap-1 font-mono">
             <ShieldCheck size={13} className="text-emerald-400" />
-            Across {kpis.total_active_items} active stocked FMCG items
+            {kpis.total_active_items} SKUs deployed &bull; Zero phantom stock
           </p>
         </div>
 
@@ -167,8 +181,8 @@ export default function DashboardTab({ state, onNavigateTab, onOpenRestock }: Da
           <div className="mt-3 text-3xl font-black text-white font-mono tracking-tight">
             {currency} {kpis.total_capital_invested.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">
-            Wholesale cash out tied in active shelf batches
+          <p className="text-[11px] text-slate-400 mt-2 font-mono">
+            Hard wholesale capital &bull; Pure principal
           </p>
         </div>
 
@@ -185,15 +199,15 @@ export default function DashboardTab({ state, onNavigateTab, onOpenRestock }: Da
           <div className="mt-3 text-3xl font-black text-teal-400 font-mono tracking-tight">
             {currency} {kpis.locked_in_potential_gross_profit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-[11px] text-emerald-400 mt-2 font-medium">
-            Avg markup: {kpis.avg_markup_percentage}% across catalog
+          <p className="text-[11px] text-emerald-400 mt-2 font-mono">
+            Calculated markup: {kpis.avg_markup_percentage}% catalog average
           </p>
         </div>
       </div>
 
       {/* SECONDARY ROW: DRAWER CASH & DEBT BOOK & WAREHOUSE QUICK TELEMETRY */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-[#121822] border border-slate-800 rounded-xl p-4 cursor-pointer hover:border-slate-700 transition" onClick={() => onNavigateTab("warehouse")}>
+        <div className="bg-[#121822] border border-slate-800 rounded-xl p-4 cursor-pointer hover:border-slate-700 transition" onClick={() => onNavigateTab("supply_stock_vault")}>
           <div className="flex items-center justify-between text-slate-400 text-xs">
             <span className="flex items-center gap-1.5"><Building2 size={14} className="text-emerald-400" /> Backroom Warehouse</span>
             <ArrowRight size={13} />

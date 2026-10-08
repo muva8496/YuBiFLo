@@ -12,6 +12,7 @@ import {
   MorningBookendRecord
 } from "../types/alacio";
 import { deduplicateMorningBookends } from "../utils/morningBookendHelper";
+import { deduplicateSuppliers } from "../utils/supplierHelper";
 import { db, handleFirestoreError, OperationType } from "./firebase";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -509,7 +510,8 @@ export function loadAlacioState(): AlacioMasterState {
         : INITIAL_INVENTORY_43;
       const wh = Array.isArray(parsed.warehouse) ? parsed.warehouse : INITIAL_WAREHOUSE_BATCHES;
       const cust = Array.isArray(parsed.customers) ? parsed.customers : INITIAL_CUSTOMERS;
-      const supp = Array.isArray(parsed.suppliers) ? parsed.suppliers : INITIAL_SUPPLIERS;
+      const rawSupp = Array.isArray(parsed.suppliers) ? parsed.suppliers : INITIAL_SUPPLIERS;
+      const supp = deduplicateSuppliers(rawSupp);
       const rawMb = Array.isArray(parsed.morning_bookends) ? parsed.morning_bookends : INITIAL_MORNING_BOOKENDS;
       const mb = deduplicateMorningBookends(rawMb);
       const fd = Array.isArray(parsed.floatDenominations) ? parsed.floatDenominations : INITIAL_FLOAT_DENOMINATIONS;

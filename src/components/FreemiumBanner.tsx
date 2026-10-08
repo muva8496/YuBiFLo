@@ -27,21 +27,21 @@ export default function FreemiumBanner({
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
           <span className="font-bold text-amber-300 font-serif text-sm flex items-center gap-1.5">
-            <Sparkles size={14} className="text-amber-400" /> Your Weekly Financial Health Report Is Ready
+            <Sparkles size={14} className="text-amber-400" /> Quantitative Financial Health Report
           </span>
           <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 font-bold">
-            {currentTier === "FREE_STARTER" ? "Free Starter Mode" : currentTier === "PAID_BLUEPRINT" ? "Paid Blueprint Plan" : "Agency CDO"}
+            {currentTier === "FREE_STARTER" ? "Free Vector" : currentTier === "PAID_BLUEPRINT" ? "Sovereign Tier" : "CDO Node"}
           </span>
         </div>
 
         <p className="text-slate-300 text-[11px] leading-relaxed">
           {currentTier === "FREE_STARTER" ? (
             <>
-              You have logged <strong>{vcrCount}/{maxFreeVcr}</strong> free voice transactions today. Upgrade to unlock full P&amp;L reports, warehouse batch tracking, and debtor aging.
+              <strong>{vcrCount}/{maxFreeVcr}</strong> audio vectors ingested today. Upgrade for full P&amp;L telemetry and warehouse tracking.
             </>
           ) : (
             <>
-              Alacio Mini Shop has completed <strong>{cleanTradingDays} of 30 clean trading days</strong>. Tier 3 predictive stockout and expansion-readiness data science models are building your picture.
+              <strong>{cleanTradingDays}/30 clean trading cycles verified</strong>. Zero leakage. Multi-store expansion models compiling.
             </>
           )}
         </p>

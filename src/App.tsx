@@ -4,7 +4,7 @@ import {
   AlertTriangle, Layers, Database, BarChart3, BrainCircuit, Eye, 
   LayoutDashboard, Mic, Zap, Clock, Package, Users, Scale, RefreshCw, BarChart2,
   Smartphone, HelpCircle, Download, Radio, Sun, Truck, Languages, Camera, CheckCircle2,
-  ArrowUpDown
+  ArrowUpDown, BookOpen, TrendingUp
 } from "lucide-react";
 
 import { 
@@ -36,6 +36,10 @@ import {
   resolveRecordIsoDate, 
   formatRecordDisplayLabel 
 } from "./utils/morningBookendHelper";
+import { 
+  upsertSupplier, 
+  deduplicateSuppliers 
+} from "./utils/supplierHelper";
 
 import DashboardTab from "./components/tabs/DashboardTab";
 import MorningBookendTab from "./components/tabs/MorningBookendTab";
@@ -53,6 +57,10 @@ import CustomersCreditTab from "./components/tabs/CustomersCreditTab";
 import TLedgersTab from "./components/tabs/TLedgersTab";
 import ReconciliationTab from "./components/tabs/ReconciliationTab";
 import AnalyticsTab from "./components/tabs/AnalyticsTab";
+import ProprietorDataWarehouseTab from "./components/tabs/ProprietorDataWarehouseTab";
+import SupplyDrivenSalesTab from "./components/tabs/SupplyDrivenSalesTab";
+import LedgerAccountsHubTab from "./components/tabs/LedgerAccountsHubTab";
+import SupplyStockVaultTab from "./components/tabs/SupplyStockVaultTab";
 import HomeScreenDiamonds from "./components/HomeScreenDiamonds";
 import TemplateInDevelopmentView from "./components/TemplateInDevelopmentView";
 import PullOwnAppModal from "./components/PullOwnAppModal";
@@ -327,6 +335,24 @@ export default function App() {
     }));
   };
 
+  // Edit Customer Account: Correct mis-typed phone number, Kenyan National ID, or credit details
+  const handleEditCustomer = (customerId: string, updatedData: Partial<CustomerDebtor>) => {
+    setAlacioState((prev) => ({
+      ...prev,
+      customers: prev.customers.map((c) => (c.id === customerId ? { ...c, ...updatedData } : c)),
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Delete Customer Account: Safe removal of customer entered wrong (all other data preserved)
+  const handleDeleteCustomer = (customerId: string) => {
+    setAlacioState((prev) => ({
+      ...prev,
+      customers: prev.customers.filter((c) => c.id !== customerId),
+      last_updated: new Date().toISOString()
+    }));
+  };
+
   // Reconciliation Execution: Later overwrites former if entered twice for same date
   const handleCommitReconciliation = (audit: ReconciliationAudit) => {
     setAlacioState((prev) => {
@@ -578,7 +604,7 @@ export default function App() {
     });
   };
 
-  // Add Supplier Execution
+  // Add Supplier Execution: Guarantees no matter how many times Enter is pressed, suppliers only recorded once (no data lost)
   const handleAddSupplier = (newSupplier: {
     name: string;
     company: string;
@@ -590,18 +616,129 @@ export default function App() {
     till_or_account?: string;
     payment_terms?: string;
   }) => {
-    const created: SupplierProfile = {
-      ...newSupplier,
-      id: `supp_${Date.now()}`,
-      total_orders_cost: 0,
-      last_delivery_date: "Never"
-    };
+    setAlacioState((prev) => {
+      const { updatedList } = upsertSupplier(prev.suppliers || [], newSupplier);
+      return {
+        ...prev,
+        suppliers: updatedList,
+        last_updated: new Date().toISOString()
+      };
+    });
+  };
 
+  // Edit Supplier Account: Correct mis-typed company name, phone, or Kenyan National ID digits
+  const handleEditSupplier = (supplierId: string, updatedData: Partial<SupplierProfile>) => {
     setAlacioState((prev) => ({
       ...prev,
-      suppliers: [created, ...(prev.suppliers || [])],
+      suppliers: (prev.suppliers || []).map((s) => (s.id === supplierId ? { ...s, ...updatedData } : s)),
       last_updated: new Date().toISOString()
     }));
+  };
+
+  // Delete Supplier Account: Safe removal of wrongly entered supplier profile
+  const handleDeleteSupplier = (supplierId: string) => {
+    setAlacioState((prev) => ({
+      ...prev,
+      suppliers: (prev.suppliers || []).filter((s) => s.id !== supplierId),
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Edit Warehouse Batch: Correct wholesale cost, bulk quantity, location, or batch code
+  const handleEditWarehouseBatch = (batchId: string, updatedData: Partial<WarehouseBatch>) => {
+    setAlacioState((prev) => {
+      const updatedWh = prev.warehouse.map((b) => (b.id === batchId ? { ...b, ...updatedData } : b));
+      return {
+        ...prev,
+        warehouse: updatedWh,
+        kpis: calculateKpis(prev.inventory, updatedWh),
+        last_updated: new Date().toISOString()
+      };
+    });
+  };
+
+  // Delete Warehouse Batch: Safe removal of wrongly entered batch
+  const handleDeleteWarehouseBatch = (batchId: string) => {
+    setAlacioState((prev) => {
+      const updatedWh = prev.warehouse.filter((b) => b.id !== batchId);
+      return {
+        ...prev,
+        warehouse: updatedWh,
+        kpis: calculateKpis(prev.inventory, updatedWh),
+        last_updated: new Date().toISOString()
+      };
+    });
+  };
+
+  // Delete Morning Baseline: Safe removal of wrongly entered morning bookend
+  const handleDeleteMorningBookend = (recordId: string) => {
+    setAlacioState((prev) => ({
+      ...prev,
+      morning_bookends: (prev.morning_bookends || []).filter((b) => b.id !== recordId),
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Proprietor Direct Data Warehouse & Database Root Access Handlers
+  const handleDirectUpdateRecord = (collectionKey: string, recordId: string | number, updatedRecord: any) => {
+    setAlacioState((prev) => {
+      const list = (prev as any)[collectionKey];
+      if (!Array.isArray(list)) return prev;
+      const updatedList = list.map((item: any) => {
+        const itemId = item.id ?? item.item_id;
+        return (itemId === recordId || item.id === recordId) ? { ...item, ...updatedRecord } : item;
+      });
+      const newState: AlacioMasterState = {
+        ...prev,
+        [collectionKey]: updatedList,
+        last_updated: new Date().toISOString()
+      };
+      if (collectionKey === "inventory" || collectionKey === "warehouse") {
+        newState.kpis = calculateKpis(newState.inventory, newState.warehouse);
+      }
+      return newState;
+    });
+  };
+
+  const handleDirectDeleteRecord = (collectionKey: string, recordId: string | number) => {
+    setAlacioState((prev) => {
+      const list = (prev as any)[collectionKey];
+      if (!Array.isArray(list)) return prev;
+      const filteredList = list.filter((item: any) => {
+        const itemId = item.id ?? item.item_id;
+        return itemId !== recordId && item.id !== recordId;
+      });
+      const newState: AlacioMasterState = {
+        ...prev,
+        [collectionKey]: filteredList,
+        last_updated: new Date().toISOString()
+      };
+      if (collectionKey === "inventory" || collectionKey === "warehouse") {
+        newState.kpis = calculateKpis(newState.inventory, newState.warehouse);
+      }
+      return newState;
+    });
+  };
+
+  const handleDirectInsertRecord = (collectionKey: string, newRecord: any) => {
+    setAlacioState((prev) => {
+      const list = (prev as any)[collectionKey];
+      const currentList = Array.isArray(list) ? list : [];
+      const updatedList = [newRecord, ...currentList];
+      const newState: AlacioMasterState = {
+        ...prev,
+        [collectionKey]: updatedList,
+        last_updated: new Date().toISOString()
+      };
+      if (collectionKey === "inventory" || collectionKey === "warehouse") {
+        newState.kpis = calculateKpis(newState.inventory, newState.warehouse);
+      }
+      return newState;
+    });
+  };
+
+  const handleDirectRestoreFullState = (newState: AlacioMasterState) => {
+    setAlacioState(newState);
   };
 
   // Supplier Log: Multi-Item Incoming Delivery with Bulk-to-Micro Conversion
@@ -668,9 +805,26 @@ export default function App() {
       updatedPayouts = [deliveryPayout, ...updatedPayouts];
     }
 
+    // Update supplier historical orders total & last delivery date
+    let updatedSuppliers = deduplicateSuppliers([...(alacioState.suppliers || [])]);
+    const suppIdx = updatedSuppliers.findIndex(
+      (s) => (delivery.supplierNationalId && s.national_id === delivery.supplierNationalId) ||
+             (s.company && delivery.supplierName && s.company.toLowerCase().includes(delivery.supplierName.toLowerCase())) ||
+             (s.name && delivery.supplierName && s.name.toLowerCase().includes(delivery.supplierName.toLowerCase()))
+    );
+    const dateLabel = delivery.date || new Date().toISOString().slice(0, 10);
+    if (suppIdx !== -1) {
+      updatedSuppliers[suppIdx] = {
+        ...updatedSuppliers[suppIdx],
+        total_orders_cost: (Number(updatedSuppliers[suppIdx].total_orders_cost) || 0) + delivery.totalCost,
+        last_delivery_date: dateLabel
+      };
+    }
+
     setAlacioState((prev) => ({
       ...prev,
       inventory: updatedInventory,
+      suppliers: updatedSuppliers,
       payouts: updatedPayouts,
       cash_register_balance: newCashBalance,
       mpesa_float_balance: newMpesaBalance,
@@ -824,18 +978,149 @@ export default function App() {
     }));
   };
 
-  // Navigation Items (YuBiFlo Core Operating Cycle)
+  // Supply-Driven Sales Engine Execution: Crystallizes implied sales when new supply box arrives
+  // Mental Model: A new box arriving means sales happened! (Capacity - Remaining - Owner Consumed = Sales)
+  const handleCommitSupplyDrivenSale = (payload: {
+    skuId: string | number;
+    skuName: string;
+    boxCapacity: number;
+    shelfRemainingBeforeDrop: number;
+    ownerConsumedQty: number;
+    unitsSold: number;
+    newSupplyArrivedQty: number;
+    unitRetailPrice: number;
+    unitWholesaleCost: number;
+    totalRevenue: number;
+    cogs: number;
+    grossMargin: number;
+    ownerDrawingCost: number;
+    paymentMode: "CASH" | "MPESA" | "SPLIT";
+    supplyInvoiceCost: number;
+    supplyPaymentMode: "CASH" | "MPESA" | "SUPPLIER_CREDIT";
+    notes?: string;
+  }) => {
+    // 1. Create crystallized sales record
+    const newSaleRecord: SalesLedgerItem = {
+      id: `sale_sup_${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      date: new Date().toISOString().slice(0, 10),
+      customer_name: "Counter Retail (Supply-Triggered Restock)",
+      items_summary: `${payload.unitsSold}x ${payload.skuName} (Supply-Driven Velocity)`,
+      total_amount: payload.totalRevenue,
+      cash_paid: payload.paymentMode === "CASH" ? payload.totalRevenue : payload.paymentMode === "SPLIT" ? payload.totalRevenue / 2 : 0,
+      mpesa_paid: payload.paymentMode === "MPESA" ? payload.totalRevenue : payload.paymentMode === "SPLIT" ? payload.totalRevenue / 2 : 0,
+      debt_amount: 0,
+      payment_method: payload.paymentMode
+    };
+
+    // 2. Create owner drawing record if owner consumed items (e.g. drank 2 pieces of milk)
+    let newPayouts = [...alacioState.payouts];
+    if (payload.ownerConsumedQty > 0) {
+      const drawingRecord: PayoutOrDrawing = {
+        id: `drawing_${Date.now()}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        date: new Date().toISOString().slice(0, 10),
+        amount: payload.ownerDrawingCost,
+        type: "OWNER_DRAWING",
+        notes: `Owner Consumption: ${payload.ownerConsumedQty}x ${payload.skuName} consumed personal (Cost: ${payload.ownerDrawingCost})`
+      };
+      newPayouts = [drawingRecord, ...newPayouts];
+    }
+
+    // 3. Create supplier payout record if new supply box was paid immediately
+    if (payload.supplyInvoiceCost > 0 && payload.supplyPaymentMode !== "SUPPLIER_CREDIT") {
+      const supplyPayoutRecord: PayoutOrDrawing = {
+        id: `payout_box_${Date.now()}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        date: new Date().toISOString().slice(0, 10),
+        amount: payload.supplyInvoiceCost,
+        type: "SUPPLIER_PAYOUT",
+        notes: `New Box Delivery: ${payload.newSupplyArrivedQty}x ${payload.skuName} paid via ${payload.supplyPaymentMode}`
+      };
+      newPayouts = [supplyPayoutRecord, ...newPayouts];
+    }
+
+    // 4. Update Inventory SKU (new stock = remaining + new supply arrived)
+    let updatedInventory = [...alacioState.inventory];
+    const itemIdx = updatedInventory.findIndex((i) => 
+      String(i.id) === String(payload.skuId) || 
+      i.name.toLowerCase().includes(payload.skuName.toLowerCase()) ||
+      payload.skuName.toLowerCase().includes(i.name.toLowerCase())
+    );
+
+    const postStock = payload.shelfRemainingBeforeDrop + payload.newSupplyArrivedQty;
+
+    if (itemIdx !== -1) {
+      const curr = updatedInventory[itemIdx];
+      updatedInventory[itemIdx] = {
+        ...curr,
+        current_stock: postStock,
+        unit_cost: payload.unitWholesaleCost,
+        unit_retail: payload.unitRetailPrice,
+        expected_margin: payload.unitRetailPrice - payload.unitWholesaleCost,
+        total_shelf_value: postStock * payload.unitRetailPrice,
+        velocity_badge: "High Velocity"
+      };
+    } else {
+      updatedInventory.push({
+        id: payload.skuId,
+        name: payload.skuName,
+        category: "Dairy & Fast Retail",
+        unit_type: "packets",
+        unit_cost: payload.unitWholesaleCost,
+        unit_retail: payload.unitRetailPrice,
+        current_stock: postStock,
+        opening_stock: payload.boxCapacity,
+        expected_margin: payload.unitRetailPrice - payload.unitWholesaleCost,
+        total_shelf_value: postStock * payload.unitRetailPrice,
+        velocity_badge: "High Velocity"
+      });
+    }
+
+    // 5. Update cash & M-Pesa balances
+    let cashChange = 0;
+    let mpesaChange = 0;
+
+    if (payload.paymentMode === "CASH") cashChange += payload.totalRevenue;
+    else if (payload.paymentMode === "MPESA") mpesaChange += payload.totalRevenue;
+    else if (payload.paymentMode === "SPLIT") {
+      cashChange += payload.totalRevenue / 2;
+      mpesaChange += payload.totalRevenue / 2;
+    }
+
+    if (payload.supplyPaymentMode === "CASH") cashChange -= payload.supplyInvoiceCost;
+    else if (payload.supplyPaymentMode === "MPESA") mpesaChange -= payload.supplyInvoiceCost;
+
+    const newCash = Math.max(0, alacioState.cash_register_balance + cashChange);
+    const newMpesa = Math.max(0, alacioState.mpesa_float_balance + mpesaChange);
+
+    const newKpis = calculateKpis(updatedInventory, alacioState.warehouse);
+
+    setAlacioState((prev) => ({
+      ...prev,
+      inventory: updatedInventory,
+      salesLedger: [newSaleRecord, ...prev.salesLedger],
+      payouts: newPayouts,
+      cash_register_balance: newCash,
+      mpesa_float_balance: newMpesa,
+      kpis: newKpis,
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  // Navigation Items (YuBiFlo Sovereign Tactical Cycle)
+  // Consolidated Supply & Warehouse + Introduced Sales Module & Ledgers Accounts
   const navItems = [
-    { id: "dashboard", name: "Dashboard", icon: <LayoutDashboard size={16} /> },
-    { id: "morning_bookend", name: "Morning Bookend (60s)", icon: <Sun size={16} />, badge: "Setup" },
-    { id: "supplier_log", name: "Supplier Log (5s)", icon: <Truck size={16} />, badge: "Bulk→Micro" },
-    { id: "receipt_scanner", name: "Upload Receipts (OCR)", icon: <Camera size={16} />, badge: "Supply Stock" },
-    { id: "voice_ledger", name: "Voice Ledger (VCR Studio)", icon: <Mic size={16} />, badge: "Unified Hub" },
-    { id: "evening_reconciliation", name: "Evening Reconciliation", icon: <Scale size={16} />, badge: "Reverse Math" },
-    { id: "warehouse", name: "Warehouse & Bulk Supply", icon: <Building2 size={16} />, badge: `${alacioState.warehouse.length} bulk` },
-    { id: "inventory", name: "Inventory & Batches", icon: <Package size={16} />, badge: `${alacioState.inventory.length}` },
-    { id: "customers", name: "Customers & Credit", icon: <Users size={16} />, badge: `${alacioState.customers.length} debt` },
-    { id: "analytics", name: "Analytics & Expansion", icon: <BarChart2 size={16} />, badge: "Insights" }
+    { id: "dashboard", name: "Command Terminal", icon: <LayoutDashboard size={16} /> },
+    { id: "morning_bookend", name: "Dawn Lock Protocol", icon: <Sun size={16} />, badge: "Dawn" },
+    { id: "sales_supply", name: "Supply-Driven Sales", icon: <TrendingUp size={16} />, badge: "Velocity" },
+    { id: "ledgers_accounts", name: "Ledgers Accounts (P/R/N)", icon: <BookOpen size={16} />, badge: "3-Fold" },
+    { id: "supply_stock_vault", name: "Supply, Stock & Warehouse", icon: <Layers size={16} />, badge: `${alacioState.warehouse.length} wh` },
+    { id: "voice_ledger", name: "Audio Ledger Vector", icon: <Mic size={16} />, badge: "VCR" },
+    { id: "evening_reconciliation", name: "Closing Audit Protocol", icon: <Scale size={16} />, badge: "Audit" },
+    { id: "customers", name: "Counter Credit Matrix", icon: <Users size={16} />, badge: `${alacioState.customers.length} deni` },
+    { id: "data_warehouse", name: "Root Console // DB Studio", icon: <Database size={16} />, badge: "Root" },
+    { id: "analytics", name: "Strategic Metrics & Telemetry", icon: <BarChart2 size={16} />, badge: "KPIs" }
   ];
 
   return (
@@ -872,12 +1157,30 @@ export default function App() {
               <ChevronDown size={12} className="absolute right-1.5 top-2 text-slate-400 pointer-events-none" />
             </div>
             <span className="hidden lg:inline-block text-[10px] font-mono bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
-              Live CDO Telemetry &bull; Zero Data Loss
+              Sovereign Node &bull; Zero Drift
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* PROPRIETOR DIRECT DATABASE & WAREHOUSE CONSOLE */}
+          <button
+            onClick={() => {
+              setCurrentView("workspace");
+              setActiveTab("data_warehouse");
+            }}
+            className={`px-2.5 sm:px-3 py-1.5 border rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs font-mono font-bold ${
+              activeTab === "data_warehouse" && currentView === "workspace"
+                ? "bg-cyan-500/25 border-cyan-400 text-cyan-200 shadow"
+                : "bg-cyan-500/10 hover:bg-cyan-500/20 border-cyan-500/40 text-cyan-300"
+            }`}
+            title="Direct Root Access to Database & Data Warehouse"
+          >
+            <Database size={13} className="text-cyan-400" />
+            <span className="hidden sm:inline">DB Root Console</span>
+            <span className="sm:hidden">DB</span>
+          </button>
+
           {/* SPECIAL FEATURE: PULL YOUR OWN APP */}
           <button
             onClick={() => setIsPullOwnAppOpen(true)}
@@ -885,7 +1188,7 @@ export default function App() {
             title="Export your single-business installable PWA"
           >
             <Smartphone size={13} className="text-emerald-400" />
-            <span className="hidden sm:inline">Pull Your Own App</span>
+            <span className="hidden sm:inline">Export PWA</span>
           </button>
 
           {/* CONDENSE TO ZERO (CLEAN PRODUCTION SLATE) */}
@@ -895,7 +1198,7 @@ export default function App() {
             title="Condense all balances, debt, and shelf counts to 0 for live start"
           >
             <RefreshCw size={13} className="text-amber-400" />
-            <span className="hidden sm:inline">Condense to Zero</span>
+            <span className="hidden sm:inline">Clean Slate</span>
           </button>
 
           {currentView !== "landing" && (
@@ -980,12 +1283,12 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white block font-serif">Alacio Mini Shop</span>
                   <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
-                    Retail B2C Pilot
+                    Sovereign Node
                   </span>
                 </div>
                 <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1.5 mt-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Live Branch: Direct to Consumer
+                  Active Perimeter // Live Ledger
                 </span>
               </div>
               <div className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Navigation</div>
@@ -1067,21 +1370,46 @@ export default function App() {
                 state={alacioState}
                 onConfirmMorningBookend={handleConfirmMorningBookend}
                 onUpdateMorningBookendDate={handleUpdateMorningBookendDate}
+                onDeleteMorningBookend={handleDeleteMorningBookend}
               />
             )}
 
-            {activeTab === "supplier_log" && (
-              <SupplierLogTab
+            {activeTab === "sales_supply" && (
+              <SupplyDrivenSalesTab
+                state={alacioState}
+                onCommitSupplyDrivenSale={handleCommitSupplyDrivenSale}
+              />
+            )}
+
+            {(activeTab === "ledgers_accounts" || activeTab === "t_ledgers") && (
+              <LedgerAccountsHubTab
+                state={alacioState}
+                onNavigateTab={setActiveTab}
+              />
+            )}
+
+            {(activeTab === "supply_stock_vault" || activeTab === "warehouse" || activeTab === "inventory" || activeTab === "supplier_log" || activeTab === "receipt_scanner") && (
+              <SupplyStockVaultTab
                 state={alacioState}
                 onLogMultiDelivery={handleLogMultiSupplyDelivery}
                 onAddSupplier={handleAddSupplier}
-              />
-            )}
-
-            {activeTab === "receipt_scanner" && (
-              <ReceiptUploadScannerTab
-                state={alacioState}
+                onEditSupplier={handleEditSupplier}
+                onDeleteSupplier={handleDeleteSupplier}
+                onTransferToShelf={handleTransferToShelf}
+                onReceiveShipment={handleReceiveShipment}
+                onEditBatch={handleEditWarehouseBatch}
+                onDeleteBatch={handleDeleteWarehouseBatch}
+                onOpenRestock={handleOpenRestock}
                 onCommitProcessedReceipt={handleCommitProcessedReceipt}
+                initialSubTab={
+                  activeTab === "warehouse" 
+                    ? "warehouse" 
+                    : activeTab === "inventory" 
+                    ? "inventory" 
+                    : activeTab === "receipt_scanner" 
+                    ? "receipts" 
+                    : "suppliers"
+                }
               />
             )}
 
@@ -1105,16 +1433,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === "warehouse" && (
-              <WarehouseTab
-                currency={alacioState.currency}
-                warehouse={alacioState.warehouse}
-                inventory={alacioState.inventory}
-                onTransferToShelf={handleTransferToShelf}
-                onReceiveShipment={handleReceiveShipment}
-              />
-            )}
-
             {activeTab === "quick_dump" && (
               <QuickDumpTab
                 currency={alacioState.currency}
@@ -1133,20 +1451,24 @@ export default function App() {
               />
             )}
 
-            {activeTab === "inventory" && (
-              <InventoryTab
-                currency={alacioState.currency}
-                inventory={alacioState.inventory}
-                onOpenRestock={handleOpenRestock}
-              />
-            )}
-
             {activeTab === "customers" && (
               <CustomersCreditTab
                 currency={alacioState.currency}
                 customers={alacioState.customers}
                 onRepayDebt={handleRepayDebt}
                 onAddDebtor={handleAddDebtor}
+                onEditCustomer={handleEditCustomer}
+                onDeleteCustomer={handleDeleteCustomer}
+              />
+            )}
+
+            {activeTab === "data_warehouse" && (
+              <ProprietorDataWarehouseTab
+                state={alacioState}
+                onUpdateRecord={handleDirectUpdateRecord}
+                onDeleteRecord={handleDirectDeleteRecord}
+                onInsertRecord={handleDirectInsertRecord}
+                onRestoreFullState={handleDirectRestoreFullState}
               />
             )}
 

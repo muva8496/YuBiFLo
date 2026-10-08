@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { 
   Users, Plus, CheckCircle2, DollarSign, Phone, ShieldAlert, 
   ArrowDownLeft, X, CreditCard, Building2, Copy, Check,
-  Calendar, Edit3
+  Calendar, Edit3, Trash2
 } from "lucide-react";
 import { CustomerDebtor } from "../../types/alacio";
 
@@ -19,9 +19,18 @@ interface CustomersCreditTabProps {
     notes: string;
     date?: string;
   }) => void;
+  onEditCustomer?: (customerId: string, updatedData: Partial<CustomerDebtor>) => void;
+  onDeleteCustomer?: (customerId: string) => void;
 }
 
-export default function CustomersCreditTab({ currency, customers, onRepayDebt, onAddDebtor }: CustomersCreditTabProps) {
+export default function CustomersCreditTab({ 
+  currency, 
+  customers, 
+  onRepayDebt, 
+  onAddDebtor,
+  onEditCustomer,
+  onDeleteCustomer
+}: CustomersCreditTabProps) {
   const [isRepayOpen, setIsRepayOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isDepositRefOpen, setIsDepositRefOpen] = useState(false);
@@ -30,6 +39,20 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
   const [repayDate, setRepayDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState(false);
+
+  // Edit debtor states
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<CustomerDebtor | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editNationalId, setEditNationalId] = useState("");
+  const [editLimit, setEditLimit] = useState("");
+  const [editDebt, setEditDebt] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+
+  // Delete debtor states
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<CustomerDebtor | null>(null);
 
   // New debtor form states
   const [newName, setNewName] = useState("");
@@ -54,6 +77,53 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
     setSelectedCust(cust);
     setIsDepositRefOpen(true);
     setCopiedId(false);
+  };
+
+  const handleOpenEdit = (cust: CustomerDebtor) => {
+    setEditingCustomer(cust);
+    setEditName(cust.name);
+    setEditPhone(cust.phone);
+    setEditNationalId(cust.national_id || "");
+    setEditLimit(String(cust.credit_limit));
+    setEditDebt(String(cust.debt_balance));
+    setEditNotes(cust.notes || "");
+    setIsEditOpen(true);
+  };
+
+  const handleExecuteEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCustomer || !editName.trim()) return;
+
+    if (onEditCustomer) {
+      onEditCustomer(editingCustomer.id, {
+        name: editName.trim(),
+        phone: editPhone.trim() || "07XX XXX XXX",
+        national_id: editNationalId.trim() || undefined,
+        credit_limit: parseFloat(editLimit) || 0,
+        debt_balance: parseFloat(editDebt) || 0,
+        notes: editNotes.trim()
+      });
+    }
+
+    setIsEditOpen(false);
+    setToastMsg(`Customer account for "${editName}" updated successfully. Phone & National ID corrected.`);
+    setTimeout(() => setToastMsg(null), 4500);
+  };
+
+  const handleOpenDelete = (cust: CustomerDebtor) => {
+    setCustomerToDelete(cust);
+    setIsDeleteOpen(true);
+  };
+
+  const handleExecuteDelete = () => {
+    if (!customerToDelete) return;
+    if (onDeleteCustomer) {
+      onDeleteCustomer(customerToDelete.id);
+    }
+    setIsDeleteOpen(false);
+    setToastMsg(`Customer account "${customerToDelete.name}" deleted. All remaining records preserved.`);
+    setCustomerToDelete(null);
+    setTimeout(() => setToastMsg(null), 4500);
   };
 
   const handleExecuteRepay = (e: React.FormEvent) => {
@@ -96,39 +166,39 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
     <div className="space-y-6 max-w-5xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Users className="text-purple-400" size={22} /> Customer Credit &amp; Deni Ledger
+          <h2 className="text-xl font-bold text-white flex items-center gap-2 font-serif">
+            <Users className="text-purple-400" size={22} /> Counter Credit Matrix // Deni Ledger
           </h2>
           <p className="text-xs text-slate-400">
-            Track trusted customer credit, National IDs for OTC/Agency banking cash deposits, and repayment ledgers.
+            Cold precision. Trusted debtor limits, National ID agency rails, and zero-drift debt settlements.
           </p>
         </div>
 
         <button
           onClick={() => setIsAddOpen(true)}
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-purple-600/20"
+          className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-purple-600/20 font-mono"
         >
-          <Plus size={15} /> Add New Customer / Debtor
+          <Plus size={15} /> + Add Debtor Account
         </button>
       </div>
 
       {/* QUICK GUIDE ON HOW CUSTOMERS & NATIONAL ID DEPOSITS WORK */}
       <div className="bg-[#121822] border border-purple-500/30 rounded-2xl p-4 text-xs font-sans space-y-2">
         <div className="flex items-center gap-2 text-purple-300 font-bold font-mono text-[11px] uppercase">
-          <Users size={14} /> How Adding Customers &amp; National ID Deposits Work:
+          <Users size={14} /> Agency Rail Protocol:
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-[11px] text-slate-300">
           <div className="p-2.5 bg-[#0a0d12] rounded-xl border border-slate-800">
-            <span className="text-purple-400 font-bold block mb-0.5">1. Add Customer Account</span>
-            Click <strong>+ Add New Customer</strong> to register their name, phone, and counter credit limit.
+            <span className="text-purple-400 font-bold block mb-0.5">1. Debtor Profile</span>
+            Bind name, mobile, and strict credit ceiling.
           </div>
           <div className="p-2.5 bg-[#0a0d12] rounded-xl border border-slate-800">
-            <span className="text-emerald-400 font-bold block mb-0.5">2. Register National ID</span>
-            Attach their Kenyan National ID so you can deposit repayments directly at any banking agent.
+            <span className="text-emerald-400 font-bold block mb-0.5">2. National ID Key</span>
+            Attach Kenyan ID for OTC agent deposits.
           </div>
           <div className="p-2.5 bg-[#0a0d12] rounded-xl border border-slate-800">
-            <span className="text-cyan-400 font-bold block mb-0.5">3. 1-Click Agency Reference</span>
-            Click <strong>Deposit Ref</strong> on any card to copy their National ID for Equity, KCB, or Co-op Agent slips.
+            <span className="text-cyan-400 font-bold block mb-0.5">3. Fast Agency Slip</span>
+            1-Click copy to settle via Equity, KCB, or Co-op agents.
           </div>
         </div>
       </div>
@@ -238,6 +308,20 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
                     </td>
                     <td className="py-3.5 px-4 text-right font-sans">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleOpenEdit(cust)}
+                          className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/20 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1"
+                          title="Edit Customer Account details, Phone number or National ID"
+                        >
+                          <Edit3 size={12} /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleOpenDelete(cust)}
+                          className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1"
+                          title="Delete customer entered wrong"
+                        >
+                          <Trash2 size={12} /> Delete
+                        </button>
                         <button
                           onClick={() => handleOpenRepay(cust)}
                           className="px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold rounded-lg transition cursor-pointer"
@@ -534,6 +618,182 @@ export default function CustomersCreditTab({ currency, customers, onRepayDebt, o
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT CUSTOMER ACCOUNT MODAL (FIX PHONE, NATIONAL ID, LIMITS) */}
+      {isEditOpen && editingCustomer && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-[#121822] border-2 border-cyan-500/40 w-full max-w-lg rounded-2xl p-6 space-y-4 text-xs font-sans shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Edit3 size={18} className="text-cyan-400" />
+                <h3 className="text-base font-bold text-white font-serif">
+                  Edit Customer Account: {editingCustomer.name}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsEditOpen(false)} 
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="text-slate-400 text-[11px] leading-relaxed">
+              Correct customer details entered wrong, such as fixing mis-typed phone numbers or Kenyan National ID digits for OTC/Agency banking deposits.
+            </p>
+
+            <form onSubmit={handleExecuteEdit} className="space-y-3.5">
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Customer / Debtor Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-sans focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">
+                    Phone / WhatsApp Number
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 0722 123 456"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-cyan-500"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Fix any mistyped digits</span>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">
+                    Kenyan National ID
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 29384710"
+                    value={editNationalId}
+                    onChange={(e) => setEditNationalId(e.target.value)}
+                    className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-cyan-500"
+                  />
+                  <span className="text-[10px] text-emerald-400/80 mt-0.5 block font-mono">For Agency cash deposit slips</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">
+                    Current Outstanding Deni ({currency})
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={editDebt}
+                    onChange={(e) => setEditDebt(e.target.value)}
+                    className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">
+                    Credit Limit ({currency})
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={editLimit}
+                    onChange={(e) => setEditLimit(e.target.value)}
+                    className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Notes / Relationship Details</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Neighbor, Clears on end of month"
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-sans focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsEditOpen(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl cursor-pointer shadow flex items-center gap-1.5"
+                >
+                  <Check size={14} /> Save Customer Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE CUSTOMER ACCOUNT MODAL */}
+      {isDeleteOpen && customerToDelete && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-[#180f12] border-2 border-red-500/50 w-full max-w-md rounded-2xl p-6 space-y-4 text-xs font-sans shadow-2xl">
+            <div className="flex justify-between items-center border-b border-red-950 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2 font-serif">
+                <Trash2 size={18} className="text-red-400" /> Delete Customer Account
+              </h3>
+              <button 
+                onClick={() => setIsDeleteOpen(false)} 
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-3 bg-[#0f090b] rounded-xl border border-red-900/40 space-y-1 font-mono text-xs">
+              <div className="text-white font-bold text-sm font-sans">{customerToDelete.name}</div>
+              <div className="text-slate-400">Phone: {customerToDelete.phone}</div>
+              {customerToDelete.national_id && (
+                <div className="text-emerald-400">National ID: {customerToDelete.national_id}</div>
+              )}
+              <div className="text-purple-300 font-bold pt-1">
+                Outstanding Balance: {currency} {customerToDelete.debt_balance.toLocaleString()}
+              </div>
+            </div>
+
+            <p className="text-amber-200/90 text-[11px] leading-relaxed bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
+              <strong>Data Preservation Guarantee:</strong> Deleting this customer account removes only this wrong or duplicate record. All other customer accounts and shop ledger data remain completely preserved.
+            </p>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteOpen(false)}
+                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteDelete}
+                className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl cursor-pointer shadow flex items-center gap-1.5"
+              >
+                <Trash2 size={14} /> Yes, Delete Customer
+              </button>
+            </div>
           </div>
         </div>
       )}

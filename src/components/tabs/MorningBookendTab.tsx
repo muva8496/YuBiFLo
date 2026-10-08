@@ -3,7 +3,7 @@ import {
   Sun, CheckCircle2, Clock, Package, ArrowRight, ShieldCheck, 
   Coins, Sparkles, Check, RefreshCw, Smartphone, CreditCard, 
   Users, Edit3, Plus, AlertTriangle, Layers, DollarSign, HelpCircle,
-  Calendar, CheckSquare
+  Calendar, CheckSquare, Trash2, X
 } from "lucide-react";
 import { AlacioMasterState, CustomerDebtor, InventoryItem, MorningBookendRecord } from "../../types/alacio";
 import { 
@@ -28,6 +28,7 @@ interface MorningBookendTabProps {
   state: AlacioMasterState;
   onConfirmMorningBookend: (payload: MorningBookendPayload) => void;
   onUpdateMorningBookendDate?: (recordId: string, newDate: string, newTimestamp?: string, newNotes?: string, newIsoDate?: string) => void;
+  onDeleteMorningBookend?: (recordId: string) => void;
 }
 
 // Date helpers
@@ -65,7 +66,12 @@ const formatHumanDate = (dateIso: string) => {
   return dateIso;
 };
 
-export default function MorningBookendTab({ state, onConfirmMorningBookend, onUpdateMorningBookendDate }: MorningBookendTabProps) {
+export default function MorningBookendTab({ 
+  state, 
+  onConfirmMorningBookend, 
+  onUpdateMorningBookendDate,
+  onDeleteMorningBookend
+}: MorningBookendTabProps) {
   const { 
     currency, 
     inventory, 
@@ -85,6 +91,26 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend, onUp
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [editRecordDate, setEditRecordDate] = useState<string>("");
   const [editRecordTime, setEditRecordTime] = useState<string>("");
+
+  // Delete Baseline Modal state
+  const [isDeleteBookendOpen, setIsDeleteBookendOpen] = useState(false);
+  const [bookendToDelete, setBookendToDelete] = useState<MorningBookendRecord | null>(null);
+
+  const handleOpenDeleteBookend = (record: MorningBookendRecord) => {
+    setBookendToDelete(record);
+    setIsDeleteBookendOpen(true);
+  };
+
+  const handleConfirmDeleteBookend = () => {
+    if (!bookendToDelete) return;
+    if (onDeleteMorningBookend) {
+      onDeleteMorningBookend(bookendToDelete.id);
+    }
+    setIsDeleteBookendOpen(false);
+    setSuccessMsg(`Morning baseline for ${bookendToDelete.date} deleted. All other records preserved.`);
+    setBookendToDelete(null);
+    setTimeout(() => setSuccessMsg(null), 4000);
+  };
 
   // 1. Morning Balances State
   const [cashFloat, setCashFloat] = useState<string>(String(cash_register_balance ?? 0));
@@ -285,22 +311,22 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend, onUp
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold text-white flex items-center gap-2 font-serif">
-              <Sun className="text-amber-400" size={24} /> Morning Bookend Screen (Pre-Opening Setup)
+              <Sun className="text-amber-400" size={24} /> Dawn Lock Protocol // Pre-Opening Seal
             </h2>
             <span className="text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-bold">
-              Before Opening Daily
+              0-Drift Dawn Lock
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Fill in starting cash float, M-Pesa till float, and Equitel Paybill account balances. Use the <strong>Debt &amp; Date Editor</strong> to backdate or adjust any unlogged customer credit before opening.
+            Pre-opening calibration. Seal physical drawer, M-Pesa float, Equitel line, and debtor baselines. Zero drift tolerated.
           </p>
         </div>
 
         <button
           onClick={handleConfirmAll}
-          className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0"
+          className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0 font-mono"
         >
-          <Check size={16} /> Lock Balances &amp; Open Shop
+          <Check size={16} /> Seal Dawn Lock &amp; Open
         </button>
       </div>
 
@@ -322,10 +348,10 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend, onUp
             </div>
             <div>
               <h3 className="text-sm font-bold text-white flex items-center gap-2 font-mono">
-                Morning Bookend Baseline Tracker ({formatHumanDate(baselineDate)} &bull; {baselineTime})
+                Dawn Baseline // Sealed Vector ({formatHumanDate(baselineDate)} &bull; {baselineTime})
               </h3>
               <p className="text-[11px] text-slate-400">
-                Sealed opening baseline for cash drawer, M-Pesa till, carried-over deni, and shelf stock.
+                Cold anchor liquidity: drawer float, electronic till lines, debtor debts, and opening shelf capital.
               </p>
             </div>
           </div>
@@ -1127,6 +1153,14 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend, onUp
                   >
                     <Edit3 size={11} /> Edit Date
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDeleteBookend(record)}
+                    className="text-[10px] px-2 py-0.5 rounded bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/50 flex items-center gap-1 transition cursor-pointer font-sans"
+                    title="Delete baseline entered wrong"
+                  >
+                    <Trash2 size={11} /> Delete
+                  </button>
                 </div>
 
                 <div className="text-right">
@@ -1268,6 +1302,54 @@ export default function MorningBookendTab({ state, onConfirmMorningBookend, onUp
           })}
         </div>
       </div>
+
+      {/* CONFIRM DELETE MORNING BASELINE MODAL */}
+      {isDeleteBookendOpen && bookendToDelete && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in font-sans">
+          <div className="bg-[#180f12] border-2 border-red-500/50 w-full max-w-md rounded-2xl p-6 space-y-4 text-xs shadow-2xl">
+            <div className="flex justify-between items-center border-b border-red-950 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2 font-serif">
+                <Trash2 size={18} className="text-red-400" /> Delete Morning Baseline
+              </h3>
+              <button 
+                type="button"
+                onClick={() => setIsDeleteBookendOpen(false)} 
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-3 bg-[#0f090b] rounded-xl border border-red-900/40 space-y-1 font-mono text-xs">
+              <div className="text-white font-bold text-sm font-sans">{bookendToDelete.date} ({bookendToDelete.timestamp})</div>
+              <div className="text-emerald-400">Total Starting Liquidity: {currency} {bookendToDelete.total_liquidity.toLocaleString()}</div>
+              <div className="text-slate-400">Cash Float: {currency} {bookendToDelete.cash_float.toLocaleString()}</div>
+              <div className="text-slate-400">M-Pesa Float: {currency} {bookendToDelete.mpesa_float.toLocaleString()}</div>
+            </div>
+
+            <p className="text-amber-200/90 text-[11px] leading-relaxed bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
+              <strong>Data Preservation Guarantee:</strong> Deleting this baseline removes only this specific morning entry. All other historical baselines, sales, and current cash balances remain completely preserved.
+            </p>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteBookendOpen(false)}
+                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteBookend}
+                className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl cursor-pointer shadow flex items-center gap-1.5"
+              >
+                <Trash2 size={14} /> Yes, Delete Baseline
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

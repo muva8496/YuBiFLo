@@ -78,11 +78,11 @@ export default function HomeScreenDiamonds({
               YuBiFLo
             </span>
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
-              KENYA MSME CDO
+              SOVEREIGN CDO // 0-DRIFT
             </span>
           </div>
           <span className="text-xs font-serif italic text-amber-300/90 tracking-wide">
-            "Your Business Is A Flower" &bull; Protecting the Owner's Financial Health
+            "Your Business Is A Flower" &bull; Ruthless Precision &bull; Pure Signal
           </span>
         </div>
 
@@ -94,7 +94,7 @@ export default function HomeScreenDiamonds({
         </h1>
 
         <p className="mt-4 text-sm sm:text-base text-slate-300 max-w-2xl mx-auto font-sans leading-relaxed">
-          Standard POS and accounting apps fail because shop owners cannot type hundreds of small sales during rush hour. YuBiFLo uses voice conversation recording, daily float audits, and restock triggers to protect your cash and capital automatically.
+          Legacy POS apps fail under real pressure. While ordinary dukas bleed cash to unlogged credit and loose floats, YuBiFLo enforces cold financial sovereignty: voice ledger capture, dawn float seals, and reverse inventory math.
         </p>
 
         {/* ======================================================== */}
@@ -119,18 +119,18 @@ export default function HomeScreenDiamonds({
 
             <div>
               <div className="text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-bold mb-2 flex items-center gap-1.5">
-                <Store size={14} /> Entry Point 1 &bull; Blueprints
+                <Store size={14} /> Vector 1 &bull; Blueprints
               </div>
               <h3 className="text-2xl font-bold text-white group-hover:text-emerald-300 transition-colors font-serif">
-                Built for your kind of business
+                Built for your vertical
               </h3>
               <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                Operating systems tailored for Retail Dukas, Hardware, Agrovet, Wholesale, and specialized Kenyan shops.
+                Autonomous operating systems for Retail Dukas, Hardware, Agrovet, and Wholesale depots. Zero bloat.
               </p>
             </div>
 
             <div className="mt-6 flex items-center justify-between text-xs font-mono text-emerald-400 font-semibold pt-4 border-t border-slate-800">
-              <span>Explore {blueprints.length} Business Types</span>
+              <span>Inspect {blueprints.length} Verticals</span>
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -149,18 +149,18 @@ export default function HomeScreenDiamonds({
 
             <div>
               <div className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-bold mb-2 flex items-center gap-1.5">
-                <ShieldCheck size={14} /> Entry Point 2 &bull; Consented Evidence
+                <ShieldCheck size={14} /> Vector 2 &bull; Hard Proof
               </div>
               <h3 className="text-2xl font-bold text-white group-hover:text-amber-300 transition-colors font-serif">
-                Projects &amp; Case Studies
+                Audited Case Evidence
               </h3>
               <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                Project #1: Alacio Mini Shop. Real audited before-and-after evidence of eliminated cash leakage, locked shelf profits, and verified owner float.
+                Project #1: Alacio Mini Shop. 94/100 financial health, zero drawer leakage, KES 35k shelf capital protected.
               </p>
             </div>
 
             <div className="mt-6 flex items-center justify-between text-xs font-mono text-amber-400 font-semibold pt-4 border-t border-slate-800">
-              <span>View Alacio Case Study</span>
+              <span>Execute Alacio Protocol</span>
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -174,35 +174,35 @@ export default function HomeScreenDiamonds({
           
           <div className="text-center space-y-2">
             <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-widest">
-              The MSME Cash Trap
+              The Retail Trap
             </span>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-white font-serif">
-              Why Odoo, Zoho Books &amp; Excel Fail Fast-Paced Kenyan Shops
+              Why Generic Accounting Fails High-Speed Counters
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-[#0f1814] border border-slate-800 rounded-2xl p-6 space-y-3">
-              <span className="text-xs font-mono text-amber-400 font-bold block">Friction Point 1</span>
-              <h3 className="text-lg font-bold text-white font-serif">Manual Entry Kills The Queue</h3>
+              <span className="text-xs font-mono text-amber-400 font-bold block">Vector 1</span>
+              <h3 className="text-lg font-bold text-white font-serif">Typing Halts Momentum</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                When customers are lining up for 20-shilling sugar, salt, and milk, typing items into a screen stops sales. Incomplete records mean missing money at end-of-day.
+                Rushing customers won't wait for keystrokes on 20-shilling salt. Unlogged items become night-time cash gaps.
               </p>
             </div>
 
             <div className="bg-[#0f1814] border border-slate-800 rounded-2xl p-6 space-y-3">
-              <span className="text-xs font-mono text-amber-400 font-bold block">Friction Point 2</span>
-              <h3 className="text-lg font-bold text-white font-serif">Mixed Owner Pockets &amp; Floats</h3>
+              <span className="text-xs font-mono text-amber-400 font-bold block">Vector 2</span>
+              <h3 className="text-lg font-bold text-white font-serif">Co-Mingled Drawer Bleed</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Personal lunch, school pocket money, and emergency supplier cash come out of the same till or M-Pesa float. Without bookend baselines, profits leak invisibly.
+                Personal lunch and emergency supplier payouts drain the till unrecorded. Without dawn baselines, capital vanishes unseen.
               </p>
             </div>
 
             <div className="bg-[#0f1814] border border-slate-800 rounded-2xl p-6 space-y-3">
-              <span className="text-xs font-mono text-amber-400 font-bold block">Friction Point 3</span>
-              <h3 className="text-lg font-bold text-white font-serif">Unrecorded Stock Discrepancies</h3>
+              <span className="text-xs font-mono text-amber-400 font-bold block">Vector 3</span>
+              <h3 className="text-lg font-bold text-white font-serif">Break-Bulk Ghost Stock</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Break-bulk items, spoilage, and shopkeeper debt books are rarely mapped to actual purchase receipts. YuBiFLo uses supply-based math to lock in true stock.
+                50kg sacks broken into 250g cups defeat standard barcodes. YuBiFLo uses supply-based calculus to audit true shelf margin.
               </p>
             </div>
           </div>
