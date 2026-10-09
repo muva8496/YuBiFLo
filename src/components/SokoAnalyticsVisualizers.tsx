@@ -75,7 +75,7 @@ interface SokoAnalyticsVisualizersProps {
 }
 
 const COLORS = [
-  "#10b981", // emerald
+  "#ffffff", // emerald
   "#06b6d4", // cyan
   "#f59e0b", // amber
   "#8b5cf6", // violet
@@ -156,7 +156,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
 
     return [
       { name: "Equity Paybill (1450180372031)", value: totalEquity, color: "#f43f5e" },
-      { name: "M-Pesa (SIM E-Float)", value: totalMpesa, color: "#10b981" },
+      { name: "M-Pesa (SIM E-Float)", value: totalMpesa, color: "#ffffff" },
       { name: "Cash Drawer (Cash)", value: totalCash, color: "#f59e0b" },
     ];
   }, [morningLogs]);
@@ -190,7 +190,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
     const slow = items.filter((i) => (i.lifetime_units_sold || 0) < 10).length || 2;
 
     return [
-      { category: "Fast Movers (<48h)", itemsCount: fast, color: "#10b981" },
+      { category: "Fast Movers (<48h)", itemsCount: fast, color: "#ffffff" },
       { category: "Moderate (2-5 Days)", itemsCount: moderate, color: "#06b6d4" },
       { category: "Slow Moving (>7 Days)", itemsCount: slow, color: "#f59e0b" },
     ];
@@ -225,7 +225,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
       { window: "Due in 0-3 Days", amount: Math.round(totalOwed * 0.45) || 12500, count: 2, color: "#f43f5e" },
       { window: "Due in 7 Days", amount: Math.round(totalOwed * 0.35) || 8400, count: 1, color: "#f59e0b" },
       { window: "Due in 14 Days", amount: Math.round(totalOwed * 0.20) || 5200, count: 1, color: "#06b6d4" },
-      { window: "30+ Days Safe", amount: 0, count: 0, color: "#10b981" },
+      { window: "30+ Days Safe", amount: 0, count: 0, color: "#ffffff" },
     ];
   }, [suppliers]);
 
@@ -282,7 +282,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
   const expenseBreakdownData = useMemo(() => {
     const totalExp = expenses.reduce((acc, e) => acc + e.total_cost, 0);
     return [
-      { name: "Restock Inventory", value: Math.round(totalExp * 0.68) || 34000, color: "#10b981" },
+      { name: "Restock Inventory", value: Math.round(totalExp * 0.68) || 34000, color: "#ffffff" },
       { name: "Transport & Logistics", value: Math.round(totalExp * 0.12) || 4500, color: "#06b6d4" },
       { name: "Shop Rent", value: Math.round(totalExp * 0.10) || 5000, color: "#f59e0b" },
       { name: "Electricity & Power", value: Math.round(totalExp * 0.05) || 1800, color: "#8b5cf6" },
@@ -557,8 +557,8 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
                   <AreaChart data={predictiveRevenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="predSalesGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                        <stop offset="5%" stopColor="#ffffff" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#ffffff" stopOpacity={0.0} />
                       </linearGradient>
                       <linearGradient id="upperBandGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
@@ -574,7 +574,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
                     />
                     <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "6px" }} />
                     <Area type="monotone" dataKey="UpperBand" name="Bull Scenario (+18%)" stroke="#f59e0b" strokeDasharray="3 3" fill="url(#upperBandGrad)" />
-                    <Area type="monotone" dataKey="PredictedSales" name="Expected Forecast" stroke="#10b981" strokeWidth={2.5} fill="url(#predSalesGrad)" />
+                    <Area type="monotone" dataKey="PredictedSales" name="Expected Forecast" stroke="#ffffff" strokeWidth={2.5} fill="url(#predSalesGrad)" />
                     <Line type="monotone" dataKey="BaselineSales" name="Historical Baseline" stroke="#94a3b8" strokeDasharray="2 2" dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -727,8 +727,8 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
                   <AreaChart data={revenueTrendData}>
                     <defs>
                       <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                        <stop offset="5%" stopColor="#ffffff" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#ffffff" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
@@ -739,7 +739,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
                       formatter={(val: any) => [`${cur} ${Number(val).toLocaleString()}`, ""]}
                     />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
-                    <Area type="monotone" dataKey="Revenue" stroke="#10b981" strokeWidth={2} fill="url(#revGrad)" />
+                    <Area type="monotone" dataKey="Revenue" stroke="#ffffff" strokeWidth={2} fill="url(#revGrad)" />
                     <Line type="monotone" dataKey="COGS" stroke="#94a3b8" strokeDasharray="3 3" dot={false} />
                     <Line type="monotone" dataKey="Profit" stroke="#f59e0b" strokeWidth={2} />
                   </AreaChart>
@@ -803,7 +803,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
                         name === "UnitsSold" ? "Total Sold" : "Turnover Speed",
                       ]}
                     />
-                    <Bar dataKey="UnitsSold" name="Units Sold" fill="#10b981" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="UnitsSold" name="Units Sold" fill="#ffffff" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -866,7 +866,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
                     />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
                     <Area type="monotone" dataKey="salesVolume" name="Sales Volume (KSh)" stroke="#f59e0b" strokeWidth={2} fill="url(#rushGrad)" />
-                    <Line type="monotone" dataKey="traffic" name="Foot Traffic %" stroke="#10b981" strokeWidth={2} />
+                    <Line type="monotone" dataKey="traffic" name="Foot Traffic %" stroke="#ffffff" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -908,7 +908,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
                     />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
                     <Bar dataKey="CreditIssued" name="Credit Issued" fill="#f43f5e" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Repaid" name="Repaid Cash" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Repaid" name="Repaid Cash" fill="#ffffff" radius={[4, 4, 0, 0]} />
                     <Line type="monotone" dataKey="ActiveDebt" name="Active Debt" stroke="#f59e0b" strokeWidth={2} />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -961,7 +961,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
                       contentStyle={{ backgroundColor: "#18181b", borderColor: "#3f3f46", borderRadius: "8px", fontSize: "11px" }}
                       formatter={(val: any) => [`${val}%`, "Gross Margin"]}
                     />
-                    <Bar dataKey="MarginPercent" name="Margin %" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="MarginPercent" name="Margin %" fill="#ffffff" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1002,7 +1002,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
                       formatter={(val: any) => [`${cur} ${Number(val).toLocaleString()}`, ""]}
                     />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
-                    <Line type="monotone" dataKey="TotalLiquid" name="Total 05:57 Liquid Float" stroke="#10b981" strokeWidth={2.5} />
+                    <Line type="monotone" dataKey="TotalLiquid" name="Total 05:57 Liquid Float" stroke="#ffffff" strokeWidth={2.5} />
                     <Line type="monotone" dataKey="EquityPaybill" name="Equity Paybill (1450180372031)" stroke="#f43f5e" strokeWidth={1.5} />
                     <Line type="monotone" dataKey="MpesaFloat" name="M-Pesa Float" stroke="#06b6d4" strokeWidth={1.5} />
                     <Line type="monotone" dataKey="CashDrawer" name="Cash Drawer" stroke="#f59e0b" strokeWidth={1.5} />
@@ -1063,7 +1063,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
                       formatter={(val: any) => [`${cur} ${Number(val).toLocaleString()}`, ""]}
                     />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
-                    <Area type="monotone" dataKey="EFloat" name="E-Float (SIM)" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
+                    <Area type="monotone" dataKey="EFloat" name="E-Float (SIM)" stroke="#ffffff" fill="#ffffff" fillOpacity={0.2} />
                     <Area type="monotone" dataKey="CashTill" name="Cash Drawer" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.2} />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -1090,7 +1090,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
                     />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
                     <Bar dataKey="Expected" name="Expected Sales" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Collected" name="Actual Collected" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Collected" name="Actual Collected" fill="#ffffff" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

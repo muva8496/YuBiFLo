@@ -86,7 +86,7 @@ export default function TemplateInDevelopmentView({
   };
 
   return (
-    <div className="min-h-screen bg-[#070e0b] text-slate-100 font-sans p-4 sm:p-8 max-w-5xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#09090b] text-slate-100 font-sans p-4 sm:p-8 max-w-5xl mx-auto space-y-8">
       
       {/* TOP NAVIGATION BREADCRUMB */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-4">
@@ -105,7 +105,7 @@ export default function TemplateInDevelopmentView({
       </div>
 
       {/* HERO BANNER: UNDER CONSTRUCTION */}
-      <div className="bg-[#0e1713] border-2 border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden space-y-4">
+      <div className="bg-[#121214] border-2 border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden space-y-4">
         <div className="absolute top-0 right-0 transform translate-x-8 -translate-y-8 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -127,7 +127,7 @@ export default function TemplateInDevelopmentView({
             </p>
           </div>
 
-          <div className="bg-[#060c09] border border-slate-800 rounded-2xl p-4 text-right shrink-0">
+          <div className="bg-[#09090b] border border-slate-800 rounded-2xl p-4 text-right shrink-0">
             <span className="text-[10px] text-slate-400 uppercase font-mono block">Development Status</span>
             <span className="text-sm font-bold text-amber-400 font-mono block mt-0.5">
               {roadmap.expectedDelivery}
@@ -175,7 +175,7 @@ export default function TemplateInDevelopmentView({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* LEFT COLUMN: WHAT WE ARE BUILDING */}
-        <div className="bg-[#0e1713] border border-slate-800 rounded-2xl p-6 space-y-4">
+        <div className="bg-[#121214] border border-slate-800 rounded-2xl p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
             <Wrench size={18} className="text-amber-400" />
             <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider">
@@ -191,7 +191,7 @@ export default function TemplateInDevelopmentView({
             {roadmap.modules.map((mod, idx) => (
               <div 
                 key={idx}
-                className="p-3 bg-[#060c09] border border-slate-800 rounded-xl flex items-center justify-between text-xs font-mono"
+                className="p-3 bg-[#09090b] border border-slate-800 rounded-xl flex items-center justify-between text-xs font-mono"
               >
                 <span className="text-white flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
@@ -213,7 +213,7 @@ export default function TemplateInDevelopmentView({
         </div>
 
         {/* RIGHT COLUMN: EARLY PILOT ACCESS WAITLIST FORM */}
-        <div className="bg-[#0e1713] border border-slate-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
+        <div className="bg-[#121214] border border-slate-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
               <Sparkles size={18} className="text-cyan-400" />
@@ -246,7 +246,7 @@ export default function TemplateInDevelopmentView({
                     value={merchantName}
                     onChange={(e) => setMerchantName(e.target.value)}
                     placeholder="e.g. John Kamau / Sarah Mutua"
-                    className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white"
                   />
                 </div>
 
@@ -258,7 +258,7 @@ export default function TemplateInDevelopmentView({
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
                       placeholder="e.g. Apex Hardware Ltd"
-                      className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white"
+                      className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white"
                     />
                   </div>
 
@@ -270,7 +270,7 @@ export default function TemplateInDevelopmentView({
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       placeholder="07XX XXX XXX"
-                      className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white"
+                      className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white"
                     />
                   </div>
                 </div>
@@ -282,7 +282,7 @@ export default function TemplateInDevelopmentView({
                     value={locationCity}
                     onChange={(e) => setLocationCity(e.target.value)}
                     placeholder="e.g. Nairobi Gikomba / Machakos / Eldoret"
-                    className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white"
                   />
                 </div>
 

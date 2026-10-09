@@ -234,7 +234,7 @@ export default function AmbientLedgerTab({ state, onApproveDraftSale }: AmbientL
       )}
 
       {/* BENCHMARK OVERHEARD SPEECH SIMULATOR */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2">
           <span className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-1.5">
             <Sparkles size={14} className="text-amber-400" /> Overheard Audio Benchmark Simulator (Kenyan Counter Speech)
@@ -247,7 +247,7 @@ export default function AmbientLedgerTab({ state, onApproveDraftSale }: AmbientL
           <button
             onClick={() => handleSimulateAudioEvent("Leo nikuwekee maziwa crate ngapi? Weka mbili tu, chukua pesa kwa M-Pesa.")}
             disabled={isParsing}
-            className="p-3.5 bg-[#070e0b] hover:bg-[#0c1813] border border-cyan-500/30 hover:border-cyan-400 rounded-xl text-left transition flex flex-col justify-between cursor-pointer space-y-2 group"
+            className="p-3.5 bg-[#09090b] hover:bg-[#111113] border border-cyan-500/30 hover:border-cyan-400 rounded-xl text-left transition flex flex-col justify-between cursor-pointer space-y-2 group"
           >
             <div>
               <div className="flex items-center justify-between">
@@ -269,7 +269,7 @@ export default function AmbientLedgerTab({ state, onApproveDraftSale }: AmbientL
           <button
             onClick={() => handleSimulateAudioEvent("Nipe yoghurt ya 35 na nitaipia kesho... sawa nimekuandika.")}
             disabled={isParsing}
-            className="p-3.5 bg-[#070e0b] hover:bg-[#0c1813] border border-amber-500/30 hover:border-amber-400 rounded-xl text-left transition flex flex-col justify-between cursor-pointer space-y-2 group"
+            className="p-3.5 bg-[#09090b] hover:bg-[#111113] border border-amber-500/30 hover:border-amber-400 rounded-xl text-left transition flex flex-col justify-between cursor-pointer space-y-2 group"
           >
             <div>
               <div className="flex items-center justify-between">
@@ -291,7 +291,7 @@ export default function AmbientLedgerTab({ state, onApproveDraftSale }: AmbientL
           <button
             onClick={() => handleSimulateAudioEvent("Chukua elfu moja ya hii unga ya mia sita, nitarudi kuchukua jioni. Haya, change yako ni mia nne hii hapa.")}
             disabled={isParsing}
-            className="p-3.5 bg-[#070e0b] hover:bg-[#0c1813] border border-purple-500/30 hover:border-purple-400 rounded-xl text-left transition flex flex-col justify-between cursor-pointer space-y-2 group"
+            className="p-3.5 bg-[#09090b] hover:bg-[#111113] border border-purple-500/30 hover:border-purple-400 rounded-xl text-left transition flex flex-col justify-between cursor-pointer space-y-2 group"
           >
             <div>
               <div className="flex items-center justify-between">
@@ -328,7 +328,7 @@ export default function AmbientLedgerTab({ state, onApproveDraftSale }: AmbientL
         </div>
 
         {drafts.length === 0 ? (
-          <div className="bg-[#0e1713] border-2 border-slate-800 rounded-2xl p-12 text-center space-y-3">
+          <div className="bg-[#121214] border-2 border-slate-800 rounded-2xl p-12 text-center space-y-3">
             <Radio className="text-slate-600 mx-auto" size={40} />
             <h4 className="text-sm font-bold text-white font-serif">Ambient Queue Clear</h4>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
@@ -345,7 +345,7 @@ export default function AmbientLedgerTab({ state, onApproveDraftSale }: AmbientL
               return (
                 <div
                   key={draft.id}
-                  className="bg-[#0e1713] border-2 border-emerald-950 hover:border-emerald-500/30 rounded-2xl p-4 sm:p-5 transition shadow-lg space-y-3.5"
+                  className="bg-[#121214] border-2 border-emerald-950 hover:border-emerald-500/30 rounded-2xl p-4 sm:p-5 transition shadow-lg space-y-3.5"
                 >
                   {/* CARD TOP BAR */}
                   <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
@@ -371,7 +371,7 @@ export default function AmbientLedgerTab({ state, onApproveDraftSale }: AmbientL
                   </div>
 
                   {/* OVERHEARD TRANSCRIPT */}
-                  <div className="p-3 bg-[#060c09] rounded-xl border border-slate-800/80 text-xs text-slate-300 italic flex items-start gap-2">
+                  <div className="p-3 bg-[#09090b] rounded-xl border border-slate-800/80 text-xs text-slate-300 italic flex items-start gap-2">
                     <Volume2 size={14} className="text-slate-500 shrink-0 mt-0.5" />
                     <span>"{draft.sourceTranscript}"</span>
                   </div>
@@ -412,14 +412,14 @@ export default function AmbientLedgerTab({ state, onApproveDraftSale }: AmbientL
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleDismiss(draft.id)}
-                        className="px-3 py-1.5 bg-[#060c09] hover:bg-slate-800 text-slate-400 hover:text-red-400 rounded-xl transition text-xs flex items-center gap-1.5 cursor-pointer font-mono"
+                        className="px-3 py-1.5 bg-[#09090b] hover:bg-slate-800 text-slate-400 hover:text-red-400 rounded-xl transition text-xs flex items-center gap-1.5 cursor-pointer font-mono"
                       >
                         <Trash2 size={13} />
                         <span>Dismiss</span>
                       </button>
                       <button
                         onClick={() => alert(`Edit draft for ${draft.itemName}: Merchant can adjust quantity, unit, or customer name.`)}
-                        className="px-3 py-1.5 bg-[#060c09] hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl transition text-xs flex items-center gap-1.5 cursor-pointer font-mono"
+                        className="px-3 py-1.5 bg-[#09090b] hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl transition text-xs flex items-center gap-1.5 cursor-pointer font-mono"
                       >
                         <Edit3 size={13} />
                         <span>Edit</span>

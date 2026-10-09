@@ -98,7 +98,7 @@ export default function LedgerAccountsHubTab({ state, onNavigateTab }: LedgerAcc
         </div>
 
         {/* TOP LEVEL NAVIGATION TOGGLES */}
-        <div className="flex items-center gap-1.5 bg-[#0a130f] p-1 rounded-xl border border-slate-800 font-mono text-xs">
+        <div className="flex items-center gap-1.5 bg-[#0a0a0c] p-1 rounded-xl border border-slate-800 font-mono text-xs">
           <button
             onClick={() => setActiveCategory("all")}
             className={`px-3 py-1.5 rounded-lg transition cursor-pointer font-bold ${
@@ -195,7 +195,7 @@ export default function LedgerAccountsHubTab({ state, onNavigateTab }: LedgerAcc
       {/* SECTION 1: PERSONAL ACCOUNTS (DEBTORS & CREDITORS)                   */}
       {/* ==================================================================== */}
       {(activeCategory === "all" || activeCategory === "personal") && (
-        <div className="bg-[#0c1411] border-2 border-purple-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
+        <div className="bg-[#111113] border-2 border-purple-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
               <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ export default function LedgerAccountsHubTab({ state, onNavigateTab }: LedgerAcc
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* SUB-LEDGER A: CUSTOMERS DEBTORS */}
-            <div className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-3 font-mono text-xs">
+            <div className="p-4 bg-[#09090b] border border-slate-800 rounded-xl space-y-3 font-mono text-xs">
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <span className="font-bold text-purple-300 uppercase">Debtors Ledger (Accounts Receivable)</span>
                 <span className="text-[10px] text-slate-400">{customers.length} accounts</span>
@@ -240,7 +240,7 @@ export default function LedgerAccountsHubTab({ state, onNavigateTab }: LedgerAcc
             </div>
 
             {/* SUB-LEDGER B: SUPPLIERS CREDITORS */}
-            <div className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-3 font-mono text-xs">
+            <div className="p-4 bg-[#09090b] border border-slate-800 rounded-xl space-y-3 font-mono text-xs">
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <span className="font-bold text-cyan-300 uppercase">Creditors Ledger (Accounts Payable)</span>
                 <span className="text-[10px] text-slate-400">{suppliers.length} distributors</span>
@@ -268,7 +268,7 @@ export default function LedgerAccountsHubTab({ state, onNavigateTab }: LedgerAcc
       {/* SECTION 2: REAL ACCOUNTS (TANGIBLE ASSETS & INVENTORY MERCHANDISE)   */}
       {/* ==================================================================== */}
       {(activeCategory === "all" || activeCategory === "real") && (
-        <div className="bg-[#0c1411] border-2 border-cyan-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
+        <div className="bg-[#111113] border-2 border-cyan-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
               <div className="flex items-center gap-2">
@@ -289,28 +289,28 @@ export default function LedgerAccountsHubTab({ state, onNavigateTab }: LedgerAcc
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-mono">
             {/* REAL ASSET 1: PHYSICAL CASH DRAWER */}
-            <div className="p-3 bg-[#060c09] rounded-xl border border-slate-800 space-y-1.5">
+            <div className="p-3 bg-[#09090b] rounded-xl border border-slate-800 space-y-1.5">
               <span className="text-[10px] text-slate-500 uppercase block font-bold">Physical Cash Drawer</span>
               <div className="text-lg font-black text-white">{currency} {cashAsset.toLocaleString()}</div>
               <span className="text-[10px] text-emerald-400 block">Verified Drawer Notes &amp; Coins</span>
             </div>
 
             {/* REAL ASSET 2: M-PESA & EQUITEL ELECTRONIC TILL */}
-            <div className="p-3 bg-[#060c09] rounded-xl border border-slate-800 space-y-1.5">
+            <div className="p-3 bg-[#09090b] rounded-xl border border-slate-800 space-y-1.5">
               <span className="text-[10px] text-slate-500 uppercase block font-bold">Electronic Till Lines</span>
               <div className="text-lg font-black text-cyan-400">{currency} {(mpesaAsset + equitelAsset).toLocaleString()}</div>
               <span className="text-[10px] text-slate-400 block">M-Pesa 9382104 + Equitel 1450180372031</span>
             </div>
 
             {/* REAL ASSET 3: RETAIL DISPLAY SHELF STOCK */}
-            <div className="p-3 bg-[#060c09] rounded-xl border border-slate-800 space-y-1.5">
+            <div className="p-3 bg-[#09090b] rounded-xl border border-slate-800 space-y-1.5">
               <span className="text-[10px] text-slate-500 uppercase block font-bold">Front Shelf Inventory</span>
               <div className="text-lg font-black text-emerald-400">{currency} {shelfStockAsset.toLocaleString()}</div>
               <span className="text-[10px] text-slate-400 block">{inventory.length} Stocked display SKUs</span>
             </div>
 
             {/* REAL ASSET 4: WAREHOUSE BULK RESERVES */}
-            <div className="p-3 bg-[#060c09] rounded-xl border border-slate-800 space-y-1.5">
+            <div className="p-3 bg-[#09090b] rounded-xl border border-slate-800 space-y-1.5">
               <span className="text-[10px] text-slate-500 uppercase block font-bold">Warehouse Bulk Reserve</span>
               <div className="text-lg font-black text-purple-300">{currency} {warehouseStockAsset.toLocaleString()}</div>
               <span className="text-[10px] text-slate-400 block">{warehouse.length} Bulk wholesale batches</span>
@@ -323,7 +323,7 @@ export default function LedgerAccountsHubTab({ state, onNavigateTab }: LedgerAcc
       {/* SECTION 3: NOMINAL ACCOUNTS (REVENUES, COGS & OWNER EXPENSES)        */}
       {/* ==================================================================== */}
       {(activeCategory === "all" || activeCategory === "nominal") && (
-        <div className="bg-[#0c1411] border-2 border-amber-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
+        <div className="bg-[#111113] border-2 border-amber-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
               <div className="flex items-center gap-2">
@@ -344,7 +344,7 @@ export default function LedgerAccountsHubTab({ state, onNavigateTab }: LedgerAcc
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
             {/* CREDITS (INCOMES & REVENUES) */}
-            <div className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-2.5">
+            <div className="p-4 bg-[#09090b] border border-slate-800 rounded-xl space-y-2.5">
               <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                 <span className="text-emerald-400 font-bold uppercase">CREDIT (Revenues &amp; Incomes)</span>
                 <span className="text-[10px] text-slate-400">{salesLedger.length} transactions</span>
@@ -362,7 +362,7 @@ export default function LedgerAccountsHubTab({ state, onNavigateTab }: LedgerAcc
             </div>
 
             {/* DEBITS (EXPENSES, COGS & DRAWINGS) */}
-            <div className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-2.5">
+            <div className="p-4 bg-[#09090b] border border-slate-800 rounded-xl space-y-2.5">
               <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                 <span className="text-red-400 font-bold uppercase">DEBIT (Expenses &amp; Drawings)</span>
                 <span className="text-[10px] text-slate-400">{payouts.length} outflows</span>

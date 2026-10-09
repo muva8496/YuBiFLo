@@ -378,7 +378,7 @@ export default function UnifiedVoiceLedgerTab({
         </div>
 
         {/* MODE SELECTOR PILLS */}
-        <div className="flex items-center gap-1.5 bg-[#060c09] p-1 rounded-2xl border border-slate-800 self-start md:self-auto">
+        <div className="flex items-center gap-1.5 bg-[#09090b] p-1 rounded-2xl border border-slate-800 self-start md:self-auto">
           <button
             onClick={() => setActiveMode("mic_vcr")}
             className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
@@ -425,7 +425,7 @@ export default function UnifiedVoiceLedgerTab({
       )}
 
       {/* 2. THE AUDIO CAPTURE CONSOLE (DYNAMIC BASED ON MODE) */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-3xl p-5 sm:p-6 shadow-xl space-y-5">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-3xl p-5 sm:p-6 shadow-xl space-y-5">
         
         {/* TOP STATUS BAR: PRIVACY & CONSENT */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3 text-xs font-mono">
@@ -454,7 +454,7 @@ export default function UnifiedVoiceLedgerTab({
         {/* MODE A: LIVE COUNTER MIC (VCR) */}
         {activeMode === "mic_vcr" && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-center gap-6 p-4 bg-[#060c09] border border-slate-800 rounded-2xl">
+            <div className="flex flex-col sm:flex-row items-center gap-6 p-4 bg-[#09090b] border border-slate-800 rounded-2xl">
               {/* BIG PULSING MIC BUTTON */}
               <button
                 onClick={isRecording ? stopListening : startListening}
@@ -482,7 +482,7 @@ export default function UnifiedVoiceLedgerTab({
                   )}
                 </div>
 
-                <div className="min-h-[50px] p-3 bg-[#0a1510] border border-emerald-950 rounded-xl text-xs text-white font-mono flex items-center">
+                <div className="min-h-[50px] p-3 bg-[#0c0c0e] border border-emerald-950 rounded-xl text-xs text-white font-mono flex items-center">
                   {transcript ? (
                     <span>"{transcript}"</span>
                   ) : (
@@ -531,7 +531,7 @@ export default function UnifiedVoiceLedgerTab({
         {/* MODE B: AMBIENT HANDS-FREE (MUVA) */}
         {activeMode === "ambient_muva" && (
           <div className="space-y-4">
-            <div className="p-4 bg-[#060c09] border border-slate-800 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="p-4 bg-[#09090b] border border-slate-800 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className={`w-3 h-3 rounded-full ${isAmbientListening ? "bg-emerald-400 animate-ping" : "bg-slate-600"}`} />
@@ -564,19 +564,19 @@ export default function UnifiedVoiceLedgerTab({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-              <div className="p-2.5 bg-[#0a1510] border border-slate-800 rounded-xl">
+              <div className="p-2.5 bg-[#0c0c0e] border border-slate-800 rounded-xl">
                 <span className="text-slate-500 text-[10px] block">Acoustic Echo Cancellation</span>
                 <span className="text-emerald-400 font-bold">AEC: 48kHz Filter</span>
               </div>
-              <div className="p-2.5 bg-[#0a1510] border border-slate-800 rounded-xl">
+              <div className="p-2.5 bg-[#0c0c0e] border border-slate-800 rounded-xl">
                 <span className="text-slate-500 text-[10px] block">Voice Activity Detection</span>
                 <span className="text-emerald-400 font-bold">VAD: Sensitivity High</span>
               </div>
-              <div className="p-2.5 bg-[#0a1510] border border-slate-800 rounded-xl">
+              <div className="p-2.5 bg-[#0c0c0e] border border-slate-800 rounded-xl">
                 <span className="text-slate-500 text-[10px] block">Nairobi Background Noise</span>
                 <span className="text-slate-300 font-bold">-24dB Subtracted</span>
               </div>
-              <div className="p-2.5 bg-[#0a1510] border border-slate-800 rounded-xl">
+              <div className="p-2.5 bg-[#0c0c0e] border border-slate-800 rounded-xl">
                 <span className="text-slate-500 text-[10px] block">Shopkeeper Queue</span>
                 <span className="text-amber-400 font-bold">{pendingCount} Staged Drafts</span>
               </div>
@@ -601,7 +601,7 @@ export default function UnifiedVoiceLedgerTab({
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition cursor-pointer ${
                       selectedLanguage === lang
                         ? "bg-emerald-500 text-slate-950 shadow"
-                        : "bg-[#060c09] text-slate-400 hover:text-white border border-slate-800"
+                        : "bg-[#09090b] text-slate-400 hover:text-white border border-slate-800"
                     }`}
                   >
                     {KENYAN_DIALECT_DICTIONARIES[lang].name}
@@ -611,7 +611,7 @@ export default function UnifiedVoiceLedgerTab({
             </div>
 
             {/* DIALECT VOCABULARY ACCENTS CHIPS */}
-            <div className="p-3 bg-[#060c09] border border-slate-800 rounded-xl space-y-1.5 text-xs font-mono">
+            <div className="p-3 bg-[#09090b] border border-slate-800 rounded-xl space-y-1.5 text-xs font-mono">
               <span className="text-[10px] text-amber-400 font-bold uppercase block">
                 {activeDict.name} Vocabulary &amp; Commercial Terms:
               </span>
@@ -639,7 +639,7 @@ export default function UnifiedVoiceLedgerTab({
                   <button
                     key={sample.id}
                     onClick={() => handleTestPhrase(sample.spokenPhrase)}
-                    className="p-2.5 bg-[#060c09] hover:bg-[#0d1a13] border border-slate-800 hover:border-emerald-500/40 rounded-xl text-left transition cursor-pointer text-xs group"
+                    className="p-2.5 bg-[#09090b] hover:bg-[#0d1a13] border border-slate-800 hover:border-emerald-500/40 rounded-xl text-left transition cursor-pointer text-xs group"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-slate-300 font-mono font-bold group-hover:text-emerald-300">
@@ -659,7 +659,7 @@ export default function UnifiedVoiceLedgerTab({
 
         {/* EXTRACTED LIVE RESULT PREVIEW CARD (IF AN AUDIO PHRASE WAS PROCESSED) */}
         {parsedIntentResult && (
-          <div className="p-4 bg-[#060c09] border-2 border-emerald-500/50 rounded-2xl space-y-3 animate-in fade-in">
+          <div className="p-4 bg-[#09090b] border-2 border-emerald-500/50 rounded-2xl space-y-3 animate-in fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
@@ -718,7 +718,7 @@ export default function UnifiedVoiceLedgerTab({
       </div>
 
       {/* 3. INTEGRATED PENDING VOICE DRAFTS QUEUE ("COMBINE KABISA") */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
         
         {/* QUEUE HEADER & FILTER CHIPS */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">

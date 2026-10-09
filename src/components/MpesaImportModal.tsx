@@ -67,7 +67,7 @@ SI5299P1 Confirmed. Ksh 800.00 paid to KPLC PREPAID on 2/10/26 at 2:30 PM.`;
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in">
-      <div className="bg-[#0e1713] border-2 border-emerald-500/40 w-full max-w-lg rounded-3xl p-6 sm:p-7 space-y-5 shadow-2xl text-xs">
+      <div className="bg-[#121214] border-2 border-emerald-500/40 w-full max-w-lg rounded-3xl p-6 sm:p-7 space-y-5 shadow-2xl text-xs">
         
         {/* HEADER */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">

@@ -177,7 +177,7 @@ export default function PendingDraftsQueueTab({ state, onApproveDraft }: Pending
           </p>
         </div>
 
-        <div className="px-3 py-1.5 bg-[#0e1713] border border-emerald-500/40 rounded-xl text-xs font-mono text-emerald-400 shrink-0">
+        <div className="px-3 py-1.5 bg-[#121214] border border-emerald-500/40 rounded-xl text-xs font-mono text-emerald-400 shrink-0">
           Pending Review: <strong>{drafts.length} Drafts</strong>
         </div>
       </div>
@@ -190,7 +190,7 @@ export default function PendingDraftsQueueTab({ state, onApproveDraft }: Pending
       )}
 
       {/* QUICK BENCHMARK TEST TRIGGERS (3 CORE INTENTS) */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-3">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-3">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2">
           <span className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
             <Sparkles size={14} className="text-amber-400" /> Simulate Spoken Swahili / Sheng Phrases (The 3 Core Intents)
@@ -202,7 +202,7 @@ export default function PendingDraftsQueueTab({ state, onApproveDraft }: Pending
           {/* INTENT 1: SUPPLIER_DELIVERY */}
           <button
             onClick={() => handleSimulateIntent("Leta maziwa crate 2 na mkate 20")}
-            className="p-3 bg-[#060c09] hover:bg-[#0c1813] border border-cyan-500/30 hover:border-cyan-400 rounded-xl text-left transition cursor-pointer space-y-1 group"
+            className="p-3 bg-[#09090b] hover:bg-[#111113] border border-cyan-500/30 hover:border-cyan-400 rounded-xl text-left transition cursor-pointer space-y-1 group"
           >
             <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold flex items-center gap-1">
               <Truck size={12} /> 1. SUPPLIER_DELIVERY
@@ -216,7 +216,7 @@ export default function PendingDraftsQueueTab({ state, onApproveDraft }: Pending
           {/* INTENT 2: CREDIT_RECORD (DENI) */}
           <button
             onClick={() => handleSimulateIntent("Kamau amechukua sugar ya 40 na deni")}
-            className="p-3 bg-[#060c09] hover:bg-[#0c1813] border border-amber-500/30 hover:border-amber-400 rounded-xl text-left transition cursor-pointer space-y-1 group"
+            className="p-3 bg-[#09090b] hover:bg-[#111113] border border-amber-500/30 hover:border-amber-400 rounded-xl text-left transition cursor-pointer space-y-1 group"
           >
             <span className="text-[10px] font-mono uppercase text-amber-400 font-bold flex items-center gap-1">
               <Hourglass size={12} /> 2. CREDIT_RECORD (DENI)
@@ -230,7 +230,7 @@ export default function PendingDraftsQueueTab({ state, onApproveDraft }: Pending
           {/* INTENT 3: ADVANCE_PAYMENT */}
           <button
             onClick={() => handleSimulateIntent("Ameacha 600 taken change 400 ya item atachukua jioni")}
-            className="p-3 bg-[#060c09] hover:bg-[#0c1813] border border-purple-500/30 hover:border-purple-400 rounded-xl text-left transition cursor-pointer space-y-1 group"
+            className="p-3 bg-[#09090b] hover:bg-[#111113] border border-purple-500/30 hover:border-purple-400 rounded-xl text-left transition cursor-pointer space-y-1 group"
           >
             <span className="text-[10px] font-mono uppercase text-purple-400 font-bold flex items-center gap-1">
               <Layers size={12} /> 3. ADVANCE_PAYMENT
@@ -246,7 +246,7 @@ export default function PendingDraftsQueueTab({ state, onApproveDraft }: Pending
       {/* DRAFTS LIST */}
       <div className="space-y-4">
         {drafts.length === 0 ? (
-          <div className="bg-[#0e1713] border-2 border-slate-800 rounded-2xl p-12 text-center space-y-3">
+          <div className="bg-[#121214] border-2 border-slate-800 rounded-2xl p-12 text-center space-y-3">
             <Radio className="text-slate-600 mx-auto" size={40} />
             <h4 className="text-sm font-bold text-white font-serif">No Pending Drafts</h4>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
@@ -262,7 +262,7 @@ export default function PendingDraftsQueueTab({ state, onApproveDraft }: Pending
             return (
               <div
                 key={draft.id}
-                className="bg-[#0e1713] border-2 border-emerald-950 hover:border-emerald-500/30 rounded-2xl p-5 space-y-3 shadow-xl transition"
+                className="bg-[#121214] border-2 border-emerald-950 hover:border-emerald-500/30 rounded-2xl p-5 space-y-3 shadow-xl transition"
               >
                 {/* CARD HEADER */}
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
@@ -290,7 +290,7 @@ export default function PendingDraftsQueueTab({ state, onApproveDraft }: Pending
                 </div>
 
                 {/* SPOKEN QUOTE */}
-                <div className="p-3 bg-[#060c09] rounded-xl border border-slate-800 text-xs text-slate-300 italic flex items-start gap-2">
+                <div className="p-3 bg-[#09090b] rounded-xl border border-slate-800 text-xs text-slate-300 italic flex items-start gap-2">
                   <Volume2 size={15} className="text-slate-500 shrink-0 mt-0.5" />
                   <span>"{draft.raw_transcript}"</span>
                 </div>
@@ -326,14 +326,14 @@ export default function PendingDraftsQueueTab({ state, onApproveDraft }: Pending
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleDismiss(draft.id)}
-                      className="px-3 py-1.5 bg-[#060c09] hover:bg-slate-800 text-slate-400 hover:text-red-400 rounded-xl transition text-xs flex items-center gap-1.5 cursor-pointer font-mono"
+                      className="px-3 py-1.5 bg-[#09090b] hover:bg-slate-800 text-slate-400 hover:text-red-400 rounded-xl transition text-xs flex items-center gap-1.5 cursor-pointer font-mono"
                     >
                       <Trash2 size={13} />
                       <span>Dismiss</span>
                     </button>
                     <button
                       onClick={() => alert(`Edit draft modal opened for ${draft.intent_type}. You can modify quantities, amounts, or names.`)}
-                      className="px-3 py-1.5 bg-[#060c09] hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl transition text-xs flex items-center gap-1.5 cursor-pointer font-mono"
+                      className="px-3 py-1.5 bg-[#09090b] hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl transition text-xs flex items-center gap-1.5 cursor-pointer font-mono"
                     >
                       <Edit3 size={13} />
                       <span>Edit</span>

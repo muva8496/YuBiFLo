@@ -76,7 +76,7 @@ export default function WaitlistRequestModal({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
-      <div className="bg-[#0b1611] border-2 border-emerald-500/40 w-full max-w-lg rounded-3xl p-6 sm:p-8 space-y-5 text-xs font-sans shadow-2xl relative">
+      <div className="bg-[#0c0c0e] border-2 border-emerald-500/40 w-full max-w-lg rounded-3xl p-6 sm:p-8 space-y-5 text-xs font-sans shadow-2xl relative">
         
         {/* CLOSE BUTTON */}
         <button
@@ -101,7 +101,7 @@ export default function WaitlistRequestModal({
               </p>
             </div>
 
-            <div className="p-4 bg-[#060c09] border border-emerald-950 rounded-2xl text-[11px] font-mono text-slate-400 max-w-md mx-auto text-left space-y-1">
+            <div className="p-4 bg-[#09090b] border border-emerald-950 rounded-2xl text-[11px] font-mono text-slate-400 max-w-md mx-auto text-left space-y-1">
               <div className="text-emerald-400 font-bold flex items-center gap-1.5">
                 <Sparkles size={13} /> We build where owners ask.
               </div>
@@ -149,7 +149,7 @@ export default function WaitlistRequestModal({
                   value={businessType}
                   onChange={(e) => setBusinessType(e.target.value)}
                   placeholder="e.g. Hardware, Butchery, Gas Dealer, Salon"
-                  className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-medium focus:border-emerald-500 focus:outline-none"
+                  className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-medium focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 
@@ -164,7 +164,7 @@ export default function WaitlistRequestModal({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Jane Mwangi / Peter Ochieng"
-                  className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-medium focus:border-emerald-500 focus:outline-none"
+                  className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-medium focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 
@@ -179,7 +179,7 @@ export default function WaitlistRequestModal({
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="07XX XXX XXX"
-                  className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                  className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 
@@ -194,7 +194,7 @@ export default function WaitlistRequestModal({
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="e.g. Nairobi, Kasarani &bull; Eldoret, Pioneer &bull; Nakuru, Free Area"
-                  className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-medium focus:border-emerald-500 focus:outline-none"
+                  className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-medium focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 

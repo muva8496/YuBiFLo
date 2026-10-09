@@ -250,7 +250,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               
               {/* Entity 1: Counterparties */}
-              <div className="p-4 rounded-xl bg-[#07100c] border border-slate-800 space-y-2">
+              <div className="p-4 rounded-xl bg-[#09090b] border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="font-bold text-xs text-emerald-300 font-mono">counterparties</span>
                   <span className="text-[10px] text-slate-400 font-mono">Table</span>
@@ -268,7 +268,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
               </div>
 
               {/* Entity 2: Inventory Items */}
-              <div className="p-4 rounded-xl bg-[#07100c] border border-slate-800 space-y-2">
+              <div className="p-4 rounded-xl bg-[#09090b] border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="font-bold text-xs text-emerald-300 font-mono">inventory_items</span>
                   <span className="text-[10px] text-slate-400 font-mono">Table</span>
@@ -286,7 +286,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
               </div>
 
               {/* Entity 3: Supply Deliveries */}
-              <div className="p-4 rounded-xl bg-[#07100c] border border-slate-800 space-y-2">
+              <div className="p-4 rounded-xl bg-[#09090b] border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="font-bold text-xs text-emerald-300 font-mono">supply_deliveries</span>
                   <span className="text-[10px] text-slate-400 font-mono">Table</span>
@@ -303,7 +303,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
               </div>
 
               {/* Entity 4: Supply Delivery Items */}
-              <div className="p-4 rounded-xl bg-[#07100c] border border-slate-800 space-y-2">
+              <div className="p-4 rounded-xl bg-[#09090b] border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="font-bold text-xs text-emerald-300 font-mono">supply_delivery_items</span>
                   <span className="text-[10px] text-slate-400 font-mono">Table</span>
@@ -322,7 +322,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
               </div>
 
               {/* Entity 5: Ledger Accounts */}
-              <div className="p-4 rounded-xl bg-[#07100c] border border-slate-800 space-y-2">
+              <div className="p-4 rounded-xl bg-[#09090b] border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="font-bold text-xs text-emerald-300 font-mono">ledger_accounts</span>
                   <span className="text-[10px] text-slate-400 font-mono">Table</span>
@@ -338,7 +338,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
               </div>
 
               {/* Entity 6: Partitioned Journal Lines */}
-              <div className="p-4 rounded-xl bg-[#07100c] border border-slate-800 space-y-2">
+              <div className="p-4 rounded-xl bg-[#09090b] border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="font-bold text-xs text-emerald-300 font-mono">journal_lines</span>
                   <span className="text-[10px] text-slate-400 font-mono">Partitioned</span>
@@ -449,7 +449,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
 
             {/* Param Controls */}
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 font-mono text-xs">
-              <div className="p-3 bg-[#07100c] border border-slate-800 rounded-xl space-y-1">
+              <div className="p-3 bg-[#09090b] border border-slate-800 rounded-xl space-y-1">
                 <span className="text-[10px] text-slate-400">SKU Code</span>
                 <input
                   type="text"
@@ -459,7 +459,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
                 />
               </div>
 
-              <div className="p-3 bg-[#07100c] border border-slate-800 rounded-xl space-y-1">
+              <div className="p-3 bg-[#09090b] border border-slate-800 rounded-xl space-y-1">
                 <span className="text-[10px] text-slate-400">Box Capacity</span>
                 <input
                   type="number"
@@ -469,7 +469,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
                 />
               </div>
 
-              <div className="p-3 bg-[#07100c] border border-slate-800 rounded-xl space-y-1">
+              <div className="p-3 bg-[#09090b] border border-slate-800 rounded-xl space-y-1">
                 <span className="text-[10px] text-slate-400">Remaining Shelf</span>
                 <input
                   type="number"
@@ -479,7 +479,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
                 />
               </div>
 
-              <div className="p-3 bg-[#07100c] border border-slate-800 rounded-xl space-y-1">
+              <div className="p-3 bg-[#09090b] border border-slate-800 rounded-xl space-y-1">
                 <span className="text-[10px] text-slate-400">Owner Drank</span>
                 <input
                   type="number"
@@ -489,7 +489,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
                 />
               </div>
 
-              <div className="p-3 bg-[#07100c] border border-slate-800 rounded-xl space-y-1">
+              <div className="p-3 bg-[#09090b] border border-slate-800 rounded-xl space-y-1">
                 <span className="text-[10px] text-slate-400">Cost (KES)</span>
                 <input
                   type="number"
@@ -499,7 +499,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
                 />
               </div>
 
-              <div className="p-3 bg-[#07100c] border border-slate-800 rounded-xl space-y-1">
+              <div className="p-3 bg-[#09090b] border border-slate-800 rounded-xl space-y-1">
                 <span className="text-[10px] text-slate-400">Retail (KES)</span>
                 <input
                   type="number"
@@ -509,7 +509,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
                 />
               </div>
 
-              <div className="p-3 bg-[#07100c] border border-slate-800 rounded-xl space-y-1">
+              <div className="p-3 bg-[#09090b] border border-slate-800 rounded-xl space-y-1">
                 <span className="text-[10px] text-slate-400">New Inbound Box</span>
                 <input
                   type="number"
@@ -521,7 +521,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
             </div>
 
             {/* COMPUTED MATHEMATICAL SUMMARY BAR */}
-            <div className="p-4 rounded-xl bg-[#06110c] border border-emerald-500/30 flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
+            <div className="p-4 rounded-xl bg-[#000000] border border-emerald-500/30 flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
               <div>
                 <span className="text-slate-400">Crystallized Units Sold:</span>{" "}
                 <span className="text-emerald-400 font-bold text-sm">
@@ -726,7 +726,7 @@ New Shelf Stock = Remaining Count + New Inbound Supply
             </div>
 
             {/* EXPONENTIAL JITTER FORMULA CARD */}
-            <div className="bg-[#07100c] p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 space-y-2">
+            <div className="bg-[#09090b] p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 space-y-2">
               <span className="text-emerald-400 font-bold text-[11px] uppercase tracking-wider">
                 Full Jitter Backoff Formula (AWS Architecture Standard):
               </span>

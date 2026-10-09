@@ -19,7 +19,6 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react";
-import WorkspaceClonerModal, { ClonedWorkspace } from "./WorkspaceClonerModal";
 
 export type BlueprintId = "retail_fmcg" | "hardware_bulk" | "pharmacy";
 
@@ -141,8 +140,6 @@ export default function TemplateBlueprintView({
   // Modals
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
-  const [clonedSuccess, setClonedSuccess] = useState(false);
 
   // New item form
   const [prodName, setProdName] = useState("");
@@ -151,11 +148,6 @@ export default function TemplateBlueprintView({
   const [prodCost, setProdCost] = useState("");
   const [prodRetail, setProdRetail] = useState("");
   const [prodStock, setProdStock] = useState("");
-
-  // Clone form
-  const [cloneBusinessName, setCloneBusinessName] = useState("");
-  const [cloneOwnerName, setCloneOwnerName] = useState("");
-  const [cloneLocation, setCloneLocation] = useState("");
 
   const currentConfig = BLUEPRINTS[selectedBlueprint];
 
@@ -200,17 +192,6 @@ export default function TemplateBlueprintView({
     setProdStock("");
   };
 
-  const handleCloneSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cloneBusinessName) return;
-    setClonedSuccess(true);
-    setTimeout(() => {
-      setClonedSuccess(false);
-      setIsCloneModalOpen(false);
-      onLaunchClientProject();
-    }, 1800);
-  };
-
   return (
     <div className="min-h-screen bg-[#0a0d12] text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950 flex flex-col">
       {/* 1. TOP SYSTEM LEVEL 2 BANNER */}
@@ -228,12 +209,6 @@ export default function TemplateBlueprintView({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsCloneModalOpen(true)}
-              className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition shadow-md shadow-emerald-500/20 flex items-center gap-1.5 cursor-pointer"
-            >
-              <Copy size={13} /> Clone for New Client
-            </button>
             <button
               onClick={onBackToAgency}
               className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition flex items-center gap-1.5 cursor-pointer"
@@ -484,7 +459,7 @@ export default function TemplateBlueprintView({
               <div className="max-w-md mx-auto space-y-2">
                 <h4 className="text-base font-bold text-white">0 Products in Blueprint</h4>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  This blueprint is in clean template mode with zero loaded operational client records. You can add sample test products or clone this exact schema directly for a new client onboarding.
+                  This blueprint is in clean template mode with zero loaded operational client records. You can add sample test products or explore this exact schema directly.
                 </p>
               </div>
               <div className="flex items-center justify-center gap-3 pt-2">
@@ -552,7 +527,7 @@ export default function TemplateBlueprintView({
           )}
         </div>
 
-        {/* CLONE TO CLIENT CTA BANNER */}
+        {/* CLIENT ONBOARDING CTA BANNER */}
         <div className="bg-gradient-to-r from-slate-900 via-[#131b26] to-slate-900 border border-slate-700/80 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
           <div className="space-y-2 max-w-xl">
             <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider">
@@ -568,14 +543,8 @@ export default function TemplateBlueprintView({
 
           <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
             <button
-              onClick={() => setIsCloneModalOpen(true)}
-              className="w-full sm:w-auto px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Copy size={15} /> Clone Blueprint For Client
-            </button>
-            <button
               onClick={onLaunchClientProject}
-              className="w-full sm:w-auto px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition border border-slate-700 text-center cursor-pointer"
+              className="w-full sm:w-auto px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer"
             >
               View Live Client #001
             </button>
@@ -746,38 +715,6 @@ export default function TemplateBlueprintView({
           </div>
         </div>
       )}
-
-      {/* MODAL 3: CLONE FOR NEW CLIENT (WORKSPACE CLONER MODAL) */}
-      <WorkspaceClonerModal
-        isOpen={isCloneModalOpen}
-        onClose={() => setIsCloneModalOpen(false)}
-        defaultBlueprintType={
-          selectedBlueprint === "hardware_bulk"
-            ? "HARDWARE_BULK"
-            : selectedBlueprint === "pharmacy"
-            ? "PHARMACY"
-            : "RETAIL_FMCG"
-        }
-        onWorkspaceCreated={(workspace: ClonedWorkspace) => {
-          setIsCloneModalOpen(false);
-          // If the workspace includes starter inventory items, load them
-          if (workspace.inventory && workspace.inventory.length > 0) {
-            setTemplateItems(
-              workspace.inventory.map((inv) => ({
-                id: String(inv.id),
-                name: inv.name,
-                category: inv.category,
-                unit_type: inv.unit_type,
-                unit_cost: inv.unit_cost,
-                unit_retail: inv.unit_retail,
-                current_stock: inv.current_stock,
-              }))
-            );
-          }
-          // Direct transition to live client view
-          onLaunchClientProject();
-        }}
-      />
     </div>
   );
 }

@@ -237,7 +237,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs font-mono">
-          <div className="p-3 bg-[#060c09] rounded-xl border border-slate-800 space-y-1">
+          <div className="p-3 bg-[#09090b] rounded-xl border border-slate-800 space-y-1">
             <span className="text-[10px] text-slate-500 uppercase block font-bold">1. Capacity Purchase</span>
             <div className="text-white font-bold text-sm">Full Box / Crate (e.g. 21 pkts)</div>
             <p className="text-[10px] text-slate-400 leading-tight">
@@ -245,7 +245,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
             </p>
           </div>
 
-          <div className="p-3 bg-[#060c09] rounded-xl border border-slate-800 space-y-1">
+          <div className="p-3 bg-[#09090b] rounded-xl border border-slate-800 space-y-1">
             <span className="text-[10px] text-amber-400 uppercase block font-bold">2. Majority Drawdown</span>
             <div className="text-amber-300 font-bold text-sm">Sales deplete stock (16 sold)</div>
             <p className="text-[10px] text-slate-400 leading-tight">
@@ -253,7 +253,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
             </p>
           </div>
 
-          <div className="p-3 bg-[#060c09] rounded-xl border border-slate-800 space-y-1">
+          <div className="p-3 bg-[#09090b] rounded-xl border border-slate-800 space-y-1">
             <span className="text-[10px] text-purple-400 uppercase block font-bold">3. Owner Consumption</span>
             <div className="text-purple-300 font-bold text-sm">Owner drank 2 pieces</div>
             <p className="text-[10px] text-slate-400 leading-tight">
@@ -261,7 +261,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
             </p>
           </div>
 
-          <div className="p-3 bg-[#060c09] rounded-xl border border-emerald-500/40 space-y-1">
+          <div className="p-3 bg-[#09090b] rounded-xl border border-emerald-500/40 space-y-1">
             <span className="text-[10px] text-emerald-400 uppercase block font-bold">4. New Box Drop</span>
             <div className="text-emerald-300 font-bold text-sm">New 21 box arrives</div>
             <p className="text-[10px] text-slate-400 leading-tight">
@@ -313,7 +313,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* LEFT COLUMN: LIVE TRIGGER INTERACTIVE WIZARD (7 COLS) */}
-        <form onSubmit={handleCommit} className="lg:col-span-7 bg-[#0c1411] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+        <form onSubmit={handleCommit} className="lg:col-span-7 bg-[#111113] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
               <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
@@ -339,7 +339,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
                   min="1"
                   value={boxCapacity}
                   onChange={(e) => setBoxCapacity(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
+                  className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
                   required
                 />
                 <span className="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">units</span>
@@ -357,7 +357,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
                   min="0"
                   value={shelfRemaining}
                   onChange={(e) => setShelfRemaining(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-amber-300 font-mono text-sm focus:border-amber-400 focus:outline-none font-bold"
+                  className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-amber-300 font-mono text-sm focus:border-amber-400 focus:outline-none font-bold"
                   required
                 />
                 <span className="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">units</span>
@@ -377,7 +377,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
                   min="0"
                   value={ownerConsumed}
                   onChange={(e) => setOwnerConsumed(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full bg-[#060c09] border border-purple-500/50 rounded-xl p-2.5 text-purple-300 font-mono text-sm focus:border-purple-400 focus:outline-none font-bold"
+                  className="w-full bg-[#09090b] border border-purple-500/50 rounded-xl p-2.5 text-purple-300 font-mono text-sm focus:border-purple-400 focus:outline-none font-bold"
                 />
                 <span className="absolute right-3 top-2.5 text-xs text-purple-400 font-mono">pieces</span>
               </div>
@@ -394,7 +394,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
                   min="1"
                   value={newSupplyArrived}
                   onChange={(e) => setNewSupplyArrived(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full bg-[#060c09] border border-emerald-500/50 rounded-xl p-2.5 text-emerald-400 font-mono text-sm focus:border-emerald-400 focus:outline-none font-bold"
+                  className="w-full bg-[#09090b] border border-emerald-500/50 rounded-xl p-2.5 text-emerald-400 font-mono text-sm focus:border-emerald-400 focus:outline-none font-bold"
                   required
                 />
                 <span className="absolute right-3 top-2.5 text-xs text-emerald-500 font-mono">new box</span>
@@ -413,7 +413,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
                 step="0.5"
                 value={unitCost}
                 onChange={(e) => setUnitCost(parseFloat(e.target.value) || 0)}
-                className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
               />
             </div>
 
@@ -426,7 +426,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
                 step="0.5"
                 value={unitRetail}
                 onChange={(e) => setUnitRetail(parseFloat(e.target.value) || 0)}
-                className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
               />
             </div>
           </div>
@@ -439,7 +439,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
               <select
                 value={salesPaymentMode}
                 onChange={(e) => setSalesPaymentMode(e.target.value as any)}
-                className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-xs focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-xs focus:border-emerald-500 focus:outline-none"
               >
                 <option value="CASH">Physical Cash Drawer</option>
                 <option value="MPESA">M-Pesa Till 9382104</option>
@@ -454,7 +454,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
               <select
                 value={supplyPaymentMode}
                 onChange={(e) => setSupplyPaymentMode(e.target.value as any)}
-                className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-xs focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-xs focus:border-emerald-500 focus:outline-none"
               >
                 <option value="MPESA">M-Pesa Till Outflow</option>
                 <option value="CASH">Cash Drawer Outflow</option>
@@ -471,7 +471,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2 text-white font-mono text-xs focus:border-emerald-500 focus:outline-none"
+              className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2 text-white font-mono text-xs focus:border-emerald-500 focus:outline-none"
             />
           </div>
 
@@ -513,7 +513,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
                 <span className="text-purple-300 font-bold">&minus; {ownerConsumed} units</span>
               </div>
 
-              <div className="p-3 bg-[#060c09] rounded-xl border border-emerald-500/40 flex justify-between items-center">
+              <div className="p-3 bg-[#09090b] rounded-xl border border-emerald-500/40 flex justify-between items-center">
                 <div>
                   <span className="text-[10px] text-emerald-400 uppercase font-bold block">Implied Units Sold</span>
                   <span className="text-xs text-slate-400">{boxCapacity} &minus; {shelfRemaining} &minus; {ownerConsumed} =</span>
@@ -563,18 +563,18 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
           </div>
 
           {/* CAPACITY REPLENISHMENT RADAR */}
-          <div className="bg-[#0c1411] border border-slate-800 rounded-2xl p-4 space-y-2 text-xs font-mono">
+          <div className="bg-[#111113] border border-slate-800 rounded-2xl p-4 space-y-2 text-xs font-mono">
             <span className="text-[10px] text-slate-400 uppercase font-bold block">Fast Replenishment Gauge</span>
             <div className="space-y-2">
-              <div className="p-2 bg-[#060c09] rounded-lg border border-slate-800 flex justify-between items-center">
+              <div className="p-2 bg-[#09090b] rounded-lg border border-slate-800 flex justify-between items-center">
                 <span>Mt Kenya 500ml: 21 box capacity</span>
                 <span className="text-emerald-400 font-bold">Ready for drop</span>
               </div>
-              <div className="p-2 bg-[#060c09] rounded-lg border border-slate-800 flex justify-between items-center">
+              <div className="p-2 bg-[#09090b] rounded-lg border border-slate-800 flex justify-between items-center">
                 <span>Unga Jogoo 2kg: 12 bale capacity</span>
                 <span className="text-amber-400 font-bold">60% sold</span>
               </div>
-              <div className="p-2 bg-[#060c09] rounded-lg border border-slate-800 flex justify-between items-center">
+              <div className="p-2 bg-[#09090b] rounded-lg border border-slate-800 flex justify-between items-center">
                 <span>Broadways 400g: 20 crate capacity</span>
                 <span className="text-cyan-400 font-bold">75% sold</span>
               </div>
@@ -600,7 +600,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
         ) : (
           <div className="space-y-2">
             {supplyDrivenSales.slice(0, 5).map((sale) => (
-              <div key={sale.id} className="p-3 bg-[#060c09] rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div key={sale.id} className="p-3 bg-[#09090b] rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                 <div>
                   <div className="text-white font-bold">{sale.items_summary}</div>
                   <div className="text-[10px] text-slate-500">{sale.timestamp} &bull; Paid via {sale.payment_method}</div>

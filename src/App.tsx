@@ -63,7 +63,6 @@ import SupplyStockVaultTab from "./components/tabs/SupplyStockVaultTab";
 import SystemArchitectureTab from "./components/tabs/SystemArchitectureTab";
 import HomeScreenDiamonds from "./components/HomeScreenDiamonds";
 import TemplateInDevelopmentView from "./components/TemplateInDevelopmentView";
-import PullOwnAppModal from "./components/PullOwnAppModal";
 import OneTapGapModal from "./components/OneTapGapModal";
 import MpesaImportModal from "./components/MpesaImportModal";
 import FreemiumBanner from "./components/FreemiumBanner";
@@ -92,8 +91,6 @@ export default function App() {
   const [restockCost, setRestockCost] = useState("");
   const [restockRetail, setRestockRetail] = useState("");
 
-  const [isClonerOpen, setIsClonerOpen] = useState(false);
-  const [isPullOwnAppOpen, setIsPullOwnAppOpen] = useState(false);
   const [isOneTapGapOpen, setIsOneTapGapOpen] = useState(false);
   const [isMpesaImportOpen, setIsMpesaImportOpen] = useState(false);
   const [lastVoiceLog, setLastVoiceLog] = useState<string | null>(null);
@@ -1142,6 +1139,7 @@ export default function App() {
     return (
       <>
         <YuBiFloLandingPage
+          state={alacioState}
           onGetStarted={() => {
             handleGuardedEnterWorkspace("dashboard");
           }}
@@ -1183,24 +1181,24 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#070e0b] text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950">
+    <div className="min-h-screen bg-[#09090b] text-slate-100 font-sans selection:bg-black selection:text-white">
       
       {/* GLOBAL HEADER / WORKSPACE SWITCHER */}
-      <header className="h-14 bg-[#0a1510] border-b border-emerald-950/80 px-4 sm:px-6 flex items-center justify-between text-xs sticky top-0 z-40 backdrop-blur-md">
+      <header className="h-14 bg-[#0c0c0e] border-b border-zinc-800 px-4 sm:px-6 flex items-center justify-between text-xs sticky top-0 z-40 backdrop-blur-md">
         <div className="flex items-center gap-3 sm:gap-4">
           <button 
             onClick={() => setCurrentView("yubiflo_command")}
             className="flex items-center gap-2 text-white font-black tracking-wide text-sm cursor-pointer"
             title="YuBiFLo Sovereign Platform Command"
           >
-            <div className="w-7 h-7 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center font-bold font-mono">Y</div>
+            <div className="w-7 h-7 rounded-lg bg-black text-white border border-zinc-700 flex items-center justify-center font-bold font-mono">Y</div>
             <span className="font-serif tracking-tight">YuBiFLo</span>
           </button>
           
           <span className="text-slate-700 hidden sm:inline">|</span>
 
           <div className="flex items-center gap-2">
-            <Building2 size={14} className="text-emerald-400 shrink-0" />
+            <Building2 size={14} className="text-white shrink-0" />
             <span className="text-slate-400 hidden md:inline">Workspace:</span>
             <div className="relative">
               <select
@@ -1212,14 +1210,14 @@ export default function App() {
                     handleGuardedEnterWorkspace("dashboard");
                   }
                 }}
-                className="bg-[#060c09] border border-emerald-900/60 rounded px-2.5 py-1 text-white font-bold appearance-none pr-6 cursor-pointer"
+                className="bg-[#09090b] border border-zinc-700 rounded px-2.5 py-1 text-white font-bold appearance-none pr-6 cursor-pointer"
               >
                 <option value="workspace">Retail Pro Store [Protected Client Node]</option>
                 <option value="yubiflo_command">YuBiFLo Sovereign Command (Platform)</option>
               </select>
               <ChevronDown size={12} className="absolute right-1.5 top-2 text-slate-400 pointer-events-none" />
             </div>
-            <span className="hidden lg:inline-block text-[10px] font-mono bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
+            <span className="hidden lg:inline-block text-[10px] font-mono bg-zinc-800 text-zinc-200 px-2 py-0.5 rounded border border-zinc-700">
               {currentView === "yubiflo_command" ? "Sovereign Platform • Data Engine" : "Private Tenant Node • Secured"}
             </span>
           </div>
@@ -1229,10 +1227,10 @@ export default function App() {
           {/* RETURN TO PUBLIC YUBIFLO LANDING PAGE */}
           <button
             onClick={() => setCurrentView("landing")}
-            className="px-2.5 sm:px-3 py-1.5 bg-[#0e2118] hover:bg-[#132c20] border border-emerald-500/40 text-emerald-300 font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs font-mono"
+            className="px-2.5 sm:px-3 py-1.5 bg-[#18181b] hover:bg-[#27272a] border border-zinc-700 text-zinc-200 font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs font-mono"
             title="Return to Public YuBiFLo Platform Home"
           >
-            <Globe size={13} className="text-emerald-400" />
+            <Globe size={13} className="text-white" />
             <span className="hidden sm:inline">YuBiFLo Home</span>
             <span className="sm:hidden">Home</span>
           </button>
@@ -1241,10 +1239,10 @@ export default function App() {
           {currentView !== "yubiflo_command" ? (
             <button
               onClick={() => setCurrentView("yubiflo_command")}
-              className="px-2.5 sm:px-3 py-1.5 bg-[#0e2118] hover:bg-[#132c20] border border-emerald-500/40 text-emerald-300 font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs font-mono"
+              className="px-2.5 sm:px-3 py-1.5 bg-[#18181b] hover:bg-[#27272a] border border-zinc-700 text-zinc-200 font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs font-mono"
               title="Return to Greater YuBiFLo Platform"
             >
-              <Building2 size={13} className="text-emerald-400" />
+              <Building2 size={13} className="text-white" />
               <span className="hidden sm:inline">Platform Command</span>
               <span className="sm:hidden">Command</span>
             </button>
@@ -1253,7 +1251,7 @@ export default function App() {
               onClick={() => {
                 handleGuardedEnterWorkspace("dashboard");
               }}
-              className="px-2.5 sm:px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs font-mono shadow"
+              className="px-2.5 sm:px-3 py-1.5 bg-black hover:bg-zinc-800 text-white font-bold rounded-lg border border-zinc-700 transition flex items-center gap-1.5 cursor-pointer text-xs font-mono shadow"
               title="Enter Retail Store Workspace"
             >
               <span>Enter Store Node</span>
@@ -1277,31 +1275,15 @@ export default function App() {
             <span className="sm:hidden">DB</span>
           </button>
 
-          {/* SPECIAL FEATURE: PULL YOUR OWN APP */}
-          <button
-            onClick={() => setIsPullOwnAppOpen(true)}
-            className="px-2.5 sm:px-3 py-1.5 bg-[#102018] hover:bg-[#152a20] border border-emerald-500/40 text-emerald-300 font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs"
-            title="Export your single-business installable PWA"
-          >
-            <Smartphone size={13} className="text-emerald-400" />
-            <span className="hidden sm:inline">Export PWA</span>
-          </button>
 
           {/* ZERO DATA LOSS VERIFIED BADGE */}
           <div
-            className="hidden sm:flex px-2.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold rounded-lg items-center gap-1.5 text-xs font-mono"
+            className="hidden sm:flex px-2.5 py-1.5 bg-zinc-800 border border-zinc-700 text-white font-semibold rounded-lg items-center gap-1.5 text-xs font-mono"
             title="Active store data preserved & protected"
           >
-            <ShieldCheck size={13} className="text-emerald-400" />
+            <ShieldCheck size={13} className="text-white" />
             <span>Data Preserved</span>
           </div>
-
-          <button
-            onClick={() => setIsClonerOpen(true)}
-            className="px-2.5 sm:px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition flex items-center gap-1.5 shadow cursor-pointer text-xs"
-          >
-            <Plus size={14} /> <span className="hidden sm:inline">Clone Blueprint</span><span className="sm:hidden">Clone</span>
-          </button>
         </div>
       </header>
 
@@ -1318,7 +1300,6 @@ export default function App() {
             handleGuardedEnterWorkspace("system_architecture");
           }}
           onOpenBlueprints={() => setCurrentView("landing")}
-          onOpenCloner={() => setIsClonerOpen(true)}
         />
       )}
 
@@ -1344,25 +1325,25 @@ export default function App() {
         <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
           
           {/* SIDEBAR NAVIGATION (DESKTOP) */}
-          <aside className="hidden md:flex w-64 bg-[#0a130f] border-r border-emerald-950 flex-col justify-between shrink-0 select-none">
+          <aside className="hidden md:flex w-64 bg-[#0a0a0c] border-r border-zinc-800 flex-col justify-between shrink-0 select-none">
             <div>
-              <div className="p-4 border-b border-emerald-950/80">
+              <div className="p-4 border-b border-zinc-800">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white block font-serif">
                     {alacioState.merchant_name || "Retail Pro Store"}
                   </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-white font-bold border border-zinc-700">
                     Private Client
                   </span>
                 </div>
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                     Data Protected &bull; 0-Drift
                   </span>
                   <button 
                     onClick={() => setCurrentView("landing")}
-                    className="text-[9px] font-mono text-emerald-400 hover:text-emerald-300 cursor-pointer underline"
+                    className="text-[9px] font-mono text-zinc-300 hover:text-white cursor-pointer underline"
                   >
                     Home &rarr;
                   </button>
@@ -1376,8 +1357,8 @@ export default function App() {
                     onClick={() => setActiveTab(item.id)}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition cursor-pointer ${
                       activeTab === item.id 
-                        ? "bg-[#14261d] text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm" 
-                        : "text-slate-400 hover:bg-[#0f1d16] hover:text-slate-200"
+                        ? "bg-[#1f1f23] text-white border border-zinc-700 font-semibold shadow-sm" 
+                        : "text-slate-400 hover:bg-zinc-800 hover:text-slate-200"
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -1386,7 +1367,7 @@ export default function App() {
                     </div>
                     {item.badge && (
                       <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
-                        activeTab === item.id ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-800 text-slate-400"
+                        activeTab === item.id ? "bg-zinc-800 text-white" : "bg-slate-800 text-slate-400"
                       }`}>
                         {item.badge}
                       </span>
@@ -1396,7 +1377,7 @@ export default function App() {
               </nav>
             </div>
             
-            <div className="p-4 border-t border-emerald-950 text-[10px] font-mono text-slate-500 flex justify-between items-center">
+            <div className="p-4 border-t border-zinc-800 text-[10px] font-mono text-slate-500 flex justify-between items-center">
               <span>{alacioState.merchant_name || "Retail Pro Store"}</span>
               <span className="text-amber-400 font-bold">Client Pilot Node</span>
             </div>
@@ -1563,11 +1544,11 @@ export default function App() {
           </main>
 
           {/* MOBILE BOTTOM NAVIGATION BAR (FIXED FOR DIRECT SHOP ACCESS) */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0a1410] border-t border-emerald-950/90 px-2 py-1.5 flex items-center justify-around shadow-2xl backdrop-blur-md">
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#09090b] border-t border-zinc-800 px-2 py-1.5 flex items-center justify-around shadow-2xl backdrop-blur-md">
             <button
               onClick={() => setActiveTab("dashboard")}
               className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition ${
-                activeTab === "dashboard" ? "text-emerald-400 font-bold" : "text-slate-400 hover:text-slate-200"
+                activeTab === "dashboard" ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"
               }`}
             >
               <LayoutDashboard size={18} />
@@ -1607,7 +1588,7 @@ export default function App() {
             <button
               onClick={() => setActiveTab("supply_stock_vault")}
               className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition ${
-                activeTab === "supply_stock_vault" ? "text-emerald-400 font-bold" : "text-slate-400 hover:text-slate-200"
+                activeTab === "supply_stock_vault" ? "text-white font-bold" : "text-slate-400 hover:text-slate-200"
               }`}
             >
               <Layers size={18} />
@@ -1628,10 +1609,10 @@ export default function App() {
           {/* MOBILE MORE MODULES DRAWER */}
           {isMobileMoreOpen && (
             <div className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col justify-end">
-              <div className="bg-[#0b1611] border-t-2 border-emerald-500/40 rounded-t-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom">
-                <div className="flex items-center justify-between pb-2 border-b border-emerald-950">
+              <div className="bg-[#0c0c0e] border-t-2 border-zinc-700 rounded-t-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom">
+                <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
+                    <div className="w-6 h-6 rounded-lg bg-zinc-800 text-white flex items-center justify-center font-bold text-xs">
                       Y
                     </div>
                     <span className="font-bold text-white text-sm font-serif">All Operations &amp; Modules</span>
@@ -1647,7 +1628,7 @@ export default function App() {
                     setCurrentView("yubiflo_command");
                     setIsMobileMoreOpen(false);
                   }}
-                  className="w-full p-3 rounded-xl bg-gradient-to-r from-emerald-500/25 to-teal-500/25 border border-emerald-400/50 text-emerald-300 font-bold text-xs flex items-center justify-between"
+                  className="w-full p-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-xs flex items-center justify-between"
                 >
                   <span className="flex items-center gap-2 font-mono">
                     <Building2 size={15} /> Switch to Greater YuBiFLo Platform
@@ -1665,8 +1646,8 @@ export default function App() {
                       }}
                       className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition ${
                         activeTab === item.id
-                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold"
-                          : "bg-[#060c09] text-slate-300 border-emerald-950/80 hover:bg-[#0c1912]"
+                          ? "bg-zinc-800 text-white border-zinc-700 font-bold"
+                          : "bg-[#09090b] text-slate-300 border-zinc-800 hover:bg-zinc-800"
                       }`}
                     >
                       <div className="shrink-0">{item.icon}</div>
@@ -1680,12 +1661,6 @@ export default function App() {
         </div>
       )}
 
-      {/* SPECIAL FEATURE: PULL YOUR OWN APP MODAL */}
-      <PullOwnAppModal
-        isOpen={isPullOwnAppOpen}
-        onClose={() => setIsPullOwnAppOpen(false)}
-        state={alacioState}
-      />
 
       {/* 1-TAP GAP RESOLUTION MODAL */}
       <OneTapGapModal
@@ -1707,10 +1682,10 @@ export default function App() {
       {/* RESTOCK BATCH MODAL */}
       {isRestockOpen && selectedRestockItem && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-[#101b15] border-2 border-emerald-500/40 w-full max-w-md rounded-2xl p-6 space-y-4 text-xs font-sans shadow-2xl">
+          <div className="bg-[#121214] border-2 border-zinc-700 w-full max-w-md rounded-2xl p-6 space-y-4 text-xs font-sans shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2 font-serif">
-                <RefreshCw size={16} className="text-emerald-400" /> Restock-Trigger Accounting Engine: {selectedRestockItem.name}
+                <RefreshCw size={16} className="text-white" /> Restock-Trigger Accounting Engine: {selectedRestockItem.name}
               </h3>
               <button onClick={() => setIsRestockOpen(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={16} /></button>
             </div>
@@ -1731,7 +1706,7 @@ export default function App() {
                   value={restockQty}
                   onChange={(e) => setRestockQty(e.target.value)}
                   placeholder="e.g. 24"
-                  className="w-full bg-[#070e0b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:outline-none focus:border-white"
                   autoFocus
                 />
               </div>
@@ -1745,7 +1720,7 @@ export default function App() {
                     type="number"
                     value={restockCost}
                     onChange={(e) => setRestockCost(e.target.value)}
-                    className="w-full bg-[#070e0b] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                    className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
                   />
                 </div>
                 <div>
@@ -1756,7 +1731,7 @@ export default function App() {
                     type="number"
                     value={restockRetail}
                     onChange={(e) => setRestockRetail(e.target.value)}
-                    className="w-full bg-[#070e0b] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                    className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
                   />
                 </div>
               </div>
@@ -1771,7 +1746,7 @@ export default function App() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl cursor-pointer shadow"
+                  className="px-5 py-2 bg-black hover:bg-zinc-800 text-white border border-zinc-700 font-bold rounded-xl cursor-pointer shadow"
                 >
                   Confirm Restock Batch
                 </button>
@@ -1781,55 +1756,7 @@ export default function App() {
         </div>
       )}
 
-      {/* CLONER MODAL */}
-      {isClonerOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-[#101b15] border-2 border-emerald-500/40 rounded-3xl w-full max-w-md p-6 space-y-4 text-xs font-sans shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2 font-serif">
-                <Copy size={16} className="text-emerald-400" /> Clone Blueprint for New Client
-              </h3>
-              <button onClick={() => setIsClonerOpen(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={16} /></button>
-            </div>
-            <div>
-              <label className="text-slate-300 font-semibold block mb-1">Select Industry Blueprint</label>
-              <select className="w-full bg-[#070e0b] border border-slate-700 rounded-xl p-2.5 text-white font-sans">
-                {PLATFORM_BLUEPRINTS.map((bp) => (
-                  <option key={bp.id} value={bp.id}>{bp.name} ({bp.industry})</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-slate-300 font-semibold block mb-1">Client Business Name</label>
-              <input 
-                type="text"
-                placeholder="e.g. Ruiru Modern Hardware Store"
-                className="w-full bg-[#070e0b] border border-slate-700 rounded-xl p-2.5 text-white font-sans"
-              />
-            </div>
-            <div>
-              <label className="text-slate-300 font-semibold block mb-1">Operating Currency</label>
-              <input 
-                type="text"
-                defaultValue="KSh"
-                className="w-full bg-[#070e0b] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setIsClonerOpen(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl cursor-pointer">Cancel</button>
-              <button 
-                onClick={() => {
-                  alert("New client workspace cloned with isolated taxonomy, VCR listener, and Cloud Firestore storage!");
-                  setIsClonerOpen(false);
-                }}
-                className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl cursor-pointer shadow"
-              >
-                Provision Isolated Client Workspace
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
 
 

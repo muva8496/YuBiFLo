@@ -340,7 +340,7 @@ export default function MorningBookendTab({
       {/* ======================================================== */}
       {/* MORNING BOOKEND SUMMARY TRACKING PANEL (CLIENT AUDIT HUB) */}
       {/* ======================================================== */}
-      <div className="bg-[#0b1611] border-2 border-emerald-500/40 rounded-2xl p-5 shadow-2xl space-y-4">
+      <div className="bg-[#0c0c0e] border-2 border-emerald-500/40 rounded-2xl p-5 shadow-2xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-950/80 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
@@ -368,7 +368,7 @@ export default function MorningBookendTab({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           
           {/* 1. STARTING TOTAL LIQUIDITY */}
-          <div className="p-3.5 bg-[#060c09] rounded-xl border border-slate-800 space-y-1">
+          <div className="p-3.5 bg-[#09090b] rounded-xl border border-slate-800 space-y-1">
             <span className="text-[10px] font-mono uppercase text-slate-400 font-bold block flex items-center gap-1">
               <Coins size={12} className="text-amber-400" /> Starting Total Liquidity
             </span>
@@ -392,7 +392,7 @@ export default function MorningBookendTab({
           </div>
 
           {/* 2. CARRIED-OVER CUSTOMER DENI */}
-          <div className="p-3.5 bg-[#060c09] rounded-xl border border-slate-800 space-y-1">
+          <div className="p-3.5 bg-[#09090b] rounded-xl border border-slate-800 space-y-1">
             <span className="text-[10px] font-mono uppercase text-slate-400 font-bold block flex items-center gap-1">
               <Users size={12} className="text-purple-400" /> Carried-Over Customer Deni
             </span>
@@ -412,7 +412,7 @@ export default function MorningBookendTab({
           </div>
 
           {/* 3. OPENING SHELF STOCK BASELINE */}
-          <div className="p-3.5 bg-[#060c09] rounded-xl border border-slate-800 space-y-1">
+          <div className="p-3.5 bg-[#09090b] rounded-xl border border-slate-800 space-y-1">
             <span className="text-[10px] font-mono uppercase text-slate-400 font-bold block flex items-center gap-1">
               <Package size={12} className="text-cyan-400" /> Opening Shelf Inventory
             </span>
@@ -434,7 +434,7 @@ export default function MorningBookendTab({
           </div>
 
           {/* 4. RECONCILIATION AUDIT LOCK */}
-          <div className="p-3.5 bg-[#060c09] rounded-xl border border-slate-800 space-y-1 flex flex-col justify-between">
+          <div className="p-3.5 bg-[#09090b] rounded-xl border border-slate-800 space-y-1 flex flex-col justify-between">
             <div>
               <span className="text-[10px] font-mono uppercase text-slate-400 font-bold block flex items-center gap-1">
                 <ShieldCheck size={12} className="text-emerald-400" /> Audit Anchor Status
@@ -463,7 +463,7 @@ export default function MorningBookendTab({
       {/* ======================================================== */}
       {/* STEP 0: BASELINE OPERATING DATE & SHIFT (EDITABLE / RETROSPECTIVE) */}
       {/* ======================================================== */}
-      <div id="step0-date-section" className="bg-[#0e1713] border-2 border-amber-500/50 rounded-2xl p-5 shadow-2xl space-y-4">
+      <div id="step0-date-section" className="bg-[#121214] border-2 border-amber-500/50 rounded-2xl p-5 shadow-2xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-950/80 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30 shrink-0">
@@ -485,7 +485,7 @@ export default function MorningBookendTab({
           </div>
 
           <div className="flex items-center gap-2 text-right shrink-0">
-            <div className="px-3.5 py-1.5 rounded-xl bg-[#060c09] border border-amber-500/40 text-xs font-mono">
+            <div className="px-3.5 py-1.5 rounded-xl bg-[#09090b] border border-amber-500/40 text-xs font-mono">
               <span className="text-slate-400 block text-[10px] uppercase font-semibold">Active Baseline Date</span>
               <span className="text-amber-300 font-bold">{formatHumanDate(baselineDate)}</span>
             </div>
@@ -546,7 +546,7 @@ export default function MorningBookendTab({
         {/* INPUT FIELDS: CALENDAR PICKER + TIME SHIFT + NOTES */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
           {/* 1. Date Picker */}
-          <div className="p-3.5 bg-[#060c09] rounded-xl border border-slate-800 space-y-1.5">
+          <div className="p-3.5 bg-[#09090b] rounded-xl border border-slate-800 space-y-1.5">
             <label className="text-[11px] font-mono text-slate-300 uppercase font-bold flex items-center gap-1.5">
               <Calendar size={13} className="text-amber-400" />
               1. Operating Date (Picker)
@@ -555,7 +555,7 @@ export default function MorningBookendTab({
               type="date"
               value={baselineDate}
               onChange={(e) => setBaselineDate(e.target.value)}
-              className="w-full bg-[#0a1510] border border-slate-700 rounded-lg p-2 text-white font-mono text-sm font-bold focus:border-amber-400 focus:outline-none"
+              className="w-full bg-[#0c0c0e] border border-slate-700 rounded-lg p-2 text-white font-mono text-sm font-bold focus:border-amber-400 focus:outline-none"
             />
             <span className="text-[10px] text-amber-300/80 font-mono block">
               Selected: {formatHumanDate(baselineDate)}
@@ -563,7 +563,7 @@ export default function MorningBookendTab({
           </div>
 
           {/* 2. Dawn Lock Time */}
-          <div className="p-3.5 bg-[#060c09] rounded-xl border border-slate-800 space-y-1.5">
+          <div className="p-3.5 bg-[#09090b] rounded-xl border border-slate-800 space-y-1.5">
             <label className="text-[11px] font-mono text-slate-300 uppercase font-bold flex items-center gap-1.5">
               <Clock size={13} className="text-amber-400" />
               2. Baseline Time / Shift
@@ -573,7 +573,7 @@ export default function MorningBookendTab({
               value={baselineTime}
               onChange={(e) => setBaselineTime(e.target.value)}
               placeholder="e.g. 05:57 AM (Dawn Lock)"
-              className="w-full bg-[#0a1510] border border-slate-700 rounded-lg p-2 text-white font-mono text-sm focus:border-amber-400 focus:outline-none font-bold"
+              className="w-full bg-[#0c0c0e] border border-slate-700 rounded-lg p-2 text-white font-mono text-sm focus:border-amber-400 focus:outline-none font-bold"
             />
             <div className="flex gap-1.5 pt-0.5">
               {["05:57 AM (Dawn Lock)", "06:30 AM (Opening)", "07:30 AM (Rush)"].map((t) => (
@@ -590,7 +590,7 @@ export default function MorningBookendTab({
           </div>
 
           {/* 3. Retrospective Notes */}
-          <div className="p-3.5 bg-[#060c09] rounded-xl border border-slate-800 space-y-1.5">
+          <div className="p-3.5 bg-[#09090b] rounded-xl border border-slate-800 space-y-1.5">
             <label className="text-[11px] font-mono text-slate-300 uppercase font-bold flex items-center gap-1.5">
               <Edit3 size={13} className="text-amber-400" />
               3. Operational Notes (Optional)
@@ -600,7 +600,7 @@ export default function MorningBookendTab({
               value={baselineNotes}
               onChange={(e) => setBaselineNotes(e.target.value)}
               placeholder="e.g. Entering Monday opening details on Wednesday..."
-              className="w-full bg-[#0a1510] border border-slate-700 rounded-lg p-2 text-white font-sans text-xs focus:border-amber-400 focus:outline-none"
+              className="w-full bg-[#0c0c0e] border border-slate-700 rounded-lg p-2 text-white font-sans text-xs focus:border-amber-400 focus:outline-none"
             />
             <span className="text-[10px] text-slate-400 font-mono block">
               Saved with this morning baseline record
@@ -665,7 +665,7 @@ export default function MorningBookendTab({
       </div>
 
       {/* SECTION 1: STARTING LIQUIDITY & FLOAT BALANCES (CASH, MPESA, EQUITEL PAYBILL) */}
-      <div id="step1-liquidity" className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div id="step1-liquidity" className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
           <div>
             <h3 className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
@@ -687,7 +687,7 @@ export default function MorningBookendTab({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           
           {/* 1. PHYSICAL DRAWER CASH FLOAT */}
-          <div className="p-4 bg-[#060c09] rounded-2xl border border-slate-800 space-y-2">
+          <div className="p-4 bg-[#09090b] rounded-2xl border border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-white flex items-center gap-1.5 font-mono">
                 <Coins size={15} className="text-amber-400" /> 1. Cash Float (Drawer)
@@ -703,7 +703,7 @@ export default function MorningBookendTab({
                 type="number"
                 value={cashFloat}
                 onChange={(e) => setCashFloat(e.target.value)}
-                className="w-full bg-[#0a1510] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-base font-bold focus:border-emerald-500"
+                className="w-full bg-[#0c0c0e] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-base font-bold focus:border-emerald-500"
               />
             </div>
             <p className="text-[10px] text-slate-500 leading-tight">
@@ -712,7 +712,7 @@ export default function MorningBookendTab({
           </div>
 
           {/* 2. M-PESA FLOAT (SIM / TILL) */}
-          <div className="p-4 bg-[#060c09] rounded-2xl border border-slate-800 space-y-2">
+          <div className="p-4 bg-[#09090b] rounded-2xl border border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-white flex items-center gap-1.5 font-mono">
                 <Smartphone size={15} className="text-emerald-400" /> 2. M-Pesa Float
@@ -728,7 +728,7 @@ export default function MorningBookendTab({
                 type="number"
                 value={mpesaFloat}
                 onChange={(e) => setMpesaFloat(e.target.value)}
-                className="w-full bg-[#0a1510] border border-slate-700 rounded-xl p-2.5 text-emerald-400 font-mono text-base font-bold focus:border-emerald-500"
+                className="w-full bg-[#0c0c0e] border border-slate-700 rounded-xl p-2.5 text-emerald-400 font-mono text-base font-bold focus:border-emerald-500"
               />
             </div>
             <p className="text-[10px] text-slate-500 leading-tight">
@@ -737,7 +737,7 @@ export default function MorningBookendTab({
           </div>
 
           {/* 3. EQUITEL LINE ACCOUNT (PAYBILL SETTLEMENT) */}
-          <div className="p-4 bg-[#060c09] rounded-2xl border border-slate-800 space-y-2">
+          <div className="p-4 bg-[#09090b] rounded-2xl border border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-white flex items-center gap-1.5 font-mono">
                 <CreditCard size={15} className="text-cyan-400" /> 3. Equitel Paybill Line
@@ -753,7 +753,7 @@ export default function MorningBookendTab({
                 type="number"
                 value={equitelBalance}
                 onChange={(e) => setEquitelBalance(e.target.value)}
-                className="w-full bg-[#0a1510] border border-slate-700 rounded-xl p-2.5 text-cyan-400 font-mono text-base font-bold focus:border-emerald-500"
+                className="w-full bg-[#0c0c0e] border border-slate-700 rounded-xl p-2.5 text-cyan-400 font-mono text-base font-bold focus:border-emerald-500"
               />
             </div>
             <p className="text-[10px] text-slate-500 leading-tight">
@@ -765,7 +765,7 @@ export default function MorningBookendTab({
       </div>
 
       {/* SECTION 2: DEBT & DATE EDITOR (ANY CUSTOM DATE CATCH-UP) */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
           <div>
             <div className="flex items-center gap-2">
@@ -794,7 +794,7 @@ export default function MorningBookendTab({
         )}
 
         {/* QUICK ADD UNLOGGED DEBT FORM WITH CUSTOM DATE PICKER */}
-        <form onSubmit={handleAddForgottenDebt} className="p-4 bg-[#060c09] rounded-2xl border border-slate-800 space-y-3">
+        <form onSubmit={handleAddForgottenDebt} className="p-4 bg-[#09090b] rounded-2xl border border-slate-800 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
             <span className="text-xs font-bold text-slate-300 uppercase font-mono flex items-center gap-1.5">
               <Plus size={14} className="text-emerald-400" /> Add Unrecorded Credit (Choose Any Date)
@@ -845,7 +845,7 @@ export default function MorningBookendTab({
                 required
                 value={debtDate}
                 onChange={(e) => setDebtDate(e.target.value)}
-                className="w-full bg-[#0a1510] border border-amber-500/50 rounded-xl p-2.5 text-white font-mono"
+                className="w-full bg-[#0c0c0e] border border-amber-500/50 rounded-xl p-2.5 text-white font-mono"
               />
             </div>
 
@@ -858,7 +858,7 @@ export default function MorningBookendTab({
                 value={newDebtorName}
                 onChange={(e) => setNewDebtorName(e.target.value)}
                 placeholder="e.g. Mama Boi, Pastor John"
-                className="w-full bg-[#0a1510] border border-slate-700 rounded-xl p-2.5 text-white"
+                className="w-full bg-[#0c0c0e] border border-slate-700 rounded-xl p-2.5 text-white"
               />
             </div>
 
@@ -872,7 +872,7 @@ export default function MorningBookendTab({
                 value={newDebtorAmount}
                 onChange={(e) => setNewDebtorAmount(e.target.value)}
                 placeholder="e.g. 150"
-                className="w-full bg-[#0a1510] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
+                className="w-full bg-[#0c0c0e] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
               />
             </div>
 
@@ -884,7 +884,7 @@ export default function MorningBookendTab({
                 value={newDebtorItem}
                 onChange={(e) => setNewDebtorItem(e.target.value)}
                 placeholder="e.g. Milk 500ml x2, Sugar"
-                className="w-full bg-[#0a1510] border border-slate-700 rounded-xl p-2.5 text-white"
+                className="w-full bg-[#0c0c0e] border border-slate-700 rounded-xl p-2.5 text-white"
               />
             </div>
 
@@ -915,7 +915,7 @@ export default function MorningBookendTab({
             {debtorsList.map((debtor) => (
               <div
                 key={debtor.id}
-                className="p-3 bg-[#060c09] border border-slate-800 rounded-xl flex flex-col justify-between space-y-2 text-xs"
+                className="p-3 bg-[#09090b] border border-slate-800 rounded-xl flex flex-col justify-between space-y-2 text-xs"
               >
                 <div className="space-y-1">
                   <div className="flex items-start justify-between gap-2">
@@ -928,7 +928,7 @@ export default function MorningBookendTab({
                   {/* EDITABLE DATE SECTION */}
                   <div className="flex items-center gap-1.5">
                     {editingDateDebtorId === debtor.id ? (
-                      <div className="flex items-center gap-1 w-full bg-[#0a1510] p-1 rounded border border-amber-500/40">
+                      <div className="flex items-center gap-1 w-full bg-[#0c0c0e] p-1 rounded border border-amber-500/40">
                         <input
                           type="date"
                           value={tempEditedDate}
@@ -1005,7 +1005,7 @@ export default function MorningBookendTab({
       </div>
 
       {/* SECTION 3: OPENING SHELF STOCK CONFIRMATION */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2">
           <span className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
             <Package size={15} className="text-emerald-400" /> Step 3: Confirm Opening Shelf Stock ({inventory.length} Items)
@@ -1021,7 +1021,7 @@ export default function MorningBookendTab({
             return (
               <div 
                 key={item.id}
-                className="p-3 bg-[#060c09] border border-slate-800 rounded-xl flex items-center justify-between gap-3 text-xs"
+                className="p-3 bg-[#09090b] border border-slate-800 rounded-xl flex items-center justify-between gap-3 text-xs"
               >
                 <div className="min-w-0">
                   <div className="font-semibold text-white truncate">{item.name}</div>
@@ -1077,7 +1077,7 @@ export default function MorningBookendTab({
       {/* ======================================================== */}
       {/* HISTORICAL MORNING BASELINES & AUDIT TRAIL LOG           */}
       {/* ======================================================== */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2">
           <div className="flex items-center gap-2">
             <Clock size={16} className="text-amber-400" />
@@ -1129,7 +1129,7 @@ export default function MorningBookendTab({
             return (
             <div
               key={record.id}
-              className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-2.5 text-xs font-mono"
+              className="p-4 bg-[#09090b] border border-slate-800 rounded-xl space-y-2.5 text-xs font-mono"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -1171,7 +1171,7 @@ export default function MorningBookendTab({
 
               {/* INLINE DATE & TIME EDITOR FOR THIS HISTORICAL RECORD */}
               {editingRecordId === record.id && (
-                <div className="p-3 bg-[#0a1510] border border-amber-500/50 rounded-xl space-y-3 animate-in fade-in">
+                <div className="p-3 bg-[#0c0c0e] border border-amber-500/50 rounded-xl space-y-3 animate-in fade-in">
                   <div className="flex items-center justify-between text-xs text-amber-300 font-mono font-bold">
                     <span className="flex items-center gap-1.5">
                       <Calendar size={13} /> Edit Baseline Date &amp; Shift Timestamp
@@ -1188,7 +1188,7 @@ export default function MorningBookendTab({
                         type="date"
                         value={editRecordDate}
                         onChange={(e) => setEditRecordDate(e.target.value)}
-                        className="w-full bg-[#060c09] border border-slate-700 rounded-lg p-2 text-white font-mono text-xs focus:border-amber-400 focus:outline-none font-bold"
+                        className="w-full bg-[#09090b] border border-slate-700 rounded-lg p-2 text-white font-mono text-xs focus:border-amber-400 focus:outline-none font-bold"
                       />
                     </div>
                     <div>
@@ -1200,7 +1200,7 @@ export default function MorningBookendTab({
                         value={editRecordTime}
                         onChange={(e) => setEditRecordTime(e.target.value)}
                         placeholder="e.g. 05:57 AM (Dawn Lock) or 07:28 PM"
-                        className="w-full bg-[#060c09] border border-slate-700 rounded-lg p-2 text-white font-mono text-xs focus:border-amber-400 focus:outline-none"
+                        className="w-full bg-[#09090b] border border-slate-700 rounded-lg p-2 text-white font-mono text-xs focus:border-amber-400 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -1293,7 +1293,7 @@ export default function MorningBookendTab({
               </div>
 
               {record.notes && (
-                <div className="text-[10px] text-slate-400 bg-[#0a1510] p-2 rounded border border-slate-800/80">
+                <div className="text-[10px] text-slate-400 bg-[#0c0c0e] p-2 rounded border border-slate-800/80">
                   {record.notes}
                 </div>
               )}

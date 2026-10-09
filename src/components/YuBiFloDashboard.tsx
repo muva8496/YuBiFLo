@@ -64,7 +64,6 @@ interface YuBiFloDashboardProps {
   workspaceData?: WorkspaceData;
   availableWorkspaces?: WorkspaceData[];
   onSelectWorkspace?: (workspaceId: string) => void;
-  onOpenClonerModal?: () => void;
   merchantId?: string | number;
   merchantName?: string;
   onBackToAgency?: () => void;
@@ -76,7 +75,6 @@ export default function YuBiFloDashboard({
   workspaceData,
   availableWorkspaces,
   onSelectWorkspace,
-  onOpenClonerModal,
   merchantId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
   merchantName = "Alacio Mini Shop",
   onBackToAgency,
@@ -529,15 +527,6 @@ export default function YuBiFloDashboard({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {onOpenClonerModal && (
-              <button
-                onClick={onOpenClonerModal}
-                className="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition text-xs flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20"
-              >
-                <Plus size={13} />
-                <span>Clone Blueprint for New Client</span>
-              </button>
-            )}
             {onExploreTemplates && (
               <button
                 onClick={onExploreTemplates}

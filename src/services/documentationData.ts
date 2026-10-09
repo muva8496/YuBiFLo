@@ -355,7 +355,7 @@ export function generatePrintableHtml(doc: EnterpriseDoc): string {
     .map(
       (sec) => `
       <section class="doc-section" style="margin-bottom: 32px; page-break-inside: avoid;">
-        <h2 style="color: #0f172a; border-bottom: 2px solid #059669; padding-bottom: 6px; margin-top: 24px; font-size: 18px;">
+        <h2 style="color: #0f172a; border-bottom: 2px solid #000000; padding-bottom: 6px; margin-top: 24px; font-size: 18px;">
           ${sec.number} ${sec.title}
         </h2>
         <div style="font-size: 13px; line-height: 1.6; color: #334155; white-space: pre-line;">
@@ -379,7 +379,7 @@ export function generatePrintableHtml(doc: EnterpriseDoc): string {
           background: #ffffff;
         }
         .header {
-          border-bottom: 3px solid #059669;
+          border-bottom: 3px solid #000000;
           padding-bottom: 16px;
           margin-bottom: 24px;
         }
@@ -397,7 +397,7 @@ export function generatePrintableHtml(doc: EnterpriseDoc): string {
         }
         .summary-box {
           background: #ecfdf5;
-          border-left: 4px solid #10b981;
+          border-left: 4px solid #000000;
           padding: 12px;
           border-radius: 4px;
           margin: 16px 0 24px 0;

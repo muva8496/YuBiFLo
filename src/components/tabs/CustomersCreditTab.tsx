@@ -475,7 +475,7 @@ export default function CustomersCreditTab({
                   required
                   value={repayDate}
                   onChange={(e) => setRepayDate(e.target.value)}
-                  className="w-full bg-[#070e0b] border border-amber-500/30 rounded-lg p-2 text-white font-mono text-xs focus:border-amber-400"
+                  className="w-full bg-[#09090b] border border-amber-500/30 rounded-lg p-2 text-white font-mono text-xs focus:border-amber-400"
                 />
                 <span className="text-[10px] text-slate-400 font-mono block">
                   Backdate here if recording yesterday's cash repayment

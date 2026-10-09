@@ -583,7 +583,7 @@ export default function DashboardTab({
         <div className="space-y-4">
           
           {/* DAWN PROTOCOL WIDGET */}
-          <div className="bg-[#0b1611] border border-amber-500/40 rounded-2xl p-4 shadow-lg space-y-3">
+          <div className="bg-[#0c0c0e] border border-amber-500/40 rounded-2xl p-4 shadow-lg space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
@@ -601,7 +601,7 @@ export default function DashboardTab({
                 Open &rarr;
               </button>
             </div>
-            <div className="p-3 bg-[#060c09] rounded-xl border border-slate-800 text-xs font-mono space-y-1.5">
+            <div className="p-3 bg-[#09090b] rounded-xl border border-slate-800 text-xs font-mono space-y-1.5">
               <div className="flex justify-between text-slate-400 text-[11px]">
                 <span>Drawer Coins &amp; Notes:</span>
                 <span className="text-white font-bold">{currency} {floatTotal.toLocaleString()}</span>

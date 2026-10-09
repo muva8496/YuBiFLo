@@ -148,13 +148,13 @@ export default function AdminDemandRadarModal({
 
         {/* METRICS SUMMARY ROW */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="p-4 bg-[#060c09] border border-slate-800 rounded-2xl">
+          <div className="p-4 bg-[#09090b] border border-slate-800 rounded-2xl">
             <span className="text-[10px] font-mono uppercase text-slate-500 block">Total Requests Received</span>
             <strong className="text-2xl text-emerald-400 font-serif font-black">{requests.length}</strong>
             <span className="text-[10px] text-slate-400 block mt-0.5">From shop owners across Kenya</span>
           </div>
 
-          <div className="p-4 bg-[#060c09] border border-slate-800 rounded-2xl">
+          <div className="p-4 bg-[#09090b] border border-slate-800 rounded-2xl">
             <span className="text-[10px] font-mono uppercase text-slate-500 block">Top Requested Category</span>
             <strong className="text-xl text-amber-400 font-serif font-bold truncate block">
               {sortedDemand[0]?.businessType || "Hardware"}
@@ -164,7 +164,7 @@ export default function AdminDemandRadarModal({
             </span>
           </div>
 
-          <div className="p-4 bg-[#060c09] border border-slate-800 rounded-2xl">
+          <div className="p-4 bg-[#09090b] border border-slate-800 rounded-2xl">
             <span className="text-[10px] font-mono uppercase text-slate-500 block">Configured Blueprints</span>
             <strong className="text-2xl text-white font-serif font-bold">{blueprints.length}</strong>
             <span className="text-[10px] text-emerald-400 font-mono block mt-0.5">
@@ -188,7 +188,7 @@ export default function AdminDemandRadarModal({
             {sortedDemand.map((item, idx) => (
               <div 
                 key={idx}
-                className="p-3 bg-[#060c09] border border-slate-800/90 rounded-xl space-y-1.5"
+                className="p-3 bg-[#09090b] border border-slate-800/90 rounded-xl space-y-1.5"
               >
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-200 truncate flex items-center gap-2">
@@ -245,7 +245,7 @@ export default function AdminDemandRadarModal({
 
           {/* ADD NEW BUSINESS FORM */}
           {isAddingNew && (
-            <form onSubmit={handleAddNewBusiness} className="p-3 bg-[#060c09] border border-emerald-500/40 rounded-xl space-y-2 text-xs font-mono">
+            <form onSubmit={handleAddNewBusiness} className="p-3 bg-[#09090b] border border-emerald-500/40 rounded-xl space-y-2 text-xs font-mono">
               <span className="text-emerald-400 font-bold block">Add New Industry Blueprint:</span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input
@@ -254,12 +254,12 @@ export default function AdminDemandRadarModal({
                   value={newBizName}
                   onChange={(e) => setNewBizName(e.target.value)}
                   placeholder="e.g. Chemist, Bookshop, Cyber"
-                  className="sm:col-span-2 bg-[#0a1510] border border-slate-700 rounded-lg p-2 text-white"
+                  className="sm:col-span-2 bg-[#0c0c0e] border border-slate-700 rounded-lg p-2 text-white"
                 />
                 <select
                   value={newBizStatus}
                   onChange={(e: any) => setNewBizStatus(e.target.value)}
-                  className="bg-[#0a1510] border border-slate-700 rounded-lg p-2 text-white font-bold"
+                  className="bg-[#0c0c0e] border border-slate-700 rounded-lg p-2 text-white font-bold"
                 >
                   <option value="live">Available now (live)</option>
                   <option value="next">Coming next (next)</option>
@@ -288,7 +288,7 @@ export default function AdminDemandRadarModal({
           {/* BLUEPRINTS STATUS EDIT TABLE */}
           <div className="border border-slate-800 rounded-2xl overflow-hidden max-h-64 overflow-y-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-[#060c09] border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+              <thead className="bg-[#09090b] border-b border-slate-800 text-slate-400 uppercase text-[10px]">
                 <tr>
                   <th className="p-2.5">Business Name</th>
                   <th className="p-2.5">Status (Landing Page)</th>
@@ -346,14 +346,14 @@ export default function AdminDemandRadarModal({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search name, town, business..."
-                className="w-full bg-[#060c09] border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 font-mono"
+                className="w-full bg-[#09090b] border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 font-mono"
               />
             </div>
           </div>
 
           <div className="border border-slate-800 rounded-2xl overflow-hidden max-h-56 overflow-y-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-[#060c09] border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+              <thead className="bg-[#09090b] border-b border-slate-800 text-slate-400 uppercase text-[10px]">
                 <tr>
                   <th className="p-2.5">Owner Name</th>
                   <th className="p-2.5">Business Type</th>

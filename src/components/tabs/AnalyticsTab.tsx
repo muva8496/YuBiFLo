@@ -105,7 +105,7 @@ export default function AnalyticsTab({ state }: AnalyticsTabProps) {
         </div>
 
         {/* TIME BUTTONS */}
-        <div className="flex items-center gap-1.5 bg-[#060c09] p-1 rounded-2xl border border-slate-800 self-start sm:self-auto text-xs font-mono">
+        <div className="flex items-center gap-1.5 bg-[#09090b] p-1 rounded-2xl border border-slate-800 self-start sm:self-auto text-xs font-mono">
           <button
             onClick={() => setActiveTimeframe("7D")}
             className={`px-3 py-1 rounded-xl font-bold transition cursor-pointer ${
@@ -249,7 +249,7 @@ export default function AnalyticsTab({ state }: AnalyticsTabProps) {
                       y={cashY}
                       width={barWidth}
                       height={cashH}
-                      fill="#10b981"
+                      fill="#ffffff"
                       rx="2"
                     />
 
@@ -324,7 +324,7 @@ export default function AnalyticsTab({ state }: AnalyticsTabProps) {
                 cy="80"
                 r="60"
                 fill="none"
-                stroke="#10b981"
+                stroke="#ffffff"
                 strokeWidth="20"
                 strokeDasharray="181 377"
                 strokeDashoffset="0"
@@ -476,13 +476,13 @@ export default function AnalyticsTab({ state }: AnalyticsTabProps) {
               <defs>
                 <linearGradient id="discrepancyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                   <stop offset="0%" stopColor="#ef4444" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.05" />
+                  <stop offset="100%" stopColor="#ffffff" stopOpacity="0.05" />
                 </linearGradient>
               </defs>
 
               {/* Zero Gap Balanced Baseline */}
-              <line x1="30" y1="40" x2="440" y2="40" stroke="#10b981" strokeWidth="2" strokeDasharray="4 2" />
-              <text x="445" y="44" fill="#10b981" fontSize="9" fontWeight="bold">0 (Balanced)</text>
+              <line x1="30" y1="40" x2="440" y2="40" stroke="#ffffff" strokeWidth="2" strokeDasharray="4 2" />
+              <text x="445" y="44" fill="#ffffff" fontSize="9" fontWeight="bold">0 (Balanced)</text>
 
               {/* Leakage Levels */}
               <line x1="30" y1="80" x2="440" y2="80" stroke="#1e293b" strokeDasharray="2 2" />
@@ -514,8 +514,8 @@ export default function AnalyticsTab({ state }: AnalyticsTabProps) {
                 { x: 430, y: 40, gap: "0" }
               ].map((pt, idx) => (
                 <g key={idx}>
-                  <circle cx={pt.x} cy={pt.y} r="4" fill="#080e0c" stroke={pt.gap === "0" ? "#10b981" : "#06b6d4"} strokeWidth="2.5" />
-                  <text x={pt.x} y={pt.y - 8} fill={pt.gap === "0" ? "#10b981" : "#94a3b8"} fontSize="8" textAnchor="middle">
+                  <circle cx={pt.x} cy={pt.y} r="4" fill="#080e0c" stroke={pt.gap === "0" ? "#ffffff" : "#06b6d4"} strokeWidth="2.5" />
+                  <text x={pt.x} y={pt.y - 8} fill={pt.gap === "0" ? "#ffffff" : "#94a3b8"} fontSize="8" textAnchor="middle">
                     {pt.gap}
                   </text>
                 </g>

@@ -280,7 +280,7 @@ export default function ReceiptUploadScannerTab({
             <button
               key={sample.id}
               onClick={() => handleSelectSample(sample)}
-              className="p-3 bg-[#0a1510] hover:bg-[#0f241a] border border-emerald-500/30 hover:border-emerald-400 rounded-xl text-left transition cursor-pointer text-xs group"
+              className="p-3 bg-[#0c0c0e] hover:bg-[#0f241a] border border-emerald-500/30 hover:border-emerald-400 rounded-xl text-left transition cursor-pointer text-xs group"
             >
               <div className="flex items-center justify-between">
                 <span className="font-bold text-white group-hover:text-emerald-300 transition truncate block">
@@ -302,7 +302,7 @@ export default function ReceiptUploadScannerTab({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* LEFT COLUMN: RECEIPT PHOTO PREVIEW */}
-        <div className="lg:col-span-5 bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+        <div className="lg:col-span-5 bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-2">
             <span className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
               <ImageIcon size={15} className="text-cyan-400" /> Uploaded Physical Receipt Photo
@@ -315,7 +315,7 @@ export default function ReceiptUploadScannerTab({
           </div>
 
           {/* Receipt Image Display */}
-          <div className="relative bg-[#060c09] border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center min-h-[380px] p-2">
+          <div className="relative bg-[#09090b] border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center min-h-[380px] p-2">
             {activeReceiptImage ? (
               <img
                 src={activeReceiptImage}
@@ -360,7 +360,7 @@ export default function ReceiptUploadScannerTab({
         </div>
 
         {/* RIGHT COLUMN: STRUCTURED EXTRACTED INVENTORY MANIFEST */}
-        <div className="lg:col-span-7 bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4 flex flex-col justify-between">
+        <div className="lg:col-span-7 bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4 flex flex-col justify-between">
           
           <div className="space-y-4">
             {/* INVOICE HEADER DETAILS */}
@@ -385,7 +385,7 @@ export default function ReceiptUploadScannerTab({
             </div>
 
             {/* EDITABLE RECEIPT / EXPENSE DATE SPACE */}
-            <div className="p-3 bg-[#060c09] border-2 border-amber-500/50 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+            <div className="p-3 bg-[#09090b] border-2 border-amber-500/50 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
               <div className="flex items-center gap-2">
                 <Calendar size={15} className="text-amber-400 shrink-0" />
                 <div>
@@ -444,7 +444,7 @@ export default function ReceiptUploadScannerTab({
                 {activeReceipt?.items.map((item, idx) => (
                   <div 
                     key={item.id}
-                    className="p-3 bg-[#060c09] border border-slate-800 rounded-xl space-y-2 text-xs font-mono"
+                    className="p-3 bg-[#09090b] border border-slate-800 rounded-xl space-y-2 text-xs font-mono"
                   >
                     <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
                       <input
@@ -472,7 +472,7 @@ export default function ReceiptUploadScannerTab({
                             type="number"
                             value={item.supplyUnitsReceived}
                             onChange={(e) => handleUpdateItem(item.id, "supplyUnitsReceived", e.target.value)}
-                            className="w-12 bg-[#0c1813] border border-slate-700 rounded px-1 text-center"
+                            className="w-12 bg-[#111113] border border-slate-700 rounded px-1 text-center"
                           />
                           <span className="text-[10px] text-slate-400">{item.supplyUnit}</span>
                         </div>
@@ -493,7 +493,7 @@ export default function ReceiptUploadScannerTab({
                             type="number"
                             value={item.lineCost}
                             onChange={(e) => handleUpdateItem(item.id, "lineCost", e.target.value)}
-                            className="w-16 bg-[#0c1813] border border-slate-700 rounded px-1"
+                            className="w-16 bg-[#111113] border border-slate-700 rounded px-1"
                           />
                         </div>
                       </div>
@@ -506,7 +506,7 @@ export default function ReceiptUploadScannerTab({
                             type="number"
                             value={item.retailPrice}
                             onChange={(e) => handleUpdateItem(item.id, "retailPrice", e.target.value)}
-                            className="w-14 bg-[#0c1813] border border-slate-700 rounded px-1"
+                            className="w-14 bg-[#111113] border border-slate-700 rounded px-1"
                           />
                         </div>
                       </div>
@@ -562,7 +562,7 @@ export default function ReceiptUploadScannerTab({
       </div>
 
       {/* RECENTLY INGESTED RECEIPTS ARCHIVE */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2">
           <span className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
             <FileText size={15} className="text-emerald-400" /> Processed Receipt Archive ({processedArchive.length} Receipts)
@@ -574,7 +574,7 @@ export default function ReceiptUploadScannerTab({
           {processedArchive.map((rcpt) => (
             <div 
               key={rcpt.id}
-              className="p-3.5 bg-[#060c09] border border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+              className="p-3.5 bg-[#09090b] border border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
             >
               <div className="space-y-1">
                 <div className="flex items-center gap-2">

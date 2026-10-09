@@ -128,7 +128,7 @@ export default function WaveAppsExecutiveDashboard({
       {/* ========================================================================= */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0052FF] to-blue-700 text-white font-black flex items-center justify-center text-xl shadow-md shrink-0 font-serif">
+          <div className="w-12 h-12 rounded-xl bg-[#000000] text-white font-black flex items-center justify-center text-xl shadow-md shrink-0 font-serif">
             Y
           </div>
           <div>
@@ -136,8 +136,8 @@ export default function WaveAppsExecutiveDashboard({
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif tracking-tight">
                 YuBiFlo Executive Financial Command
               </h1>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 text-[#0052FF] font-bold border border-blue-200">
-                TRUST EDITION &bull; WHITE
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#f4f4f5] text-[#000000] font-bold border border-[#e4e4e7]">
+                FOREST GREEN EDITION
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 flex items-center gap-1">
                 <ShieldCheck size={11} /> CLIENT SECURE VAULT
@@ -146,40 +146,42 @@ export default function WaveAppsExecutiveDashboard({
             <p className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-2 font-mono">
               <span>Secure Client Workspace</span>
               <span>&bull;</span>
-              <span className="text-emerald-600 font-semibold">Zero-Drift Certified General Ledger</span>
+              <span className="text-[#000000] font-semibold">Real-Time Daily Ledger</span>
               <span>&bull;</span>
-              <span className="text-slate-600">Encrypted Local Persistence</span>
+              <span className="text-slate-600">Zero Conversation Audio Kept</span>
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Quick jump to Voice Ledger - Core Advantage */}
-          <button
-            onClick={() => onNavigateTab("voice_vcr")}
-            className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#0052FF] text-xs font-bold font-mono rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-            title="Launch Hands-Free Voice AI Bookkeeping"
-          >
-            <Mic size={14} className="text-[#0052FF] animate-pulse" />
-            <span>Voice Ledger &rarr;</span>
-          </button>
+        {/* Business Bloom Widget */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 bg-[#fafafa] border border-[#e4e4e7] p-2 px-3 rounded-xl">
+            <svg viewBox="0 0 100 100" className="w-9 h-9">
+              <circle cx="50" cy="50" r="46" fill="#f4f4f5" stroke="#e4e4e7" strokeWidth="1" />
+              <ellipse cx="50" cy="22" rx="10" ry="16" fill="#000000" opacity="0.9" />
+              <ellipse cx="69" cy="36" rx="10" ry="16" transform="rotate(72 69 36)" fill="#262626" opacity="0.9" />
+              <ellipse cx="62" cy="62" rx="10" ry="16" transform="rotate(144 62 62)" fill="#B8860B" opacity="0.9" />
+              <ellipse cx="38" cy="62" rx="10" ry="16" transform="rotate(216 38 62)" fill="#171717" opacity="0.9" />
+              <ellipse cx="31" cy="36" rx="10" ry="16" transform="rotate(288 31 36)" fill="#996515" opacity="0.9" />
+              <circle cx="50" cy="50" r="14" fill="#FFFFFF" stroke="#B8860B" strokeWidth="1.5" />
+              <text x="50" y="53" textAnchor="middle" fill="#000000" fontSize="10" fontWeight="bold">92</text>
+            </svg>
+            <div>
+              <div className="text-[10px] font-bold text-[#000000] uppercase tracking-wider">Business Bloom</div>
+              <div className="text-[11px] font-semibold text-[#B8860B]">Store Health: 92/100</div>
+            </div>
+          </div>
 
-          {onSwitchToYuBiFlo && (
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={onSwitchToYuBiFlo}
-              className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold font-mono rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+              onClick={() => onNavigateTab("voice_vcr")}
+              className="px-3.5 py-2 bg-[#f4f4f5] hover:bg-[#e4e4e7] border border-[#e4e4e7] text-[#000000] text-xs font-bold font-mono rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="Launch Hands-Free Voice Bookkeeping"
             >
-              <Building2 size={14} className="text-slate-600" />
-              <span>Platform Hub</span>
+              <Mic size={14} className="text-[#000000] animate-pulse" />
+              <span>Voice Ledger &rarr;</span>
             </button>
-          )}
-
-          <button
-            onClick={() => onNavigateTab("system_architecture")}
-            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 cursor-pointer font-mono"
-          >
-            <span>Data Pipelining</span>
-          </button>
+          </div>
         </div>
       </div>
 

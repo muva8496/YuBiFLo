@@ -815,11 +815,11 @@ export default function SupplierLogTab({
             e.preventDefault();
           }
         }}
-        className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-5"
+        className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-5"
       >
         
         {/* REGISTERED SUPPLIERS SELECTOR & ADD SUPPLIER BAR */}
-        <div className="p-3 bg-[#060c09] rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="p-3 bg-[#09090b] rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2 flex-1">
             <span className="font-mono text-slate-400 text-[11px] font-bold uppercase shrink-0">
               Quick Load Supplier:
@@ -857,7 +857,7 @@ export default function SupplierLogTab({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pb-4 border-b border-slate-800 text-xs">
           
           {/* EDITABLE DELIVERY / RECEIPT DATE */}
-          <div className="bg-[#060c09] border-2 border-amber-500/50 rounded-xl p-2.5 space-y-1.5 lg:col-span-2">
+          <div className="bg-[#09090b] border-2 border-amber-500/50 rounded-xl p-2.5 space-y-1.5 lg:col-span-2">
             <div className="flex items-center justify-between">
               <label className="text-amber-300 font-mono uppercase text-[10px] font-bold flex items-center gap-1">
                 <Calendar size={13} className="text-amber-400" />
@@ -912,7 +912,7 @@ export default function SupplierLogTab({
               value={supplierName}
               onChange={(e) => setSupplierName(e.target.value)}
               placeholder="e.g. Brookside Dairy, Bidco, Broadway"
-              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-medium focus:border-cyan-500"
+              className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-medium focus:border-cyan-500"
             />
           </div>
 
@@ -926,7 +926,7 @@ export default function SupplierLogTab({
               value={supplierNationalId}
               onChange={(e) => setSupplierNationalId(e.target.value)}
               placeholder="e.g. 22940184"
-              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:border-cyan-500"
+              className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:border-cyan-500"
             />
           </div>
 
@@ -935,7 +935,7 @@ export default function SupplierLogTab({
             <select
               value={paymentMode}
               onChange={(e: any) => setPaymentMode(e.target.value)}
-              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:border-cyan-500"
+              className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono focus:border-cyan-500"
             >
               <option value="MPESA">M-Pesa Till / Send Money</option>
               <option value="CASH">Physical Drawer Cash</option>
@@ -968,7 +968,7 @@ export default function SupplierLogTab({
             {deliveryItems.map((item, index) => (
               <div 
                 key={item.id}
-                className="p-4 bg-[#060c09] border border-slate-800 rounded-2xl space-y-3"
+                className="p-4 bg-[#09090b] border border-slate-800 rounded-2xl space-y-3"
               >
                 <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 text-xs">
                   <span className="font-bold text-slate-300 font-mono flex items-center gap-2">
@@ -1012,7 +1012,7 @@ export default function SupplierLogTab({
                         }
                       }}
                       placeholder="e.g. Mumias Sugar 1kg, Cooking Oil 1L..."
-                      className="w-full bg-[#0a1510] border border-slate-700 rounded-xl p-2 text-white font-medium focus:border-cyan-500"
+                      className="w-full bg-[#0c0c0e] border border-slate-700 rounded-xl p-2 text-white font-medium focus:border-cyan-500"
                     />
                     <datalist id={`inv-list-${item.id}`}>
                       {inventory.map((inv) => (
@@ -1032,14 +1032,14 @@ export default function SupplierLogTab({
                         min={1}
                         value={item.supplyUnitsReceived}
                         onChange={(e) => handleUpdateItem(item.id, "supplyUnitsReceived", e.target.value)}
-                        className="w-16 bg-[#0a1510] border border-slate-700 rounded-xl p-2 text-white font-mono font-bold"
+                        className="w-16 bg-[#0c0c0e] border border-slate-700 rounded-xl p-2 text-white font-mono font-bold"
                       />
                       <input
                         type="text"
                         value={item.supplyUnit}
                         onChange={(e) => handleUpdateItem(item.id, "supplyUnit", e.target.value)}
                         placeholder="Pack / Unit"
-                        className="w-full bg-[#0a1510] border border-slate-700 rounded-xl p-2 text-white text-[11px]"
+                        className="w-full bg-[#0c0c0e] border border-slate-700 rounded-xl p-2 text-white text-[11px]"
                       />
                     </div>
                   </div>
@@ -1055,7 +1055,7 @@ export default function SupplierLogTab({
                         min={1}
                         value={item.conversionRatio}
                         onChange={(e) => handleUpdateItem(item.id, "conversionRatio", e.target.value)}
-                        className="w-16 bg-[#0a1510] border border-cyan-500/50 rounded-xl p-2 text-cyan-400 font-mono font-bold"
+                        className="w-16 bg-[#0c0c0e] border border-cyan-500/50 rounded-xl p-2 text-cyan-400 font-mono font-bold"
                       />
                       <span className="text-[11px] font-mono text-slate-300">
                         = {item.retailUnitsAdded} {item.retailUnit}
@@ -1079,7 +1079,7 @@ export default function SupplierLogTab({
                       value={item.lineCost || ""}
                       onChange={(e) => handleUpdateItem(item.id, "lineCost", e.target.value)}
                       placeholder="e.g. 140 or 280"
-                      className="w-full bg-[#0a1510] border-2 border-amber-500/60 rounded-xl p-2 text-amber-300 font-mono font-bold focus:border-amber-400 text-sm"
+                      className="w-full bg-[#0c0c0e] border-2 border-amber-500/60 rounded-xl p-2 text-amber-300 font-mono font-bold focus:border-amber-400 text-sm"
                     />
                     <span className="text-[9px] text-slate-400 font-mono block mt-0.5">
                       Subtotal: {currency} {Number(item.lineCost || 0).toLocaleString()}
@@ -1102,7 +1102,7 @@ export default function SupplierLogTab({
                       value={item.retailPrice || ""}
                       onChange={(e) => handleUpdateItem(item.id, "retailPrice", e.target.value)}
                       placeholder="e.g. 165 or 330"
-                      className="w-full bg-[#0a1510] border border-slate-700 rounded-xl p-2 text-white font-mono font-bold"
+                      className="w-full bg-[#0c0c0e] border border-slate-700 rounded-xl p-2 text-white font-mono font-bold"
                     />
                     <span className="text-[9px] text-emerald-400 font-mono block mt-0.5">
                       Shelf: {currency} {(Number(item.retailUnitsAdded || 0) * Number(item.retailPrice || 0)).toLocaleString()}
@@ -1155,7 +1155,7 @@ export default function SupplierLogTab({
       </form>
 
       {/* RECENT SHIPMENTS AUDIT LOG (SHOWING MULTI-ITEM DELIVERIES) */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2">
           <span className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
             <Truck size={15} className="text-cyan-400" /> Recent Supplier Deliveries ({recentDeliveries.length} Shipments)
@@ -1167,7 +1167,7 @@ export default function SupplierLogTab({
           {recentDeliveries.map((delivery) => (
             <div 
               key={delivery.id}
-              className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-2 text-xs"
+              className="p-4 bg-[#09090b] border border-slate-800 rounded-xl space-y-2 text-xs"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
                 <div className="flex items-center gap-2">
@@ -1192,7 +1192,7 @@ export default function SupplierLogTab({
                         type="date"
                         value={editDeliveryDateVal}
                         onChange={(e) => setEditDeliveryDateVal(e.target.value)}
-                        className="bg-[#060c09] text-white text-[11px] px-1.5 py-0.5 rounded border border-slate-700"
+                        className="bg-[#09090b] text-white text-[11px] px-1.5 py-0.5 rounded border border-slate-700"
                       />
                       <button
                         type="button"
@@ -1233,7 +1233,7 @@ export default function SupplierLogTab({
               {/* Items Breakdown inside this shipment */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
                 {delivery.items.map((item) => (
-                  <div key={item.id} className="p-2 bg-[#0a1510] rounded-lg border border-slate-800/80 text-[11px]">
+                  <div key={item.id} className="p-2 bg-[#0c0c0e] rounded-lg border border-slate-800/80 text-[11px]">
                     <div className="font-semibold text-white truncate">{item.itemName}</div>
                     <div className="text-[10px] text-slate-400 font-mono flex items-center justify-between mt-0.5">
                       <span>{item.supplyUnitsReceived} {item.supplyUnit} &rarr; +{item.retailUnitsAdded} {item.retailUnit}</span>
@@ -1250,7 +1250,7 @@ export default function SupplierLogTab({
       {/* ======================================================== */}
       {/* SUPPLIERS & DISTRIBUTORS DIRECTORY (OTC & AGENCY DEPOSITS) */}
       {/* ======================================================== */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
             <div className="flex items-center gap-2">
@@ -1278,7 +1278,7 @@ export default function SupplierLogTab({
           {suppliersList.map((sup) => (
             <div
               key={sup.id}
-              className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-2.5 text-xs hover:border-slate-700 transition"
+              className="p-4 bg-[#09090b] border border-slate-800 rounded-xl space-y-2.5 text-xs hover:border-slate-700 transition"
             >
               <div className="flex items-start justify-between gap-2 border-b border-slate-800/80 pb-2">
                 <div>

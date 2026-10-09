@@ -197,7 +197,7 @@ export default function ReconciliationTab({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
         {/* 1. THEORETICAL EXPECTED REVENUE */}
-        <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-lg">
+        <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-lg">
           <span className="text-[10px] font-mono uppercase text-slate-400 font-bold block">
             1. Total Expected Revenue (Stock Depleted)
           </span>
@@ -210,7 +210,7 @@ export default function ReconciliationTab({
         </div>
 
         {/* 2. ACTUAL COLLECTED */}
-        <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-lg">
+        <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-lg">
           <span className="text-[10px] font-mono uppercase text-slate-400 font-bold block">
             2. Total Actual Collected (M-Pesa + Cash)
           </span>
@@ -302,7 +302,7 @@ export default function ReconciliationTab({
       </div>
 
       {/* CASH & MPESA ACTUAL INPUT ROW */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <h3 className="text-xs font-bold text-white uppercase font-mono tracking-wider border-b border-slate-800 pb-2 flex items-center gap-2">
           <Database size={14} className="text-emerald-400" /> Daily Cash &amp; Till Totals (Actual Collected)
         </h3>
@@ -316,7 +316,7 @@ export default function ReconciliationTab({
               type="number"
               value={actualMpesa}
               onChange={(e) => setActualMpesa(e.target.value)}
-              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:outline-none focus:border-emerald-500"
             />
             <span className="text-[10px] text-slate-500 mt-1 block">From Safaricom Buy Goods statement</span>
           </div>
@@ -329,7 +329,7 @@ export default function ReconciliationTab({
               type="number"
               value={actualCash}
               onChange={(e) => setActualCash(e.target.value)}
-              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:outline-none focus:border-emerald-500"
             />
             <span className="text-[10px] text-slate-500 mt-1 block">Physical notes and coins verified</span>
           </div>
@@ -337,7 +337,7 @@ export default function ReconciliationTab({
       </div>
 
       {/* REVERSE INVENTORY ITEM AUDIT TABLE */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl overflow-hidden shadow-xl space-y-4 p-5">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl overflow-hidden shadow-xl space-y-4 p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
             <h3 className="text-sm font-bold text-white font-serif flex items-center gap-2">
@@ -352,7 +352,7 @@ export default function ReconciliationTab({
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="bg-[#060c09] border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 cursor-pointer"
+              className="bg-[#09090b] border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 cursor-pointer"
             >
               {categories.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -363,7 +363,7 @@ export default function ReconciliationTab({
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[760px]">
-            <thead className="bg-[#070e0b] text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800 font-mono">
+            <thead className="bg-[#09090b] text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800 font-mono">
               <tr>
                 <th className="py-2.5 px-3 font-semibold">Merchandise Item</th>
                 <th className="py-2.5 px-3 font-semibold text-center">Opening Qty</th>
@@ -394,7 +394,7 @@ export default function ReconciliationTab({
                         min={0}
                         value={item.opening_qty}
                         onChange={(e) => handleItemCountChange(item.item_id, "opening_qty", e.target.value)}
-                        className="w-16 bg-[#060c09] border border-slate-700 rounded px-1.5 py-1 text-center text-slate-200 text-xs font-mono focus:border-emerald-500"
+                        className="w-16 bg-[#09090b] border border-slate-700 rounded px-1.5 py-1 text-center text-slate-200 text-xs font-mono focus:border-emerald-500"
                       />
                     </td>
 
@@ -405,7 +405,7 @@ export default function ReconciliationTab({
                         min={0}
                         value={item.supply_added_qty}
                         onChange={(e) => handleItemCountChange(item.item_id, "supply_added_qty", e.target.value)}
-                        className="w-16 bg-[#060c09] border border-slate-700 rounded px-1.5 py-1 text-center text-cyan-300 text-xs font-mono focus:border-emerald-500"
+                        className="w-16 bg-[#09090b] border border-slate-700 rounded px-1.5 py-1 text-center text-cyan-300 text-xs font-mono focus:border-emerald-500"
                       />
                     </td>
 
@@ -416,7 +416,7 @@ export default function ReconciliationTab({
                         min={0}
                         value={item.closing_counted_qty}
                         onChange={(e) => handleItemCountChange(item.item_id, "closing_counted_qty", e.target.value)}
-                        className="w-16 bg-[#060c09] border border-emerald-500/50 rounded px-1.5 py-1 text-center text-white font-bold text-xs font-mono focus:border-emerald-500"
+                        className="w-16 bg-[#09090b] border border-emerald-500/50 rounded px-1.5 py-1 text-center text-white font-bold text-xs font-mono focus:border-emerald-500"
                       />
                     </td>
 
@@ -462,7 +462,7 @@ export default function ReconciliationTab({
       </div>
 
       {/* RECONCILIATION AUDIT HISTORY TABLE */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-3">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-3">
         <h3 className="text-sm font-bold text-white font-serif flex items-center gap-2 border-b border-slate-800 pb-2">
           <Calendar size={16} className="text-emerald-400" /> Historical Sealed Audits (Immutable Registry)
         </h3>
@@ -471,7 +471,7 @@ export default function ReconciliationTab({
           {reconciliations.map((audit) => (
             <div
               key={audit.id}
-              className="p-3.5 bg-[#060c09] border border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono"
+              className="p-3.5 bg-[#09090b] border border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono"
             >
               <div>
                 <span className="font-bold text-white block">{audit.date}</span>

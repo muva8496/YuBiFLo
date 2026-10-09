@@ -142,7 +142,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
             className={`p-3 rounded-2xl border transition text-left cursor-pointer flex flex-col justify-between ${
               selectedLanguage === "KIKUYU"
                 ? "bg-amber-500/15 border-amber-400 text-amber-300 shadow-lg shadow-amber-500/10"
-                : "bg-[#0e1713] border-slate-800 text-slate-400 hover:text-white"
+                : "bg-[#121214] border-slate-800 text-slate-400 hover:text-white"
             }`}
           >
             <div>
@@ -158,7 +158,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
             className={`p-3 rounded-2xl border transition text-left cursor-pointer flex flex-col justify-between ${
               selectedLanguage === "KAMBA"
                 ? "bg-cyan-500/15 border-cyan-400 text-cyan-300 shadow-lg shadow-cyan-500/10"
-                : "bg-[#0e1713] border-slate-800 text-slate-400 hover:text-white"
+                : "bg-[#121214] border-slate-800 text-slate-400 hover:text-white"
             }`}
           >
             <div>
@@ -174,7 +174,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
             className={`p-3 rounded-2xl border transition text-left cursor-pointer flex flex-col justify-between ${
               selectedLanguage === "SWAHILI"
                 ? "bg-emerald-500/15 border-emerald-400 text-emerald-300 shadow-lg shadow-emerald-500/10"
-                : "bg-[#0e1713] border-slate-800 text-slate-400 hover:text-white"
+                : "bg-[#121214] border-slate-800 text-slate-400 hover:text-white"
             }`}
           >
             <div>
@@ -190,7 +190,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
             className={`p-3 rounded-2xl border transition text-left cursor-pointer flex flex-col justify-between ${
               selectedLanguage === "SHENG"
                 ? "bg-purple-500/15 border-purple-400 text-purple-300 shadow-lg shadow-purple-500/10"
-                : "bg-[#0e1713] border-slate-800 text-slate-400 hover:text-white"
+                : "bg-[#121214] border-slate-800 text-slate-400 hover:text-white"
             }`}
           >
             <div>
@@ -206,7 +206,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
             className={`p-3 rounded-2xl border transition text-left cursor-pointer flex flex-col justify-between ${
               selectedLanguage === "ENGLISH"
                 ? "bg-blue-500/15 border-blue-400 text-blue-300 shadow-lg shadow-blue-500/10"
-                : "bg-[#0e1713] border-slate-800 text-slate-400 hover:text-white"
+                : "bg-[#121214] border-slate-800 text-slate-400 hover:text-white"
             }`}
           >
             <div>
@@ -219,7 +219,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
       </div>
 
       {/* BENCHMARK AUDIO EXAMPLES FOR SELECTED LANGUAGE */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
           <div>
             <div className="flex items-center gap-2">
@@ -251,7 +251,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
                 key={sample.id}
                 onClick={() => handleTestSample(sample)}
                 disabled={isProcessing}
-                className="p-4 bg-[#060c09] hover:bg-[#0c1813] border border-slate-800 hover:border-emerald-500/50 rounded-2xl text-left transition flex flex-col justify-between space-y-3 cursor-pointer group shadow"
+                className="p-4 bg-[#09090b] hover:bg-[#111113] border border-slate-800 hover:border-emerald-500/50 rounded-2xl text-left transition flex flex-col justify-between space-y-3 cursor-pointer group shadow"
               >
                 <div>
                   <div className="flex items-center justify-between">
@@ -289,7 +289,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
       </div>
 
       {/* LIVE AUDIO / TEXT TEST CONSOLE */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <h3 className="text-xs font-bold text-white uppercase font-mono tracking-wider border-b border-slate-800 pb-2 flex items-center gap-2">
           <Mic size={15} className="text-emerald-400 animate-pulse" /> Live Dialect Audio Parser Console
         </h3>
@@ -304,7 +304,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
               value={customAudioText}
               onChange={(e) => setCustomAudioText(e.target.value)}
               placeholder="e.g. He thukari ya mirongo ina / Ete iia crate ili / Nimeacha ngiri ya hii unga / Drop two crates of milk..."
-              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-3 text-white font-serif text-sm focus:border-emerald-500"
+              className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-3 text-white font-serif text-sm focus:border-emerald-500"
             />
           </div>
 
@@ -322,7 +322,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
 
         {/* PARSED EXTRACTION PREVIEW CARD */}
         {activeResult && (
-          <div className="p-4 bg-[#060c09] border-2 border-emerald-500/50 rounded-2xl space-y-3 animate-in fade-in">
+          <div className="p-4 bg-[#09090b] border-2 border-emerald-500/50 rounded-2xl space-y-3 animate-in fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-bold">
@@ -365,7 +365,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
               </div>
             </div>
 
-            <div className="text-[11px] text-slate-300 font-sans italic bg-[#0a1510] p-2.5 rounded-xl border border-slate-800">
+            <div className="text-[11px] text-slate-300 font-sans italic bg-[#0c0c0e] p-2.5 rounded-xl border border-slate-800">
               <strong>English Interpretation:</strong> "{activeResult.transcriptionEnglish}"
             </div>
 
@@ -382,7 +382,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
       </div>
 
       {/* NAIROBI COMMODITY & FINANCIAL PHONETIC LEXICON TABLE */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <div className="border-b border-slate-800 pb-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BookOpen size={16} className="text-amber-400" />
@@ -395,7 +395,7 @@ export default function MultilingualVoiceTab({ state, onCommitParsedSale }: Mult
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[700px] font-mono">
-            <thead className="bg-[#060c09] text-slate-400 text-[10px] uppercase border-b border-slate-800">
+            <thead className="bg-[#09090b] text-slate-400 text-[10px] uppercase border-b border-slate-800">
               <tr>
                 <th className="py-2.5 px-3 font-semibold font-sans">Trading Term</th>
                 <th className="py-2.5 px-3 text-amber-300 font-bold">1. Kikuyu (Gĩkũyũ)</th>

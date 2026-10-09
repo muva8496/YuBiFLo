@@ -101,7 +101,7 @@ export default function SupplyStockVaultTab({
             className={`p-3 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-2 ${
               activeSubTab === "suppliers"
                 ? "bg-[#14291f] border-emerald-500 text-white shadow-md shadow-emerald-950 font-bold"
-                : "bg-[#060c09] border-slate-800 text-slate-400 hover:bg-[#0c1813] hover:text-slate-200"
+                : "bg-[#09090b] border-slate-800 text-slate-400 hover:bg-[#111113] hover:text-slate-200"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -122,7 +122,7 @@ export default function SupplyStockVaultTab({
             className={`p-3 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-2 ${
               activeSubTab === "warehouse"
                 ? "bg-[#14291f] border-emerald-500 text-white shadow-md shadow-emerald-950 font-bold"
-                : "bg-[#060c09] border-slate-800 text-slate-400 hover:bg-[#0c1813] hover:text-slate-200"
+                : "bg-[#09090b] border-slate-800 text-slate-400 hover:bg-[#111113] hover:text-slate-200"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -143,7 +143,7 @@ export default function SupplyStockVaultTab({
             className={`p-3 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-2 ${
               activeSubTab === "inventory"
                 ? "bg-[#14291f] border-emerald-500 text-white shadow-md shadow-emerald-950 font-bold"
-                : "bg-[#060c09] border-slate-800 text-slate-400 hover:bg-[#0c1813] hover:text-slate-200"
+                : "bg-[#09090b] border-slate-800 text-slate-400 hover:bg-[#111113] hover:text-slate-200"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -164,7 +164,7 @@ export default function SupplyStockVaultTab({
             className={`p-3 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-2 ${
               activeSubTab === "receipts"
                 ? "bg-[#14291f] border-emerald-500 text-white shadow-md shadow-emerald-950 font-bold"
-                : "bg-[#060c09] border-slate-800 text-slate-400 hover:bg-[#0c1813] hover:text-slate-200"
+                : "bg-[#09090b] border-slate-800 text-slate-400 hover:bg-[#111113] hover:text-slate-200"
             }`}
           >
             <div className="flex items-center gap-2">

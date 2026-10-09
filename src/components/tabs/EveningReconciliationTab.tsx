@@ -129,7 +129,7 @@ export default function EveningReconciliationTab({
       {/* TOP 3 SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono">
         {/* EXPECTED REVENUE */}
-        <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-lg">
+        <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-lg">
           <span className="text-[10px] text-slate-400 font-bold uppercase block">
             1. Total Implied Revenue
           </span>
@@ -142,7 +142,7 @@ export default function EveningReconciliationTab({
         </div>
 
         {/* ACTUAL COLLECTED */}
-        <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-lg">
+        <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-lg">
           <span className="text-[10px] text-slate-400 font-bold uppercase block">
             2. M-Pesa + Cash Match
           </span>
@@ -224,7 +224,7 @@ export default function EveningReconciliationTab({
       </div>
 
       {/* FINANCIAL INPUTS: MPESA & CASH & EDITABLE CLOSING DATE */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl p-5 shadow-xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-2 gap-2">
           <h3 className="text-xs font-bold text-white uppercase font-mono tracking-wider">
             Realized Collections (Till &amp; Cash Count)
@@ -239,7 +239,7 @@ export default function EveningReconciliationTab({
               type="date"
               value={reconDate}
               onChange={(e) => setReconDate(e.target.value)}
-              className="bg-[#060c09] border border-amber-500/50 rounded-lg px-2.5 py-1 text-xs text-amber-300 font-mono font-bold focus:border-amber-400 focus:outline-none"
+              className="bg-[#09090b] border border-amber-500/50 rounded-lg px-2.5 py-1 text-xs text-amber-300 font-mono font-bold focus:border-amber-400 focus:outline-none"
             />
             <button
               type="button"
@@ -271,7 +271,7 @@ export default function EveningReconciliationTab({
               type="number"
               value={actualMpesa}
               onChange={(e) => setActualMpesa(e.target.value)}
-              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500"
+              className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500"
             />
             <span className="text-[10px] text-slate-500 mt-1 block">From Safaricom daily settlement SMS</span>
           </div>
@@ -284,7 +284,7 @@ export default function EveningReconciliationTab({
               type="number"
               value={actualCash}
               onChange={(e) => setActualCash(e.target.value)}
-              className="w-full bg-[#060c09] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500"
+              className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500"
             />
             <span className="text-[10px] text-slate-500 mt-1 block">Counted notes &amp; coins in drawer</span>
           </div>
@@ -292,7 +292,7 @@ export default function EveningReconciliationTab({
       </div>
 
       {/* REVERSE INVENTORY AUDIT TABLE */}
-      <div className="bg-[#0e1713] border-2 border-emerald-950 rounded-2xl overflow-hidden shadow-xl p-5 space-y-4">
+      <div className="bg-[#121214] border-2 border-emerald-950 rounded-2xl overflow-hidden shadow-xl p-5 space-y-4">
         <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-white font-serif">
@@ -306,7 +306,7 @@ export default function EveningReconciliationTab({
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[700px] font-mono">
-            <thead className="bg-[#070e0b] text-slate-400 uppercase text-[10px] border-b border-slate-800">
+            <thead className="bg-[#09090b] text-slate-400 uppercase text-[10px] border-b border-slate-800">
               <tr>
                 <th className="py-2.5 px-3 font-semibold font-sans">Item Name</th>
                 <th className="py-2.5 px-3 text-center">Opening</th>
@@ -335,7 +335,7 @@ export default function EveningReconciliationTab({
                       min={0}
                       value={item.endingStockCount}
                       onChange={(e) => handleUpdateClosingCount(item.itemId, e.target.value)}
-                      className="w-16 bg-[#060c09] border border-emerald-500/40 rounded px-1.5 py-1 text-center text-white font-bold text-xs"
+                      className="w-16 bg-[#09090b] border border-emerald-500/40 rounded px-1.5 py-1 text-center text-white font-bold text-xs"
                     />
                   </td>
                   <td className="py-3 px-3 text-center font-bold text-emerald-400">

@@ -20,7 +20,7 @@ export default function FreemiumBanner({
   const maxFreeVcr = 20;
 
   return (
-    <div className="bg-[#0c1813] border border-emerald-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+    <div className="bg-[#111113] border border-emerald-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
       
       {/* LEFT: WEEKLY FINANCIAL REPORT READY PROMPT */}
       <div className="space-y-1.5 max-w-xl">
@@ -62,7 +62,7 @@ export default function FreemiumBanner({
 
       {/* RIGHT: TIER SELECTOR & UPGRADE ACTION */}
       <div className="flex flex-wrap sm:flex-col items-end gap-2 shrink-0">
-        <div className="flex items-center gap-1 bg-[#070e0b] p-1 rounded-xl border border-slate-800 font-mono text-[10px]">
+        <div className="flex items-center gap-1 bg-[#09090b] p-1 rounded-xl border border-slate-800 font-mono text-[10px]">
           <button
             onClick={() => onToggleTier("FREE_STARTER")}
             className={`px-2 py-1 rounded-lg transition cursor-pointer ${

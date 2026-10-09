@@ -170,7 +170,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
 
           <div className="flex items-center gap-2 font-mono text-xs">
             <span className="text-[10px] text-slate-400">Architecture Tier:</span>
-            <span className="text-emerald-400 font-bold bg-[#060c09] px-2.5 py-1 rounded border border-emerald-500/30">
+            <span className="text-emerald-400 font-bold bg-[#09090b] px-2.5 py-1 rounded border border-emerald-500/30">
               L1/L2 High-Availability Sovereign
             </span>
           </div>
@@ -184,7 +184,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
             className={`p-3 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-2 ${
               activeSection === "simulator"
                 ? "bg-[#14291f] border-emerald-500 text-white shadow-md shadow-emerald-950 font-bold"
-                : "bg-[#060c09] border-slate-800 text-slate-400 hover:bg-[#0c1813] hover:text-slate-200"
+                : "bg-[#09090b] border-slate-800 text-slate-400 hover:bg-[#111113] hover:text-slate-200"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -200,7 +200,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
             className={`p-3 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-2 ${
               activeSection === "schemas"
                 ? "bg-[#14291f] border-emerald-500 text-white shadow-md shadow-emerald-950 font-bold"
-                : "bg-[#060c09] border-slate-800 text-slate-400 hover:bg-[#0c1813] hover:text-slate-200"
+                : "bg-[#09090b] border-slate-800 text-slate-400 hover:bg-[#111113] hover:text-slate-200"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
             className={`p-3 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-2 ${
               activeSection === "api_flows"
                 ? "bg-[#14291f] border-emerald-500 text-white shadow-md shadow-emerald-950 font-bold"
-                : "bg-[#060c09] border-slate-800 text-slate-400 hover:bg-[#0c1813] hover:text-slate-200"
+                : "bg-[#09090b] border-slate-800 text-slate-400 hover:bg-[#111113] hover:text-slate-200"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -232,7 +232,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
             className={`p-3 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-2 ${
               activeSection === "fallbacks"
                 ? "bg-[#14291f] border-emerald-500 text-white shadow-md shadow-emerald-950 font-bold"
-                : "bg-[#060c09] border-slate-800 text-slate-400 hover:bg-[#0c1813] hover:text-slate-200"
+                : "bg-[#09090b] border-slate-800 text-slate-400 hover:bg-[#111113] hover:text-slate-200"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -248,7 +248,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
             className={`p-3 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-2 ${
               activeSection === "pseudocode"
                 ? "bg-[#14291f] border-emerald-500 text-white shadow-md shadow-emerald-950 font-bold"
-                : "bg-[#060c09] border-slate-800 text-slate-400 hover:bg-[#0c1813] hover:text-slate-200"
+                : "bg-[#09090b] border-slate-800 text-slate-400 hover:bg-[#111113] hover:text-slate-200"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -303,7 +303,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
                     className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
                       isSelected
                         ? "bg-[#182017] border-amber-500 text-white shadow-md shadow-amber-950"
-                        : "bg-[#060c09] border-slate-800 text-slate-400 hover:bg-[#0c1410] hover:text-slate-200"
+                        : "bg-[#09090b] border-slate-800 text-slate-400 hover:bg-[#0c1410] hover:text-slate-200"
                     }`}
                   >
                     <div>
@@ -327,7 +327,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2 font-mono text-xs">
               
               {/* LEFT: SPECS & STEP PROGRESS (7 COLS) */}
-              <div className="lg:col-span-7 bg-[#060c09] border border-slate-800 rounded-xl p-4 space-y-3.5">
+              <div className="lg:col-span-7 bg-[#09090b] border border-slate-800 rounded-xl p-4 space-y-3.5">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="text-white font-bold">{currentScenario.title}</span>
                   <span className="text-[10px] text-amber-400">DIFFICULTY: {currentScenario.difficulty}</span>
@@ -430,7 +430,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
       {/* ========================================================================= */}
       {activeSection === "schemas" && (
         <div className="space-y-6">
-          <div className="bg-[#0c1411] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl font-mono text-xs">
+          <div className="bg-[#111113] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl font-mono text-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -464,7 +464,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
       {/* ========================================================================= */}
       {activeSection === "api_flows" && (
         <div className="space-y-6">
-          <div className="bg-[#0c1411] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl font-mono text-xs">
+          <div className="bg-[#111113] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl font-mono text-xs">
             <div className="border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <GitBranch className="text-emerald-400" size={18} /> Production API Flows &amp; Webhook Lifecycles
@@ -476,7 +476,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* FLOW 1 */}
-              <div className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-2">
+              <div className="p-4 bg-[#09090b] border border-slate-800 rounded-xl space-y-2">
                 <span className="text-emerald-400 font-bold uppercase block text-xs">
                   Flow A: Supply-Driven Implied Sales Crystallization
                 </span>
@@ -490,7 +490,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
               </div>
 
               {/* FLOW 2 */}
-              <div className="p-4 bg-[#060c09] border border-slate-800 rounded-xl space-y-2">
+              <div className="p-4 bg-[#09090b] border border-slate-800 rounded-xl space-y-2">
                 <span className="text-cyan-400 font-bold uppercase block text-xs">
                   Flow B: Safaricom Daraja M-Pesa C2B Webhook Ingest
                 </span>
@@ -512,7 +512,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
       {/* ========================================================================= */}
       {activeSection === "fallbacks" && (
         <div className="space-y-6">
-          <div className="bg-[#0c1411] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl font-mono text-xs">
+          <div className="bg-[#111113] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl font-mono text-xs">
             <div className="border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <ShieldAlert className="text-red-400" size={18} /> Circuit-Breakers &amp; Error Fallback Logic Matrix
@@ -523,7 +523,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-[#060c09] border border-red-500/40 rounded-xl space-y-2">
+              <div className="p-4 bg-[#09090b] border border-red-500/40 rounded-xl space-y-2">
                 <span className="text-red-400 font-bold uppercase block">Circuit Breaker: Daraja API</span>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
                   <strong>Trigger:</strong> 3 consecutive 504 timeouts to Safaricom Daraja.<br />
@@ -531,7 +531,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
                 </p>
               </div>
 
-              <div className="p-4 bg-[#060c09] border border-amber-500/40 rounded-xl space-y-2">
+              <div className="p-4 bg-[#09090b] border border-amber-500/40 rounded-xl space-y-2">
                 <span className="text-amber-400 font-bold uppercase block">Write-Ahead Offline Drain</span>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
                   <strong>Trigger:</strong> navigator.onLine = false.<br />
@@ -539,7 +539,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
                 </p>
               </div>
 
-              <div className="p-4 bg-[#060c09] border border-cyan-500/40 rounded-xl space-y-2">
+              <div className="p-4 bg-[#09090b] border border-cyan-500/40 rounded-xl space-y-2">
                 <span className="text-cyan-400 font-bold uppercase block">Dirty-Read Mutex Locking</span>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
                   <strong>Trigger:</strong> Parallel requests touch same SKU within 50ms.<br />
@@ -556,7 +556,7 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
       {/* ========================================================================= */}
       {activeSection === "pseudocode" && (
         <div className="space-y-6">
-          <div className="bg-[#0c1411] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl font-mono text-xs">
+          <div className="bg-[#111113] border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl font-mono text-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">

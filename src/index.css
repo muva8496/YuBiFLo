@@ -1,41 +1,79 @@
 @import "tailwindcss";
 
+@theme {
+  --color-emerald-50: #fafafa;
+  --color-emerald-100: #f4f4f5;
+  --color-emerald-200: #e4e4e7;
+  --color-emerald-300: #d4d4d8;
+  --color-emerald-400: #e4e4e7;
+  --color-emerald-500: #000000;
+  --color-emerald-600: #09090b;
+  --color-emerald-700: #18181b;
+  --color-emerald-800: #27272a;
+  --color-emerald-900: #3f3f46;
+  --color-emerald-950: #000000;
+
+  --color-teal-50: #fafafa;
+  --color-teal-100: #f4f4f5;
+  --color-teal-200: #e4e4e7;
+  --color-teal-300: #d4d4d8;
+  --color-teal-400: #e4e4e7;
+  --color-teal-500: #000000;
+  --color-teal-600: #09090b;
+  --color-teal-700: #18181b;
+  --color-teal-800: #27272a;
+  --color-teal-900: #3f3f46;
+  --color-teal-950: #000000;
+
+  --color-green-50: #fafafa;
+  --color-green-100: #f4f4f5;
+  --color-green-200: #e4e4e7;
+  --color-green-300: #d4d4d8;
+  --color-green-400: #e4e4e7;
+  --color-green-500: #000000;
+  --color-green-600: #09090b;
+  --color-green-700: #18181b;
+  --color-green-800: #27272a;
+  --color-green-900: #3f3f46;
+  --color-green-950: #000000;
+}
+
 @layer base {
   :root {
     color-scheme: dark;
-    --bg-canvas: #0B0F0E;
-    --bg-page: #0B0F0E;
-    --bg-card: #121815;
-    --bg-card-2: #151C18;
-    --border: rgba(255, 255, 255, 0.07);
-    --border-strong: rgba(255, 255, 255, 0.13);
-    --teal: #1FB88E;
-    --teal-dim: rgba(31, 184, 142, 0.14);
+    --bg-canvas: #09090b;
+    --bg-page: #09090b;
+    --bg-card: #121214;
+    --bg-card-2: #18181b;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --teal: #ffffff;
+    --teal-dim: rgba(255, 255, 255, 0.10);
     --gold: #D4A537;
     --gold-dim: rgba(212, 165, 55, 0.14);
     --text-hi: #F2F3F1;
     --text-mid: #A8B0AC;
-    --text-low: #697169;
-    --bg-surface: #121815;
-    --bg-surface-elevated: #151C18;
-    --border-subtle: rgba(255, 255, 255, 0.07);
-    --border-accent: rgba(31, 184, 142, 0.25);
+    --text-low: #71717a;
+    --bg-surface: #121214;
+    --bg-surface-elevated: #18181b;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-accent: rgba(255, 255, 255, 0.25);
     --text-primary: #F2F3F1;
     --text-secondary: #A8B0AC;
-    --text-muted: #697169;
+    --text-muted: #71717a;
   }
 
   /* Light theme support for high-contrast daylight retail environments */
   .theme-light {
     color-scheme: light;
-    --bg-canvas: #f8fafc;
+    --bg-canvas: #ffffff;
     --bg-surface: #ffffff;
-    --bg-surface-elevated: #f1f5f9;
-    --border-subtle: #e2e8f0;
-    --border-accent: rgba(16, 185, 129, 0.35);
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #64748b;
+    --bg-surface-elevated: #f4f4f5;
+    --border-subtle: #e4e4e7;
+    --border-accent: #000000;
+    --text-primary: #09090b;
+    --text-secondary: #52525b;
+    --text-muted: #71717a;
   }
   
   body {
@@ -132,12 +170,12 @@
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: var(--teal-dim);
-  border: 1px solid var(--teal);
+  background: #000000;
+  border: 1px solid #27272a;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--teal);
+  color: #ffffff;
   font-family: 'Outfit', sans-serif;
   font-weight: 600;
   font-size: 17px;
@@ -202,10 +240,10 @@
 
 .yubiflo-btn-primary {
   font-size: 13px;
-  font-weight: 500;
-  color: #06110D;
-  background: var(--teal);
-  border: none;
+  font-weight: 600;
+  color: #ffffff;
+  background: #000000;
+  border: 1px solid #27272a;
   padding: 9px 16px;
   border-radius: 8px;
   display: flex;
@@ -216,7 +254,8 @@
   transition: opacity 0.15s ease, transform 0.1s ease;
 }
 .yubiflo-btn-primary:hover {
-  opacity: 0.92;
+  background: #18181b;
+  opacity: 0.95;
 }
 .yubiflo-btn-primary:active {
   transform: scale(0.98);
@@ -273,7 +312,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--teal);
+  background: #ffffff;
   display: inline-block;
   margin-right: 7px;
 }
@@ -346,8 +385,8 @@
   margin-bottom: 8px;
 }
 .yubiflo-progress-row .now {
-  color: var(--teal);
-  font-weight: 500;
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .yubiflo-progress-track {
@@ -359,7 +398,7 @@
 }
 .yubiflo-progress-fill {
   height: 100%;
-  background: var(--teal);
+  background: #ffffff;
   transition: width 0.4s ease;
 }
 
@@ -418,7 +457,7 @@
 
 .yubiflo-metric.hero-metric .yubiflo-metric-value {
   font-size: 34px;
-  color: var(--teal);
+  color: #ffffff;
 }
 
 .yubiflo-metric-sub {
@@ -478,8 +517,8 @@
 
 .elevation-card-emerald {
   background: #111827;
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
 }
 
 .elevation-card-amber {

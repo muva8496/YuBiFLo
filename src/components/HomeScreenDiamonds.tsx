@@ -373,7 +373,7 @@ export default function HomeScreenDiamonds({
 
       {/* 5. PROJECT #1 CONSENTED CASE STUDY BANNER */}
       <section className="px-4 sm:px-6 max-w-5xl mx-auto">
-        <div className="bg-gradient-to-r from-[#0c1813] to-[#12231b] border-2 border-emerald-500/40 rounded-3xl p-8 sm:p-10 shadow-2xl space-y-6">
+        <div className="bg-gradient-to-r from-[#111113] to-[#12231b] border-2 border-emerald-500/40 rounded-3xl p-8 sm:p-10 shadow-2xl space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="inline-block px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-mono font-bold rounded-full mb-2">
@@ -397,7 +397,7 @@ export default function HomeScreenDiamonds({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-            <div className="bg-[#070e0b] border border-red-500/30 rounded-xl p-4 space-y-2">
+            <div className="bg-[#09090b] border border-red-500/30 rounded-xl p-4 space-y-2">
               <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider block">
                 Before YuBiFLo (Pen &amp; Paper Guesswork)
               </span>
@@ -407,7 +407,7 @@ export default function HomeScreenDiamonds({
               <div className="text-slate-300">&bull; {projectCaseStudy.before_metrics.stockout_frequency}</div>
             </div>
 
-            <div className="bg-[#070e0b] border border-emerald-500/40 rounded-xl p-4 space-y-2">
+            <div className="bg-[#09090b] border border-emerald-500/40 rounded-xl p-4 space-y-2">
               <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">
                 After YuBiFLo (External CDO Platform)
               </span>

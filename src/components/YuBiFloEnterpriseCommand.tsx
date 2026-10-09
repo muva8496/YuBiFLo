@@ -16,15 +16,13 @@ interface YuBiFloEnterpriseCommandProps {
   onLaunchAlacioShop: () => void;
   onOpenDataLab: () => void;
   onOpenBlueprints: () => void;
-  onOpenCloner: () => void;
 }
 
 export default function YuBiFloEnterpriseCommand({
   alacioState,
   onLaunchAlacioShop,
   onOpenDataLab,
-  onOpenBlueprints,
-  onOpenCloner
+  onOpenBlueprints
 }: YuBiFloEnterpriseCommandProps) {
   const [pipelineStep, setPipelineStep] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<"wave_dashboards" | "fleet" | "pipeline" | "macro_intel">("wave_dashboards");
@@ -41,17 +39,17 @@ export default function YuBiFloEnterpriseCommand({
       {/* ========================================================= */}
       {/* 1. SOVEREIGN YUBIFLO PLATFORM MASTHEAD                    */}
       {/* ========================================================= */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0b1c15] via-[#081510] to-[#040a07] border-2 border-emerald-500/40 p-6 sm:p-8 shadow-2xl shadow-emerald-950/60">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#121214] via-[#0a0a0c] to-[#000000] border border-zinc-700 p-6 sm:p-8 shadow-2xl shadow-black/80">
         
         {/* Subtle decorative glow */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-zinc-800/60 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-3 max-w-3xl">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse shadow-md shadow-emerald-400/50" />
-              <div className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-xs font-bold border border-emerald-500/40 tracking-wider">
+              <span className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md shadow-white/30" />
+              <div className="px-3 py-1 rounded-full bg-zinc-800 text-white font-mono text-xs font-bold border border-zinc-700 tracking-wider">
                 YUBIFLO &bull; SOVEREIGN ENTERPRISE OS
               </div>
               <span className="text-xs font-mono text-amber-300/90 bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/20">
@@ -64,7 +62,7 @@ export default function YuBiFloEnterpriseCommand({
             </h1>
             
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-sans">
-              <strong className="text-emerald-300 font-serif italic">"Your Business Is A Flower"</strong> — Built to do the heavy mathematical and data engineering lifting for African MSMEs. We turn messy counters, unrecorded chalk debts, and chaotic milk supplies into bulletproof financial ledgers and predictive supply pipelines.
+              <strong className="text-white font-serif italic">"Your Business Is A Flower"</strong> — Built to do the heavy mathematical and data engineering lifting for African MSMEs. We turn messy counters, unrecorded chalk debts, and chaotic milk supplies into bulletproof financial ledgers and predictive supply pipelines.
             </p>
 
             <div className="pt-2 flex flex-wrap items-center gap-3 text-xs font-mono">
@@ -73,7 +71,7 @@ export default function YuBiFloEnterpriseCommand({
                 Raw-to-Ledger ETL Active
               </span>
               <span className="flex items-center gap-1.5 text-slate-300 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">
-                <ShieldCheck size={13} className="text-emerald-400" />
+                <ShieldCheck size={13} className="text-white" />
                 Double-Entry 3-Pillar Accounts
               </span>
               <span className="flex items-center gap-1.5 text-slate-300 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">
@@ -87,7 +85,7 @@ export default function YuBiFloEnterpriseCommand({
           <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
             <button
               onClick={onLaunchAlacioShop}
-              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/25 transition cursor-pointer group"
+              className="px-5 py-3 rounded-2xl bg-black hover:bg-zinc-800 text-white border border-zinc-700 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-black/50 transition cursor-pointer group"
             >
               <span>Launch Alacio Flagship</span>
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
@@ -95,25 +93,25 @@ export default function YuBiFloEnterpriseCommand({
 
             <button
               onClick={onOpenDataLab}
-              className="px-5 py-3 rounded-2xl bg-[#102319] hover:bg-[#152e22] text-emerald-300 border border-emerald-500/40 text-xs font-bold font-mono flex items-center justify-center gap-2 transition cursor-pointer"
+              className="px-5 py-3 rounded-2xl bg-[#18181b] hover:bg-[#27272a] text-zinc-200 border border-zinc-700 text-xs font-bold font-mono flex items-center justify-center gap-2 transition cursor-pointer"
             >
-              <Cpu size={15} className="text-emerald-400" />
+              <Cpu size={15} className="text-white" />
               <span>Data Engineering Lab & Schemas</span>
             </button>
           </div>
         </div>
 
         {/* Global Network High-Level Telemetry */}
-        <div className="mt-8 pt-6 border-t border-emerald-950/80 grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
-          <div className="bg-[#06110c]/80 rounded-xl p-3 border border-emerald-900/40">
+        <div className="mt-8 pt-6 border-t border-zinc-800 grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
+          <div className="bg-[#000000]/80 rounded-xl p-3 border border-zinc-800">
             <div className="text-[10px] uppercase font-mono tracking-wider text-slate-400">Total Ecosystem GMV</div>
-            <div className="text-lg sm:text-xl font-bold font-mono text-emerald-400 mt-0.5">
+            <div className="text-lg sm:text-xl font-bold font-mono text-white mt-0.5">
               KSh 1,482,500
             </div>
-            <div className="text-[10px] text-emerald-500/80 mt-0.5 font-mono">Live across 4 nodes</div>
+            <div className="text-[10px] text-zinc-400 mt-0.5 font-mono">Live across 4 nodes</div>
           </div>
 
-          <div className="bg-[#06110c]/80 rounded-xl p-3 border border-emerald-900/40">
+          <div className="bg-[#000000]/80 rounded-xl p-3 border border-zinc-800">
             <div className="text-[10px] uppercase font-mono tracking-wider text-slate-400">Catalog SKUs Ingested</div>
             <div className="text-lg sm:text-xl font-bold font-mono text-cyan-300 mt-0.5">
               {alacioState.inventory.length + 185} Items
@@ -121,7 +119,7 @@ export default function YuBiFloEnterpriseCommand({
             <div className="text-[10px] text-cyan-500/80 mt-0.5 font-mono">Full FMCG & Hardware Index</div>
           </div>
 
-          <div className="bg-[#06110c]/80 rounded-xl p-3 border border-emerald-900/40">
+          <div className="bg-[#000000]/80 rounded-xl p-3 border border-zinc-800">
             <div className="text-[10px] uppercase font-mono tracking-wider text-slate-400">Aggregate Khata (Deni)</div>
             <div className="text-lg sm:text-xl font-bold font-mono text-purple-300 mt-0.5">
               KSh {(totalDebtors + 48200).toLocaleString()}
@@ -129,12 +127,12 @@ export default function YuBiFloEnterpriseCommand({
             <div className="text-[10px] text-purple-400/80 mt-0.5 font-mono">Personal Ledger Tracked</div>
           </div>
 
-          <div className="bg-[#06110c]/80 rounded-xl p-3 border border-emerald-900/40">
+          <div className="bg-[#000000]/80 rounded-xl p-3 border border-zinc-800">
             <div className="text-[10px] uppercase font-mono tracking-wider text-slate-400">Ledger Precision & Drift</div>
-            <div className="text-lg sm:text-xl font-bold font-mono text-emerald-300 mt-0.5">
+            <div className="text-lg sm:text-xl font-bold font-mono text-zinc-200 mt-0.5">
               0.00% Drift
             </div>
-            <div className="text-[10px] text-emerald-400 mt-0.5 font-mono">Mathematical Sovereignty</div>
+            <div className="text-[10px] text-white mt-0.5 font-mono">Mathematical Sovereignty</div>
           </div>
         </div>
       </div>
@@ -142,25 +140,25 @@ export default function YuBiFloEnterpriseCommand({
       {/* ========================================================= */}
       {/* 2. NAVIGATION TABS: WAVEAPPS DASHBOARD vs FLEET vs PIPELINE vs MACRO INTEL */}
       {/* ========================================================= */}
-      <div className="flex border-b border-emerald-950/80 gap-2 overflow-x-auto">
+      <div className="flex border-b border-zinc-800 gap-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab("wave_dashboards")}
           className={`pb-3 px-4 text-sm font-semibold transition cursor-pointer flex items-center gap-2 border-b-2 whitespace-nowrap ${
             activeTab === "wave_dashboards"
-              ? "border-emerald-400 text-emerald-300 bg-emerald-500/10 rounded-t-xl"
+              ? "border-white text-zinc-200 bg-zinc-800/60 rounded-t-xl"
               : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
-          <BarChart3 size={16} className="text-emerald-400" />
+          <BarChart3 size={16} className="text-white" />
           <span className="font-bold">Executive Financial Dashboard (Customer Center)</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono">White Trust</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-800 text-white font-mono">White Trust</span>
         </button>
 
         <button
           onClick={() => setActiveTab("fleet")}
           className={`pb-3 px-4 text-sm font-semibold transition cursor-pointer flex items-center gap-2 border-b-2 whitespace-nowrap ${
             activeTab === "fleet"
-              ? "border-emerald-400 text-emerald-300"
+              ? "border-white text-zinc-200"
               : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
@@ -172,7 +170,7 @@ export default function YuBiFloEnterpriseCommand({
           onClick={() => setActiveTab("pipeline")}
           className={`pb-3 px-4 text-sm font-semibold transition cursor-pointer flex items-center gap-2 border-b-2 whitespace-nowrap ${
             activeTab === "pipeline"
-              ? "border-emerald-400 text-emerald-300"
+              ? "border-white text-zinc-200"
               : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
@@ -184,7 +182,7 @@ export default function YuBiFloEnterpriseCommand({
           onClick={() => setActiveTab("macro_intel")}
           className={`pb-3 px-4 text-sm font-semibold transition cursor-pointer flex items-center gap-2 border-b-2 whitespace-nowrap ${
             activeTab === "macro_intel"
-              ? "border-emerald-400 text-emerald-300"
+              ? "border-white text-zinc-200"
               : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
@@ -198,9 +196,9 @@ export default function YuBiFloEnterpriseCommand({
       {/* ========================================================= */}
       {activeTab === "wave_dashboards" && (
         <div className="space-y-6 animate-in fade-in">
-          <div className="bg-[#091510] border border-emerald-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-[#121214] border border-zinc-700 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+              <div className="w-10 h-10 rounded-xl bg-zinc-800 text-white flex items-center justify-center font-bold">
                 <BarChart3 size={20} />
               </div>
               <div>
@@ -215,7 +213,7 @@ export default function YuBiFloEnterpriseCommand({
 
             <button
               onClick={onLaunchAlacioShop}
-              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition flex items-center gap-2 cursor-pointer font-mono shrink-0 shadow-md"
+              className="px-4 py-2 rounded-xl bg-black hover:bg-zinc-800 text-white border border-zinc-700 font-black text-xs transition flex items-center gap-2 cursor-pointer font-mono shrink-0 shadow-md"
             >
               <span>Operate Live Shop Counter</span>
               <ArrowRight size={14} />
@@ -249,12 +247,6 @@ export default function YuBiFloEnterpriseCommand({
 
             <div className="flex items-center gap-2">
               <button
-                onClick={onOpenCloner}
-                className="px-3.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer font-mono"
-              >
-                <Plus size={14} /> Provision New Node
-              </button>
-              <button
                 onClick={onOpenBlueprints}
                 className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
               >
@@ -266,18 +258,18 @@ export default function YuBiFloEnterpriseCommand({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* NODE 001: ALACIO MINI SHOP (THE GAMMA & SIGMA FLAGSHIP) */}
-            <div className="relative rounded-3xl bg-gradient-to-br from-[#0e1d16] to-[#07110c] border-2 border-emerald-500/60 p-6 shadow-xl flex flex-col justify-between group overflow-hidden">
+            <div className="relative rounded-3xl bg-gradient-to-br from-[#121214] to-[#09090b] border border-zinc-700 p-6 shadow-xl flex flex-col justify-between group overflow-hidden">
               
               {/* Sigma / Gamma Emblem */}
               <div className="absolute top-4 right-4 flex items-center gap-2">
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-800 text-white font-bold border border-zinc-700">
                   LIVE ACTIVE &bull; NODE 001
                 </span>
               </div>
 
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-slate-950 font-black font-serif text-xl flex items-center justify-center shadow-lg">
+                  <div className="w-12 h-12 rounded-2xl bg-black text-white border border-zinc-700 font-black font-serif text-xl flex items-center justify-center shadow-lg">
                     A
                   </div>
                   <div>
@@ -294,8 +286,8 @@ export default function YuBiFloEnterpriseCommand({
                 </div>
 
                 {/* Operational Archetype */}
-                <div className="bg-[#050c08] border border-emerald-950 rounded-xl p-3 my-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono font-bold text-emerald-400">
+                <div className="bg-[#050c08] border border-zinc-800 rounded-xl p-3 my-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono font-bold text-white">
                     <span>OPERATIONAL ARCHETYPE:</span>
                     <span className="text-amber-300 text-[11px]">Cold Mathematical Precision</span>
                   </div>
@@ -309,29 +301,29 @@ export default function YuBiFloEnterpriseCommand({
 
                 {/* Node Live Numbers */}
                 <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono py-2">
-                  <div className="bg-[#0a1510] p-2.5 rounded-lg border border-emerald-950">
+                  <div className="bg-[#0c0c0e] p-2.5 rounded-lg border border-zinc-800">
                     <span className="text-[10px] text-slate-400 block">Shelf SKUs</span>
-                    <span className="text-sm font-bold text-emerald-300">{alacioState.inventory.length} FMCG</span>
+                    <span className="text-sm font-bold text-zinc-200">{alacioState.inventory.length} FMCG</span>
                   </div>
-                  <div className="bg-[#0a1510] p-2.5 rounded-lg border border-emerald-950">
+                  <div className="bg-[#0c0c0e] p-2.5 rounded-lg border border-zinc-800">
                     <span className="text-[10px] text-slate-400 block">Deni Owed</span>
                     <span className="text-sm font-bold text-purple-300">KSh {totalDebtors.toLocaleString()}</span>
                   </div>
-                  <div className="bg-[#0a1510] p-2.5 rounded-lg border border-emerald-950">
+                  <div className="bg-[#0c0c0e] p-2.5 rounded-lg border border-zinc-800">
                     <span className="text-[10px] text-slate-400 block">Cash Float</span>
                     <span className="text-sm font-bold text-amber-300">KSh {cashAtHand.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-emerald-950/80 flex items-center justify-between">
-                <span className="text-xs font-mono text-emerald-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="mt-6 pt-4 border-t border-zinc-800 flex items-center justify-between">
+                <span className="text-xs font-mono text-white flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
                   Equity Paybill 1450180372031 Synced
                 </span>
                 <button
                   onClick={onLaunchAlacioShop}
-                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md font-mono"
+                  className="px-4 py-2 rounded-xl bg-black hover:bg-zinc-800 text-white border border-zinc-700 font-black text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md font-mono"
                 >
                   <span>Enter Store Node</span>
                   <ArrowRight size={14} />
@@ -500,7 +492,7 @@ export default function YuBiFloEnterpriseCommand({
                   </div>
                   <div className="bg-[#120e07] p-2.5 rounded-lg border border-amber-950">
                     <span className="text-[10px] text-slate-400 block">Turnover</span>
-                    <span className="text-sm font-bold text-emerald-300">KSh 812,000</span>
+                    <span className="text-sm font-bold text-zinc-200">KSh 812,000</span>
                   </div>
                 </div>
               </div>
@@ -554,13 +546,13 @@ export default function YuBiFloEnterpriseCommand({
               onClick={() => setPipelineStep(1)}
               className={`rounded-2xl p-5 border-2 transition cursor-pointer ${
                 pipelineStep === 1 
-                  ? "bg-[#0b1c15] border-emerald-400 shadow-lg shadow-emerald-950/60" 
-                  : "bg-[#08120d] border-emerald-950/60 hover:border-emerald-800"
+                  ? "bg-[#121214] border-white shadow-lg shadow-black/80" 
+                  : "bg-zinc-950 border-zinc-800/60 hover:border-zinc-700"
               }`}
             >
-              <div className="flex items-center justify-between text-xs font-mono font-bold text-emerald-400 mb-2">
+              <div className="flex items-center justify-between text-xs font-mono font-bold text-white mb-2">
                 <span>STAGE 01</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="w-2 h-2 rounded-full bg-white" />
               </div>
               <h3 className="text-base font-bold text-white font-serif">
                 Multi-Modal Ingestion
@@ -568,7 +560,7 @@ export default function YuBiFloEnterpriseCommand({
               <p className="text-xs text-slate-300 mt-2 leading-relaxed">
                 Raw audio transcripts, camera thermal receipts, Paybill webhook packets, and manual counter voice dumps.
               </p>
-              <div className="mt-4 pt-3 border-t border-emerald-950 text-[11px] font-mono text-emerald-400 font-semibold">
+              <div className="mt-4 pt-3 border-t border-zinc-800 text-[11px] font-mono text-white font-semibold">
                 Input: Audio/Image/JSON
               </div>
             </div>
@@ -648,10 +640,10 @@ export default function YuBiFloEnterpriseCommand({
           </div>
 
           {/* Deep Dive Panel Based on Selected Step */}
-          <div className="bg-[#0a130f] border border-emerald-950 rounded-3xl p-6 sm:p-8 space-y-4">
+          <div className="bg-[#0a0a0c] border border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-4">
             {pipelineStep === 1 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-emerald-400 font-mono text-xs font-bold">
+                <div className="flex items-center gap-2 text-white font-mono text-xs font-bold">
                   <Terminal size={14} />
                   STAGE 01 DEEP DIVE: INGESTION PIPELINE (VOICE + OCR + WEBHOOKS)
                 </div>
@@ -661,7 +653,7 @@ export default function YuBiFloEnterpriseCommand({
                 <p className="text-sm text-slate-300 max-w-3xl leading-relaxed">
                   Counter merchants cannot type during peak morning rushes. YuBiFLo accepts audio clips via the Voice Ledger ("Habari, Mama Njoroge kachukua packet mbili za maziwa na unga ya Jogoo kwa deni..."). The ingestion service transcribes Swahili and Sheng vernacular, parses named entities, and writes structured records with zero operator effort.
                 </p>
-                <div className="bg-[#050c08] rounded-xl p-4 border border-emerald-950/80 font-mono text-xs text-slate-300 overflow-x-auto">
+                <div className="bg-[#050c08] rounded-xl p-4 border border-zinc-800 font-mono text-xs text-slate-300 overflow-x-auto">
                   <div className="text-slate-500">// Ingestion Sample Schema</div>
                   <div>&#123; "event_id": "ingest_88492", "source": "voice_vcr", "raw_audio_duration_sec": 4.2, "confidence": 0.98, "detected_debtor": "Mama Njoroge", "matched_sku": "Mt Kenya 500ml", "qty": 2, "ledger_target": "personal_debtors" &#125;</div>
                 </div>
@@ -759,8 +751,8 @@ export default function YuBiFloEnterpriseCommand({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-[#0b1612] border border-emerald-950 rounded-2xl p-5 space-y-3">
-              <div className="flex items-center justify-between text-xs font-mono text-emerald-400">
+            <div className="bg-[#0b1612] border border-zinc-800 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between text-xs font-mono text-white">
                 <span>RADAR 01</span>
                 <Sparkles size={14} />
               </div>
@@ -768,12 +760,12 @@ export default function YuBiFloEnterpriseCommand({
               <p className="text-xs text-slate-300 leading-relaxed">
                 The Retail FMCG Pilot maintains an impressive <strong>94/100</strong> capital health rating. Shelf stock turns over every 4.2 days with zero phantom shrinkage.
               </p>
-              <div className="pt-2 text-[11px] font-mono text-emerald-400">
+              <div className="pt-2 text-[11px] font-mono text-white">
                 Grade: A+ (Sovereign Certified)
               </div>
             </div>
 
-            <div className="bg-[#0b1612] border border-emerald-950 rounded-2xl p-5 space-y-3">
+            <div className="bg-[#0b1612] border border-zinc-800 rounded-2xl p-5 space-y-3">
               <div className="flex items-center justify-between text-xs font-mono text-cyan-400">
                 <span>RADAR 02</span>
                 <Activity size={14} />
@@ -787,7 +779,7 @@ export default function YuBiFloEnterpriseCommand({
               </div>
             </div>
 
-            <div className="bg-[#0b1612] border border-emerald-950 rounded-2xl p-5 space-y-3">
+            <div className="bg-[#0b1612] border border-zinc-800 rounded-2xl p-5 space-y-3">
               <div className="flex items-center justify-between text-xs font-mono text-purple-400">
                 <span>RADAR 03</span>
                 <Users size={14} />
@@ -802,7 +794,7 @@ export default function YuBiFloEnterpriseCommand({
             </div>
           </div>
 
-          <div className="rounded-2xl bg-gradient-to-r from-emerald-950/60 to-teal-950/60 border border-emerald-500/30 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="rounded-2xl bg-zinc-900 border border-zinc-700 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h4 className="text-base font-bold text-white font-serif">
                 Ready to operate Retail Store Workspace?
@@ -813,7 +805,7 @@ export default function YuBiFloEnterpriseCommand({
             </div>
             <button
               onClick={onLaunchAlacioShop}
-              className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition flex items-center justify-center gap-2 cursor-pointer font-mono shrink-0 shadow-lg"
+              className="px-5 py-2.5 rounded-xl bg-black hover:bg-zinc-800 text-white border border-zinc-700 font-black text-xs transition flex items-center justify-center gap-2 cursor-pointer font-mono shrink-0 shadow-lg"
             >
               <span>Enter Protected Workspace</span>
               <ArrowRight size={14} />

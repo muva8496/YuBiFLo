@@ -499,7 +499,7 @@ export default function ProprietorDataWarehouseTab({
       </div>
 
       {/* ACTIVE TABLE TOOLBAR & SEARCH */}
-      <div className="bg-[#0c1411] border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+      <div className="bg-[#111113] border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <span className="text-base">{currentTableMeta.icon}</span>
