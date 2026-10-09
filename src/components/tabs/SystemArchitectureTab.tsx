@@ -897,7 +897,7 @@ CREATE TABLE journal_lines_2026_m10 PARTITION OF journal_lines
 {
   "tenants": {
     "{tenantId}": {
-      "metadata": { "shop_name": "Alacio Mini Shop", "currency": "KES" },
+      "metadata": { "shop_name": "Retail Store [Tenant Vault]", "currency": "KES" },
       "inventory": {
         "{skuCode}": {
           "item_name": "Mt Kenya Milk 500ml",

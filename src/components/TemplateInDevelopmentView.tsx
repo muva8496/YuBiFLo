@@ -156,7 +156,7 @@ export default function TemplateInDevelopmentView({
               <span>Looking for the Live Operating Demonstration?</span>
             </div>
             <p className="text-xs text-slate-400 leading-normal max-w-2xl">
-              <strong>Alacio Mini Shop</strong> is an operational branch built specifically under our <strong>Retail Duka &amp; FMCG (Direct-to-Consumer)</strong> template. 
+              Our <strong>Retail Duka &amp; FMCG (Direct-to-Consumer)</strong> blueprint is currently live in production for our verified client pilot. 
               The <em>{blueprint.name}</em> template you selected is being tailored for its own unique industry workflows.
             </p>
           </div>
@@ -165,7 +165,7 @@ export default function TemplateInDevelopmentView({
             onClick={onLaunchAlacioPilot}
             className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0 font-mono"
           >
-            <span>Launch Retail B2C Pilot (Alacio)</span>
+            <span>Launch Retail B2C Workspace</span>
             <ArrowRight size={14} />
           </button>
         </div>

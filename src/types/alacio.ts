@@ -188,6 +188,7 @@ export interface ProjectCaseStudy {
 }
 
 export interface AlacioMasterState {
+  merchant_name?: string;
   inventory: InventoryItem[];
   warehouse: WarehouseBatch[];
   customers: CustomerDebtor[];

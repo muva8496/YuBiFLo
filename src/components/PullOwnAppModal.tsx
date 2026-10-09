@@ -48,13 +48,13 @@ export default function PullOwnAppModal({ isOpen, onClose, state }: PullOwnAppMo
 
   const handleGeneratePwaManifest = () => {
     const manifest = {
-      name: "Alacio Mini Shop - YuBiFLo Standalone",
-      short_name: "Alacio POS",
+      name: "Retail Pro Store - YuBiFLo Standalone",
+      short_name: "Retail POS",
       start_url: "/",
       display: "standalone",
       background_color: "#0a0d12",
       theme_color: "#1FB88E",
-      description: "Standalone offline VCR voice capture and counter ledger for Alacio Mini Shop",
+      description: "Standalone offline VCR voice capture and counter ledger for retail shop",
       icons: [
         {
           src: "/icon-192.png",
@@ -109,7 +109,7 @@ export default function PullOwnAppModal({ isOpen, onClose, state }: PullOwnAppMo
 
         <div className="space-y-3">
           <p className="text-slate-300 leading-relaxed text-xs">
-            Export Alacio Mini Shop as a standalone counter unit containing your active blueprint, VCR voice ingestion, debt ledger, and local storage database.
+            Export your retail shop as a standalone counter unit containing your active blueprint, VCR voice ingestion, debt ledger, and local storage database.
           </p>
 
           {/* EXPORT OPTIONS */}

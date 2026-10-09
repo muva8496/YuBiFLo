@@ -205,10 +205,10 @@ export default function DashboardTab({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight font-serif">
-                Alacio Mini Shop
+                {state.merchant_name || "Retail Pro Store (Live Client)"}
               </h1>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30">
-                SIGMA &amp; GAMMA NODE 001
+                RETAIL PILOT &bull; NODE 001
               </span>
               <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-semibold border border-emerald-500/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />

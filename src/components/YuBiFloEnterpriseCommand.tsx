@@ -282,28 +282,28 @@ export default function YuBiFloEnterpriseCommand({
                   </div>
                   <div>
                     <h3 className="text-xl font-black text-white font-serif flex items-center gap-2">
-                      Alacio Mini Shop
+                      {alacioState.merchant_name || "Retail Pro Store"}
                     </h3>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30">
-                        SIGMA & GAMMA OPERATIVE
+                        RETAIL PILOT &bull; NODE 001
                       </span>
                       <span className="text-xs text-slate-400">Kasarani / Hunters, Nairobi</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Sigma & Gamma Male Energy Descriptor */}
+                {/* Operational Archetype */}
                 <div className="bg-[#050c08] border border-emerald-950 rounded-xl p-3 my-4 space-y-2">
                   <div className="flex items-center justify-between text-xs font-mono font-bold text-emerald-400">
                     <span>OPERATIONAL ARCHETYPE:</span>
                     <span className="text-amber-300 text-[11px]">Cold Mathematical Precision</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed font-sans">
-                    <strong>Sigma Discipline:</strong> Solitary operator, silent execution, zero emotional cash drift. Credit (Deni) is tracked with relentless accountability via instant WhatsApp settlement.
+                    <strong>Disciplined Execution:</strong> Solitary operator, silent execution, zero emotional cash drift. Credit (Deni) is tracked with relentless accountability via instant WhatsApp settlement.
                   </p>
                   <p className="text-xs text-slate-300 leading-relaxed font-sans">
-                    <strong>Gamma Engineering:</strong> 21-pack Mt. Kenya milk crates decomposed to individual velocity formulas, 05:57 AM dawn lock, and double-entry 3-pillar accounts with zero notebook reliance.
+                    <strong>Retail Precision:</strong> 21-pack Mt. Kenya milk crates decomposed to individual velocity formulas, 05:57 AM dawn lock, and double-entry 3-pillar accounts with zero notebook reliance.
                   </p>
                 </div>
 
@@ -333,7 +333,7 @@ export default function YuBiFloEnterpriseCommand({
                   onClick={onLaunchAlacioShop}
                   className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md font-mono"
                 >
-                  <span>Enter Alacio Node</span>
+                  <span>Enter Store Node</span>
                   <ArrowRight size={14} />
                 </button>
               </div>
@@ -766,7 +766,7 @@ export default function YuBiFloEnterpriseCommand({
               </div>
               <h3 className="text-lg font-bold text-white font-serif">Capital Efficiency Score</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Alacio Mini Shop maintains an impressive <strong>94/100</strong> capital health rating. Shelf stock turns over every 4.2 days with zero phantom shrinkage.
+                The Retail FMCG Pilot maintains an impressive <strong>94/100</strong> capital health rating. Shelf stock turns over every 4.2 days with zero phantom shrinkage.
               </p>
               <div className="pt-2 text-[11px] font-mono text-emerald-400">
                 Grade: A+ (Sovereign Certified)
@@ -805,7 +805,7 @@ export default function YuBiFloEnterpriseCommand({
           <div className="rounded-2xl bg-gradient-to-r from-emerald-950/60 to-teal-950/60 border border-emerald-500/30 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h4 className="text-base font-bold text-white font-serif">
-                Ready to operate Alacio Mini Shop?
+                Ready to operate Retail Store Workspace?
               </h4>
               <p className="text-xs text-slate-300 mt-1">
                 Enter the live retail counter workspace to record sales, collect WhatsApp deni, restock wholesale crates, or run dawn cash baselines.
@@ -815,7 +815,7 @@ export default function YuBiFloEnterpriseCommand({
               onClick={onLaunchAlacioShop}
               className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition flex items-center justify-center gap-2 cursor-pointer font-mono shrink-0 shadow-lg"
             >
-              <span>Enter Alacio Live Workspace</span>
+              <span>Enter Protected Workspace</span>
               <ArrowRight size={14} />
             </button>
           </div>

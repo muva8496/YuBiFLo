@@ -140,7 +140,7 @@ export default function WaveAppsExecutiveDashboard({
                 TRUST EDITION &bull; WHITE
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 flex items-center gap-1">
-                <ShieldCheck size={11} /> DATA PROTECTION ACT 2019
+                <ShieldCheck size={11} /> CLIENT SECURE VAULT
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-2 font-mono">

@@ -311,7 +311,7 @@ export default function CustomersCreditTab({
                         {cust.debt_balance > 0 && (
                           <a
                             href={`https://wa.me/254${cust.phone.replace(/[^0-9]/g, "").slice(-9)}?text=${encodeURIComponent(
-                              `Habari ${cust.name}, this is Alacio Mini Shop. Your current outstanding balance is ${currency} ${cust.debt_balance.toLocaleString()}. You can pay via M-Pesa or Cash at the counter. Asante!`
+                              `Habari ${cust.name}, this is your retail shop. Your current outstanding balance is ${currency} ${cust.debt_balance.toLocaleString()}. You can pay via M-Pesa or Cash at the counter. Asante!`
                             )}`}
                             target="_blank"
                             rel="noopener noreferrer"

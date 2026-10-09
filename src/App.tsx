@@ -70,11 +70,17 @@ import FreemiumBanner from "./components/FreemiumBanner";
 import { VoiceTransactionPayload } from "./components/VoiceLedger";
 import YuBiFloEnterpriseCommand from "./components/YuBiFloEnterpriseCommand";
 import YuBiFloLandingPage from "./components/YuBiFloLandingPage";
+import AlacioAccessGateModal from "./components/AlacioAccessGateModal";
 
 export default function App() {
   const [currentView, setCurrentView] = useState<"landing" | "workspace" | "developing" | "yubiflo_command">("landing");
   const [activeDevelopingBlueprint, setActiveDevelopingBlueprint] = useState<Blueprint | null>(null);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+
+  // Client Workspace Access Security: Must enter password "8496"
+  const [isAlacioUnlocked, setIsAlacioUnlocked] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [pendingActionAfterPassword, setPendingActionAfterPassword] = useState<(() => void) | null>(null);
 
   // Zero-Data-Loss LocalStorage + Firestore Persistence
   const [alacioState, setAlacioState] = useState<AlacioMasterState>(() => loadAlacioState());
@@ -97,6 +103,21 @@ export default function App() {
   useEffect(() => {
     saveAlacioState(alacioState);
   }, [alacioState]);
+
+  // Gatekeeper: Protected client property requiring password "8496"
+  const handleGuardedEnterWorkspace = (targetTab: string = "dashboard") => {
+    if (isAlacioUnlocked) {
+      setCurrentView("workspace");
+      setActiveTab(targetTab);
+    } else {
+      setPendingActionAfterPassword(() => () => {
+        setIsAlacioUnlocked(true);
+        setCurrentView("workspace");
+        setActiveTab(targetTab);
+      });
+      setIsPasswordModalOpen(true);
+    }
+  };
 
   // Restock Execution
   const handleOpenRestock = (item?: InventoryItem) => {
@@ -1119,24 +1140,45 @@ export default function App() {
   // PURE PUBLIC YUBIFLO PLATFORM LANDING PAGE
   if (currentView === "landing") {
     return (
-      <YuBiFloLandingPage
-        onGetStarted={() => {
-          setCurrentView("workspace");
-          setActiveTab("dashboard");
-        }}
-        onLaunchRetailWorkspace={() => {
-          setCurrentView("workspace");
-          setActiveTab("dashboard");
-        }}
-        onOpenSovereignCommand={() => {
-          setCurrentView("yubiflo_command");
-        }}
-        onOpenBlueprints={() => {
-          const bp = PLATFORM_BLUEPRINTS[1];
-          setActiveDevelopingBlueprint(bp);
-          setCurrentView("developing");
-        }}
-      />
+      <>
+        <YuBiFloLandingPage
+          onGetStarted={() => {
+            handleGuardedEnterWorkspace("dashboard");
+          }}
+          onLaunchRetailWorkspace={() => {
+            handleGuardedEnterWorkspace("dashboard");
+          }}
+          onOpenSovereignCommand={() => {
+            setCurrentView("yubiflo_command");
+          }}
+          onOpenBlueprints={() => {
+            const bp = PLATFORM_BLUEPRINTS[1];
+            setActiveDevelopingBlueprint(bp);
+            setCurrentView("developing");
+          }}
+        />
+
+        {/* PASSWORD GATE MODAL ("8496") */}
+        <AlacioAccessGateModal
+          isOpen={isPasswordModalOpen}
+          targetDescription="Retail Client Workspace"
+          onSuccess={() => {
+            setIsPasswordModalOpen(false);
+            if (pendingActionAfterPassword) {
+              pendingActionAfterPassword();
+              setPendingActionAfterPassword(null);
+            } else {
+              setIsAlacioUnlocked(true);
+              setCurrentView("workspace");
+              setActiveTab("dashboard");
+            }
+          }}
+          onClose={() => {
+            setIsPasswordModalOpen(false);
+            setPendingActionAfterPassword(null);
+          }}
+        />
+      </>
     );
   }
 
@@ -1167,7 +1209,7 @@ export default function App() {
                   if (e.target.value === "yubiflo_command") {
                     setCurrentView("yubiflo_command");
                   } else if (e.target.value === "workspace") {
-                    setCurrentView("workspace");
+                    handleGuardedEnterWorkspace("dashboard");
                   }
                 }}
                 className="bg-[#060c09] border border-emerald-900/60 rounded px-2.5 py-1 text-white font-bold appearance-none pr-6 cursor-pointer"
@@ -1178,7 +1220,7 @@ export default function App() {
               <ChevronDown size={12} className="absolute right-1.5 top-2 text-slate-400 pointer-events-none" />
             </div>
             <span className="hidden lg:inline-block text-[10px] font-mono bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
-              {currentView === "yubiflo_command" ? "Sovereign Platform • Data Engine" : "Private Tenant Node • Data Protected"}
+              {currentView === "yubiflo_command" ? "Sovereign Platform • Data Engine" : "Private Tenant Node • Secured"}
             </span>
           </div>
         </div>
@@ -1209,8 +1251,7 @@ export default function App() {
           ) : (
             <button
               onClick={() => {
-                setCurrentView("workspace");
-                setActiveTab("dashboard");
+                handleGuardedEnterWorkspace("dashboard");
               }}
               className="px-2.5 sm:px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs font-mono shadow"
               title="Enter Retail Store Workspace"
@@ -1222,8 +1263,7 @@ export default function App() {
           {/* PROPRIETOR DIRECT DATABASE & WAREHOUSE CONSOLE */}
           <button
             onClick={() => {
-              setCurrentView("workspace");
-              setActiveTab("data_warehouse");
+              handleGuardedEnterWorkspace("data_warehouse");
             }}
             className={`px-2.5 sm:px-3 py-1.5 border rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs font-mono font-bold ${
               activeTab === "data_warehouse" && currentView === "workspace"
@@ -1250,7 +1290,7 @@ export default function App() {
           {/* ZERO DATA LOSS VERIFIED BADGE */}
           <div
             className="hidden sm:flex px-2.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold rounded-lg items-center gap-1.5 text-xs font-mono"
-            title="Active store data preserved & protected under Data Protection Act 2019"
+            title="Active store data preserved & protected"
           >
             <ShieldCheck size={13} className="text-emerald-400" />
             <span>Data Preserved</span>
@@ -1272,12 +1312,10 @@ export default function App() {
         <YuBiFloEnterpriseCommand
           alacioState={alacioState}
           onLaunchAlacioShop={() => {
-            setCurrentView("workspace");
-            setActiveTab("dashboard");
+            handleGuardedEnterWorkspace("dashboard");
           }}
           onOpenDataLab={() => {
-            setCurrentView("workspace");
-            setActiveTab("system_architecture");
+            handleGuardedEnterWorkspace("system_architecture");
           }}
           onOpenBlueprints={() => setCurrentView("landing")}
           onOpenCloner={() => setIsClonerOpen(true)}
@@ -1294,8 +1332,7 @@ export default function App() {
           blueprint={activeDevelopingBlueprint}
           onBackToLanding={() => setCurrentView("landing")}
           onLaunchAlacioPilot={() => {
-            setCurrentView("workspace");
-            setActiveTab("dashboard");
+            handleGuardedEnterWorkspace("dashboard");
           }}
         />
       )}
@@ -1360,8 +1397,8 @@ export default function App() {
             </div>
             
             <div className="p-4 border-t border-emerald-950 text-[10px] font-mono text-slate-500 flex justify-between items-center">
-              <span>Branch: Alacio Mini Shop</span>
-              <span className="text-amber-400 font-bold">B2C Retail Pilot</span>
+              <span>{alacioState.merchant_name || "Retail Pro Store"}</span>
+              <span className="text-amber-400 font-bold">Client Pilot Node</span>
             </div>
           </aside>
 
@@ -1795,6 +1832,27 @@ export default function App() {
       )}
 
 
+
+      {/* PASSWORD GATE MODAL ("8496") FOR ALL WORKSPACE ACCESS */}
+      <AlacioAccessGateModal
+        isOpen={isPasswordModalOpen}
+        targetDescription="Retail Client Workspace"
+        onSuccess={() => {
+          setIsPasswordModalOpen(false);
+          if (pendingActionAfterPassword) {
+            pendingActionAfterPassword();
+            setPendingActionAfterPassword(null);
+          } else {
+            setIsAlacioUnlocked(true);
+            setCurrentView("workspace");
+            setActiveTab("dashboard");
+          }
+        }}
+        onClose={() => {
+          setIsPasswordModalOpen(false);
+          setPendingActionAfterPassword(null);
+        }}
+      />
 
     </div>
   );

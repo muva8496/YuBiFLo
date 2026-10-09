@@ -46,7 +46,7 @@ export const DEFAULT_BLUEPRINTS_CONFIG: BusinessBlueprintConfig[] = [
     name: "Retail: Duka, Kiosk, Mini-supermarket", 
     status: "live",
     description: "Fast counter cash, M-Pesa float audits, reverse inventory math, and micro break-bulk packaging.",
-    tagline: "Live production pilot: Alacio Mini Shop"
+    tagline: "Live production blueprint: FMCG Retail"
   },
   { 
     id: "bp_hardware", 
@@ -244,10 +244,10 @@ export const PLATFORM_BLUEPRINTS: Blueprint[] = [
   {
     id: "duka_fmcg",
     name: "Retail Duka & FMCG (Direct to Consumer)",
-    badge: "Live Pilot (Alacio Mini Shop)",
+    badge: "Production Blueprint (Active)",
     industry: "B2C Consumer Retail & Groceries",
     tagline: "High-velocity retail sales directly to everyday consumers",
-    description: "Built for busy neighbourhood shops selling directly to consumers. Alacio Mini Shop is our live operational branch demonstrating this template with 43 starter items, break-bulk micro packaging, and reverse inventory audits.",
+    description: "Built for busy neighbourhood shops selling directly to consumers. Includes 43 starter items, break-bulk micro packaging formulas, dawn float calibrations, and real-time reverse inventory audits.",
     status: "ACTIVE",
     items_seed_count: 43
   },
@@ -285,7 +285,7 @@ export const PLATFORM_BLUEPRINTS: Blueprint[] = [
 
 export const PROJECT_ALACIO_CASE_STUDY: ProjectCaseStudy = {
   id: "project_001_alacio",
-  client_name: "Alacio Mini Shop",
+  client_name: "Retail FMCG Pilot Store",
   client_type: "Retail FMCG & Neighborhood Duka",
   location: "Kasarani / Hunters, Nairobi",
   evidence_period: "60-Day Field Audit (July - September 2026)",

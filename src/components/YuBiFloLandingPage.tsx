@@ -248,7 +248,7 @@ export default function YuBiFloLandingPage({
                       onClick={handleLaunchWorkspace}
                       className="w-full text-left px-3 py-2 text-xs font-semibold hover:bg-slate-50 rounded-lg text-slate-700 hover:text-[#0052FF]"
                     >
-                      Offline-First &bull; Zero Data Loss Security Spec
+                      Offline-First Local Storage Security Spec
                     </button>
                     <button 
                       onClick={onOpenSovereignCommand}
@@ -258,7 +258,7 @@ export default function YuBiFloLandingPage({
                     </button>
                     <div className="pt-1.5 border-t border-slate-100 px-3 py-1 text-[11px] font-mono text-emerald-600 flex items-center gap-1.5">
                       <ShieldCheck size={13} />
-                      <span>Data Protection Act 2019 Certified</span>
+                      <span>Zero-Drift Offline Persistence</span>
                     </div>
                   </div>
                 )}
@@ -391,12 +391,12 @@ export default function YuBiFloLandingPage({
             {/* HERO LEFT COLUMN */}
             <div className="lg:col-span-5 space-y-6">
               
-              {/* REGULATORY TRUST BADGE (NO FAKE GOOGLE REVIEWS) */}
+              {/* REGULATORY TRUST BADGE */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700">
                 <ShieldCheck size={14} className="text-[#0052FF]" />
-                <span className="text-[#182238] font-bold">Kenya Data Protection Act 2019 Compliant</span>
+                <span className="text-[#182238] font-bold">Bank-Grade 256-Bit Offline Security</span>
                 <span className="text-slate-300">&bull;</span>
-                <span className="text-slate-500 font-mono text-[11px]">Tenant Isolated</span>
+                <span className="text-slate-500 font-mono text-[11px]">Private Tenant Vault</span>
               </div>
 
               {/* KICKER */}
@@ -880,7 +880,7 @@ export default function YuBiFloLandingPage({
               Why business owners choose YuBiFlo over traditional software
             </h2>
             <p className="text-base text-slate-600">
-              Legacy competitors like Wave force shopkeepers to type everything manually at a keyboard. YuBiFlo is purpose-built for high-speed retail counters with voice intelligence and strict data sovereignty.
+              Traditional desktop software forces shopkeepers to type everything manually at a keyboard. YuBiFlo is purpose-built for high-speed retail counters with voice intelligence and strict data sovereignty.
             </p>
           </div>
 
@@ -937,16 +937,16 @@ export default function YuBiFloLandingPage({
               </ul>
             </div>
 
-            {/* CARD 3: STRICT DATA PROTECTION ACT 2019 COMPLIANCE */}
+            {/* CARD 3: ZERO-LEAKAGE TENANT ARCHITECTURE */}
             <div className="p-8 rounded-2xl bg-[#FAFCFF] border border-slate-200/80 hover:border-purple-300 hover:shadow-xl transition space-y-4">
               <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
                 <Lock size={24} />
               </div>
               <h3 className="text-xl font-serif font-bold text-[#182238]">
-                Kenya Data Protection Act Compliant
+                Confidential Client Vaults
               </h3>
               <p className="text-sm text-slate-600 leading-relaxed">
-                Your store data is confidential client property. We enforce strict tenant isolation, encrypted local persistence, and zero public data leaks. Your margins and customer debts are yours alone.
+                Your store finances are your private property. We build zero-leakage tenant isolation, encrypted local persistence, and offline device storage. Your margins and customer debts are yours alone.
               </p>
               <ul className="space-y-2 text-xs text-slate-600 pt-2 font-medium">
                 <li className="flex items-center gap-2">
@@ -967,7 +967,7 @@ export default function YuBiFloLandingPage({
       </section>
 
       {/* ========================================================================= */}
-      {/* 5. PRIVACY & SECURITY SHOWCASE (KENYA DATA PROTECTION ACT 2019 BY DESIGN) */}
+      {/* 5. PRIVACY & SECURITY SHOWCASE */}
       {/* ========================================================================= */}
       <section className="py-20 bg-[#F8FAFC] border-t border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -977,7 +977,7 @@ export default function YuBiFloLandingPage({
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                  Data Protection Act 2019 &bull; Tenant Isolation
+                  Zero-Leakage Architecture &bull; Tenant Isolation
                 </span>
               </div>
 
@@ -986,7 +986,7 @@ export default function YuBiFloLandingPage({
               </h3>
 
               <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-                Under the Kenya Data Protection Act 2019, sharing client names, financial records, or debtor balances as marketing material is strictly prohibited. YuBiFlo is architected from day one with zero-leakage tenant cryptography. Every client operates in their own isolated, secured vault with bank-grade encryption.
+                YuBiFlo is architected from day one with zero-leakage tenant cryptography. Every business operates in its own isolated, password-gated vault with bank-grade encryption and offline protection.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs text-slate-700 font-semibold">
@@ -996,7 +996,7 @@ export default function YuBiFloLandingPage({
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 size={15} className="text-emerald-600" />
-                  <span>No Public Financial Data Leaks</span>
+                  <span>Zero Shared Client Data</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 size={15} className="text-emerald-600" />
@@ -1222,11 +1222,11 @@ export default function YuBiFloLandingPage({
               </ul>
             </div>
 
-            {/* LEGAL & SECURITY (COMPLIANCE WITH KENYA DATA PROTECTION ACT 2019) */}
+            {/* LEGAL & SECURITY */}
             <div className="space-y-2">
               <div className="font-bold text-white text-xs uppercase tracking-wider">Trust &amp; Privacy</div>
               <ul className="space-y-1.5 text-slate-400">
-                <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition text-emerald-400 font-medium">Data Protection Act 2019</button></li>
+                <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition text-emerald-400 font-medium">Encrypted Architecture</button></li>
                 <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition">Tenant Isolation Spec</button></li>
                 <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition">Terms of Service</button></li>
                 <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition">Zero Data Loss Policy</button></li>

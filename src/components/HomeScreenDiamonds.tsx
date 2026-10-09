@@ -155,12 +155,12 @@ export default function HomeScreenDiamonds({
                 Audited Case Evidence
               </h3>
               <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                Project #1: Alacio Mini Shop. 94/100 financial health, zero drawer leakage, KES 35k shelf capital protected.
+                Pilot #1: Retail Store FMCG Blueprint. 94/100 financial health, zero drawer leakage, KES 35k shelf capital protected.
               </p>
             </div>
 
             <div className="mt-6 flex items-center justify-between text-xs font-mono text-amber-400 font-semibold pt-4 border-t border-slate-800">
-              <span>Execute Alacio Protocol</span>
+              <span>Execute Retail Protocol</span>
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -377,13 +377,13 @@ export default function HomeScreenDiamonds({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="inline-block px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-mono font-bold rounded-full mb-2">
-                Consented Project Case Study #001
+                Operational Retail Blueprint Case Study #001
               </div>
               <h3 className="text-2xl sm:text-3xl font-black text-white font-serif">
-                Alacio Mini Shop &bull; 60-Day Financial Health Audit
+                Retail FMCG Pilot &bull; 60-Day Financial Health Audit
               </h3>
               <p className="text-xs text-slate-300 mt-1">
-                {projectCaseStudy.location} &bull; {projectCaseStudy.consented_by}
+                Kasarani / Hunters, Nairobi &bull; High-Velocity Neighborhood Store
               </p>
             </div>
 
@@ -391,7 +391,7 @@ export default function HomeScreenDiamonds({
               onClick={onOpenProjectCaseStudy}
               className="px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0 font-mono"
             >
-              <span>Enter Live Client System</span>
+              <span>Enter Workspace System</span>
               <ArrowRight size={15} />
             </button>
           </div>
