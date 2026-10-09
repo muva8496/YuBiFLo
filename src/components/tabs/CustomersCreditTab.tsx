@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { 
   Users, Plus, CheckCircle2, DollarSign, Phone, ShieldAlert, 
   ArrowDownLeft, X, CreditCard, Building2, Copy, Check,
-  Calendar, Edit3, Trash2
+  Calendar, Edit3, Trash2, MessageSquare
 } from "lucide-react";
 import { CustomerDebtor } from "../../types/alacio";
 
@@ -308,6 +308,19 @@ export default function CustomersCreditTab({
                     </td>
                     <td className="py-3.5 px-4 text-right font-sans">
                       <div className="flex items-center justify-end gap-1.5">
+                        {cust.debt_balance > 0 && (
+                          <a
+                            href={`https://wa.me/254${cust.phone.replace(/[^0-9]/g, "").slice(-9)}?text=${encodeURIComponent(
+                              `Habari ${cust.name}, this is Alacio Mini Shop. Your current outstanding balance is ${currency} ${cust.debt_balance.toLocaleString()}. You can pay via M-Pesa or Cash at the counter. Asante!`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1"
+                            title="Send WhatsApp payment reminder"
+                          >
+                            <MessageSquare size={12} className="text-emerald-400" /> Remind
+                          </a>
+                        )}
                         <button
                           onClick={() => handleOpenEdit(cust)}
                           className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/20 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1"

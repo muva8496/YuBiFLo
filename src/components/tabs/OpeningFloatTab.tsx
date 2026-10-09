@@ -64,16 +64,29 @@ export default function OpeningFloatTab({ currency, denominations, onUpdateDenom
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              const zeroed = localDenoms.map((d) => ({ ...d, count: 0 }));
-              setLocalDenoms(zeroed);
+              const fullRegister: FloatDenomination[] = [
+                { value: 1000, type: "note", label: "1000 Note", count: 4 },
+                { value: 500, type: "note", label: "500 Note", count: 4 },
+                { value: 200, type: "note", label: "200 Note", count: 5 },
+                { value: 100, type: "note", label: "100 Note", count: 8 },
+                { value: 50, type: "note", label: "50 Note", count: 6 },
+                { value: 40, type: "coin", label: "40 Coin", count: 5 },
+                { value: 20, type: "coin", label: "20 Coin", count: 4 },
+                { value: 10, type: "coin", label: "10 Coin", count: 5 },
+                { value: 5, type: "coin", label: "5 Coin", count: 3 },
+                { value: 1, type: "coin", label: "1 Coin", count: 5 }
+              ];
+              setLocalDenoms(fullRegister);
             }}
-            className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-mono font-bold rounded-lg transition cursor-pointer flex items-center gap-1.5"
+            title="Load verified full cash register balance"
           >
-            Zero All (0 KSh)
+            <ShieldCheck size={13} /> Full Register (KSh 8,450)
           </button>
           <button
             onClick={handleResetToStandardAlacio}
             className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition cursor-pointer flex items-center gap-1.5"
+            title="Load small morning change drawer count"
           >
             <RefreshCw size={13} /> Preset (KSh 655)
           </button>

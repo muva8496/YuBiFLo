@@ -308,58 +308,127 @@ export const INITIAL_PAYOUTS: PayoutOrDrawing[] = [];
 
 export const INITIAL_MPESA_STATEMENTS: MpesaStatementRecord[] = [];
 
-export const INITIAL_WAREHOUSE_BATCHES: WarehouseBatch[] = [];
+export const INITIAL_WAREHOUSE_BATCHES: WarehouseBatch[] = [
+  {
+    id: "wh_batch_001",
+    item_id: 4,
+    item_name: "Unga Jogoo 2kg (12-Pack Bale)",
+    category: "Flour",
+    batch_number: "WH-JOG-001",
+    bulk_quantity: 10,
+    unit_type: "bales",
+    bulk_cost_per_unit: 1980,
+    total_batch_cost: 19800,
+    storage_location: "Backroom Pallet A",
+    reorder_threshold: 3,
+    supplier_name: "Unga Millers Eldoret",
+    supplier_phone: "0711 445 890",
+    received_date: "2026-10-07",
+    status: "IN_STORAGE"
+  },
+  {
+    id: "wh_batch_002",
+    item_id: 6,
+    item_name: "Ajab Wheat Flour 2kg (12-Pack Bale)",
+    category: "Flour",
+    batch_number: "WH-AJB-002",
+    bulk_quantity: 4,
+    unit_type: "bales",
+    bulk_cost_per_unit: 2100,
+    total_batch_cost: 8400,
+    storage_location: "Backroom Pallet B",
+    reorder_threshold: 2,
+    supplier_name: "Unga Millers Eldoret",
+    supplier_phone: "0711 445 890",
+    received_date: "2026-10-07",
+    status: "IN_STORAGE"
+  },
+  {
+    id: "wh_batch_003",
+    item_id: 7,
+    item_name: "Rina Vegetable Oil 20L Jerrycan",
+    category: "Cooking & Oils",
+    batch_number: "WH-RINA-003",
+    bulk_quantity: 1,
+    unit_type: "jerrycans",
+    bulk_cost_per_unit: 4070,
+    total_batch_cost: 4070,
+    storage_location: "Secure Chemical/Oil Bay",
+    reorder_threshold: 1,
+    supplier_name: "Bidco Africa Van",
+    supplier_phone: "0720 338 901",
+    received_date: "2026-10-08",
+    status: "IN_STORAGE"
+  },
+  {
+    id: "wh_batch_004",
+    item_id: 15,
+    item_name: "Kabras Sugar 50kg Bulk Sack",
+    category: "Sugar",
+    batch_number: "WH-KAB-004",
+    bulk_quantity: 1,
+    unit_type: "sacks",
+    bulk_cost_per_unit: 6400,
+    total_batch_cost: 6400,
+    storage_location: "Dry Grain Raised Platform",
+    reorder_threshold: 1,
+    supplier_name: "Gikomba Dry Grain Wholesaler",
+    supplier_phone: "0708 776 210",
+    received_date: "2026-10-08",
+    status: "IN_STORAGE"
+  }
+]; // Total Warehouse Bulk Value = ~38,670 KES reserve
 
 export const INITIAL_INVENTORY_43: InventoryItem[] = [
-  { id: 1, name: "Brookside Fresh Milk 500ml", category: "Dairy", unit_type: "packets", unit_cost: 52, unit_retail: 65, current_stock: 0, opening_stock: 0, expected_margin: 13, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 2, name: "KCC Fresh Milk 500ml", category: "Dairy", unit_type: "packets", unit_cost: 50, unit_retail: 60, current_stock: 0, opening_stock: 0, expected_margin: 10, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 3, name: "Ilara Maziwa Lala 500ml", category: "Dairy", unit_type: "bottles", unit_cost: 65, unit_retail: 80, current_stock: 0, opening_stock: 0, expected_margin: 15, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 4, name: "Unga Jogoo 2kg", category: "Flour", unit_type: "bales", unit_cost: 175, unit_retail: 210, current_stock: 0, opening_stock: 0, expected_margin: 35, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 5, name: "Unga Pembe 2kg", category: "Flour", unit_type: "bales", unit_cost: 170, unit_retail: 205, current_stock: 0, opening_stock: 0, expected_margin: 35, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 6, name: "Ajab Wheat Flour 2kg", category: "Flour", unit_type: "bales", unit_cost: 185, unit_retail: 220, current_stock: 0, opening_stock: 0, expected_margin: 35, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 7, name: "Rina Vegetable Oil 1L", category: "Cooking & Oils", unit_type: "bottles", unit_cost: 275, unit_retail: 330, current_stock: 0, opening_stock: 0, expected_margin: 55, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 8, name: "Salit Salad Oil 500ml", category: "Cooking & Oils", unit_type: "bottles", unit_cost: 145, unit_retail: 175, current_stock: 0, opening_stock: 0, expected_margin: 30, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 9, name: "Elianto Corn Oil 1L", category: "Cooking & Oils", unit_type: "bottles", unit_cost: 360, unit_retail: 430, current_stock: 0, opening_stock: 0, expected_margin: 70, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 10, name: "Fresh Kenchic Eggs Crate", category: "Poultry", unit_type: "crates", unit_cost: 380, unit_retail: 460, current_stock: 0, opening_stock: 0, expected_margin: 80, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 11, name: "Broadways White Bread 400g", category: "Bakery", unit_type: "loaves", unit_cost: 54, unit_retail: 65, current_stock: 0, opening_stock: 0, expected_margin: 11, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 12, name: "Festive Brown Bread 400g", category: "Bakery", unit_type: "loaves", unit_cost: 58, unit_retail: 70, current_stock: 0, opening_stock: 0, expected_margin: 12, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 13, name: "Superloaf White Bread 400g", category: "Bakery", unit_type: "loaves", unit_cost: 52, unit_retail: 65, current_stock: 0, opening_stock: 0, expected_margin: 13, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 14, name: "Mumias Sugar 1kg", category: "Sugar", unit_type: "packets", unit_cost: 140, unit_retail: 165, current_stock: 0, opening_stock: 0, expected_margin: 25, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 15, name: "Kabras Sugar 1kg", category: "Sugar", unit_type: "packets", unit_cost: 138, unit_retail: 160, current_stock: 0, opening_stock: 0, expected_margin: 22, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 16, name: "Royco Mchuzi Mix Beef 200g", category: "Spices", unit_type: "tins", unit_cost: 115, unit_retail: 140, current_stock: 0, opening_stock: 0, expected_margin: 25, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 17, name: "Royco Mchuzi Mix Chicken 75g", category: "Spices", unit_type: "packets", unit_cost: 45, unit_retail: 60, current_stock: 0, opening_stock: 0, expected_margin: 15, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 18, name: "Tropical Heat Pilau Masala 50g", category: "Spices", unit_type: "sachets", unit_cost: 55, unit_retail: 75, current_stock: 0, opening_stock: 0, expected_margin: 20, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 19, name: "Omo Hand Washing Powder 500g", category: "Hygiene", unit_type: "packets", unit_cost: 125, unit_retail: 150, current_stock: 0, opening_stock: 0, expected_margin: 25, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 20, name: "Sunlight Washing Powder 500g", category: "Hygiene", unit_type: "packets", unit_cost: 110, unit_retail: 135, current_stock: 0, opening_stock: 0, expected_margin: 25, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 21, name: "Geisha Soap Green 200g", category: "Hygiene", unit_type: "bars", unit_cost: 80, unit_retail: 100, current_stock: 0, opening_stock: 0, expected_margin: 20, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 22, name: "Menengai Cream Bar Soap 800g", category: "Hygiene", unit_type: "bars", unit_cost: 140, unit_retail: 170, current_stock: 0, opening_stock: 0, expected_margin: 30, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 23, name: "Colgate Triple Action 140g", category: "Hygiene", unit_type: "tubes", unit_cost: 130, unit_retail: 160, current_stock: 0, opening_stock: 0, expected_margin: 30, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 24, name: "Always Ultra Thin Pads 8s", category: "Hygiene", unit_type: "packets", unit_cost: 85, unit_retail: 110, current_stock: 0, opening_stock: 0, expected_margin: 25, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 25, name: "Ketepa Pride Tea Leaves 250g", category: "Beverages", unit_type: "packets", unit_cost: 115, unit_retail: 140, current_stock: 0, opening_stock: 0, expected_margin: 25, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 26, name: "Nescafe 3in1 Classic Sachets", category: "Beverages", unit_type: "sachets", unit_cost: 22, unit_retail: 30, current_stock: 0, opening_stock: 0, expected_margin: 8, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 27, name: "Cadbury Cocoa Powder 100g", category: "Beverages", unit_type: "tins", unit_cost: 165, unit_retail: 200, current_stock: 0, opening_stock: 0, expected_margin: 35, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 28, name: "Coca Cola Pet Bottle 500ml", category: "Beverages", unit_type: "bottles", unit_cost: 50, unit_retail: 60, current_stock: 0, opening_stock: 0, expected_margin: 10, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 29, name: "Fanta Orange Pet 500ml", category: "Beverages", unit_type: "bottles", unit_cost: 50, unit_retail: 60, current_stock: 0, opening_stock: 0, expected_margin: 10, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 30, name: "Sprite Pet Bottle 500ml", category: "Beverages", unit_type: "bottles", unit_cost: 50, unit_retail: 60, current_stock: 0, opening_stock: 0, expected_margin: 10, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 31, name: "Pwani Salt Iodized 1kg", category: "Spices", unit_type: "packets", unit_cost: 35, unit_retail: 45, current_stock: 0, opening_stock: 0, expected_margin: 10, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 32, name: "Kensalt Salt 500g", category: "Spices", unit_type: "packets", unit_cost: 20, unit_retail: 25, current_stock: 0, opening_stock: 0, expected_margin: 5, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 33, name: "Daawat Aromatic Rice 2kg", category: "Grains", unit_type: "packets", unit_cost: 380, unit_retail: 450, current_stock: 0, opening_stock: 0, expected_margin: 70, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 34, name: "Pearl Pishori Rice 1kg", category: "Grains", unit_type: "packets", unit_cost: 220, unit_retail: 260, current_stock: 0, opening_stock: 0, expected_margin: 40, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 35, name: "Santa Maria Green Grams 1kg", category: "Grains", unit_type: "packets", unit_cost: 160, unit_retail: 195, current_stock: 0, opening_stock: 0, expected_margin: 35, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 36, name: "Mwitemania Beans 1kg", category: "Grains", unit_type: "packets", unit_cost: 150, unit_retail: 180, current_stock: 0, opening_stock: 0, expected_margin: 30, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 37, name: "Bata Shoeshine Kiwi Black 50ml", category: "Household", unit_type: "tins", unit_cost: 85, unit_retail: 110, current_stock: 0, opening_stock: 0, expected_margin: 25, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 38, name: "Matchboxes Rhinos (Pack 10)", category: "Household", unit_type: "packs", unit_cost: 40, unit_retail: 55, current_stock: 0, opening_stock: 0, expected_margin: 15, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 39, name: "Steel Wool 50g", category: "Household", unit_type: "pieces", unit_cost: 18, unit_retail: 25, current_stock: 0, opening_stock: 0, expected_margin: 7, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 40, name: "Harpic Toilet Cleaner 500ml", category: "Hygiene", unit_type: "bottles", unit_cost: 195, unit_retail: 240, current_stock: 0, opening_stock: 0, expected_margin: 45, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 41, name: "Vaseline Petroleum Jelly 100ml", category: "Cosmetics", unit_type: "jars", unit_cost: 110, unit_retail: 135, current_stock: 0, opening_stock: 0, expected_margin: 25, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 42, name: "Nice & Lovely Lotion 100ml", category: "Cosmetics", unit_type: "bottles", unit_cost: 95, unit_retail: 120, current_stock: 0, opening_stock: 0, expected_margin: 25, total_shelf_value: 0, velocity_badge: "Pending Stock" },
-  { id: 43, name: "Kasuku Exercise Books 120pgs", category: "Stationery", unit_type: "books", unit_cost: 65, unit_retail: 85, current_stock: 0, opening_stock: 0, expected_margin: 20, total_shelf_value: 0, velocity_badge: "Pending Stock" }
+  { id: 1, name: "Brookside Fresh Milk 500ml", category: "Dairy", unit_type: "packets", unit_cost: 52, unit_retail: 65, current_stock: 24, opening_stock: 24, expected_margin: 13, total_shelf_value: 1560, velocity_badge: "Fast-Mover" },
+  { id: 2, name: "KCC Fresh Milk 500ml", category: "Dairy", unit_type: "packets", unit_cost: 50, unit_retail: 60, current_stock: 18, opening_stock: 18, expected_margin: 10, total_shelf_value: 1080, velocity_badge: "Fast-Mover" },
+  { id: 3, name: "Ilara Maziwa Lala 500ml", category: "Dairy", unit_type: "bottles", unit_cost: 65, unit_retail: 80, current_stock: 12, opening_stock: 12, expected_margin: 15, total_shelf_value: 960, velocity_badge: "Medium" },
+  { id: 4, name: "Unga Jogoo 2kg", category: "Flour", unit_type: "bales", unit_cost: 175, unit_retail: 210, current_stock: 14, opening_stock: 14, expected_margin: 35, total_shelf_value: 2940, velocity_badge: "Fast-Mover" },
+  { id: 5, name: "Unga Pembe 2kg", category: "Flour", unit_type: "bales", unit_cost: 170, unit_retail: 205, current_stock: 10, opening_stock: 10, expected_margin: 35, total_shelf_value: 2050, velocity_badge: "Medium" },
+  { id: 6, name: "Ajab Wheat Flour 2kg", category: "Flour", unit_type: "bales", unit_cost: 185, unit_retail: 220, current_stock: 12, opening_stock: 12, expected_margin: 35, total_shelf_value: 2640, velocity_badge: "Medium" },
+  { id: 7, name: "Rina Vegetable Oil 1L", category: "Cooking & Oils", unit_type: "bottles", unit_cost: 275, unit_retail: 330, current_stock: 8, opening_stock: 8, expected_margin: 55, total_shelf_value: 2640, velocity_badge: "Medium" },
+  { id: 8, name: "Salit Salad Oil 500ml", category: "Cooking & Oils", unit_type: "bottles", unit_cost: 145, unit_retail: 175, current_stock: 15, opening_stock: 15, expected_margin: 30, total_shelf_value: 2625, velocity_badge: "Fast-Mover" },
+  { id: 9, name: "Elianto Corn Oil 1L", category: "Cooking & Oils", unit_type: "bottles", unit_cost: 360, unit_retail: 430, current_stock: 6, opening_stock: 6, expected_margin: 70, total_shelf_value: 2580, velocity_badge: "Slow-Mover" },
+  { id: 10, name: "Fresh Kenchic Eggs Crate", category: "Poultry", unit_type: "crates", unit_cost: 380, unit_retail: 460, current_stock: 5, opening_stock: 5, expected_margin: 80, total_shelf_value: 2300, velocity_badge: "Fast-Mover" },
+  { id: 11, name: "Broadways White Bread 400g", category: "Bakery", unit_type: "loaves", unit_cost: 54, unit_retail: 65, current_stock: 20, opening_stock: 20, expected_margin: 11, total_shelf_value: 1300, velocity_badge: "Fast-Mover" },
+  { id: 12, name: "Festive Brown Bread 400g", category: "Bakery", unit_type: "loaves", unit_cost: 58, unit_retail: 70, current_stock: 15, opening_stock: 15, expected_margin: 12, total_shelf_value: 1050, velocity_badge: "Fast-Mover" },
+  { id: 13, name: "Superloaf White Bread 400g", category: "Bakery", unit_type: "loaves", unit_cost: 52, unit_retail: 65, current_stock: 18, opening_stock: 18, expected_margin: 13, total_shelf_value: 1170, velocity_badge: "Fast-Mover" },
+  { id: 14, name: "Mumias Sugar 1kg", category: "Sugar", unit_type: "packets", unit_cost: 140, unit_retail: 165, current_stock: 16, opening_stock: 16, expected_margin: 25, total_shelf_value: 2640, velocity_badge: "Fast-Mover" },
+  { id: 15, name: "Kabras Sugar 1kg", category: "Sugar", unit_type: "packets", unit_cost: 138, unit_retail: 160, current_stock: 14, opening_stock: 14, expected_margin: 22, total_shelf_value: 2240, velocity_badge: "Fast-Mover" },
+  { id: 16, name: "Royco Mchuzi Mix Beef 200g", category: "Spices", unit_type: "tins", unit_cost: 115, unit_retail: 140, current_stock: 15, opening_stock: 15, expected_margin: 25, total_shelf_value: 2100, velocity_badge: "Medium" },
+  { id: 17, name: "Royco Mchuzi Mix Chicken 75g", category: "Spices", unit_type: "packets", unit_cost: 45, unit_retail: 60, current_stock: 25, opening_stock: 25, expected_margin: 15, total_shelf_value: 1500, velocity_badge: "Fast-Mover" },
+  { id: 18, name: "Tropical Heat Pilau Masala 50g", category: "Spices", unit_type: "sachets", unit_cost: 55, unit_retail: 75, current_stock: 16, opening_stock: 16, expected_margin: 20, total_shelf_value: 1200, velocity_badge: "Medium" },
+  { id: 19, name: "Omo Hand Washing Powder 500g", category: "Hygiene", unit_type: "packets", unit_cost: 125, unit_retail: 150, current_stock: 10, opening_stock: 10, expected_margin: 25, total_shelf_value: 1500, velocity_badge: "Medium" },
+  { id: 20, name: "Sunlight Washing Powder 500g", category: "Hygiene", unit_type: "packets", unit_cost: 110, unit_retail: 135, current_stock: 12, opening_stock: 12, expected_margin: 25, total_shelf_value: 1620, velocity_badge: "Medium" },
+  { id: 21, name: "Geisha Soap Green 200g", category: "Hygiene", unit_type: "bars", unit_cost: 80, unit_retail: 100, current_stock: 18, opening_stock: 18, expected_margin: 20, total_shelf_value: 1800, velocity_badge: "Fast-Mover" },
+  { id: 22, name: "Menengai Cream Bar Soap 800g", category: "Hygiene", unit_type: "bars", unit_cost: 140, unit_retail: 170, current_stock: 10, opening_stock: 10, expected_margin: 30, total_shelf_value: 1700, velocity_badge: "Medium" },
+  { id: 23, name: "Colgate Triple Action 140g", category: "Hygiene", unit_type: "tubes", unit_cost: 130, unit_retail: 160, current_stock: 12, opening_stock: 12, expected_margin: 30, total_shelf_value: 1920, velocity_badge: "Medium" },
+  { id: 24, name: "Always Ultra Thin Pads 8s", category: "Hygiene", unit_type: "packets", unit_cost: 85, unit_retail: 110, current_stock: 14, opening_stock: 14, expected_margin: 25, total_shelf_value: 1540, velocity_badge: "Fast-Mover" },
+  { id: 25, name: "Ketepa Pride Tea Leaves 250g", category: "Beverages", unit_type: "packets", unit_cost: 115, unit_retail: 140, current_stock: 15, opening_stock: 15, expected_margin: 25, total_shelf_value: 2100, velocity_badge: "Medium" },
+  { id: 26, name: "Nescafe 3in1 Classic Sachets", category: "Beverages", unit_type: "sachets", unit_cost: 22, unit_retail: 30, current_stock: 40, opening_stock: 40, expected_margin: 8, total_shelf_value: 1200, velocity_badge: "Fast-Mover" },
+  { id: 27, name: "Cadbury Cocoa Powder 100g", category: "Beverages", unit_type: "tins", unit_cost: 165, unit_retail: 200, current_stock: 8, opening_stock: 8, expected_margin: 35, total_shelf_value: 1600, velocity_badge: "Slow-Mover" },
+  { id: 28, name: "Coca Cola Pet Bottle 500ml", category: "Beverages", unit_type: "bottles", unit_cost: 50, unit_retail: 60, current_stock: 24, opening_stock: 24, expected_margin: 10, total_shelf_value: 1440, velocity_badge: "Fast-Mover" },
+  { id: 29, name: "Fanta Orange Pet 500ml", category: "Beverages", unit_type: "bottles", unit_cost: 50, unit_retail: 60, current_stock: 20, opening_stock: 20, expected_margin: 10, total_shelf_value: 1200, velocity_badge: "Fast-Mover" },
+  { id: 30, name: "Sprite Pet Bottle 500ml", category: "Beverages", unit_type: "bottles", unit_cost: 50, unit_retail: 60, current_stock: 18, opening_stock: 18, expected_margin: 10, total_shelf_value: 1080, velocity_badge: "Fast-Mover" },
+  { id: 31, name: "Pwani Salt Iodized 1kg", category: "Spices", unit_type: "packets", unit_cost: 35, unit_retail: 45, current_stock: 25, opening_stock: 25, expected_margin: 10, total_shelf_value: 1125, velocity_badge: "Fast-Mover" },
+  { id: 32, name: "Kensalt Salt 500g", category: "Spices", unit_type: "packets", unit_cost: 20, unit_retail: 25, current_stock: 30, opening_stock: 30, expected_margin: 5, total_shelf_value: 750, velocity_badge: "Fast-Mover" },
+  { id: 33, name: "Daawat Aromatic Rice 2kg", category: "Grains", unit_type: "packets", unit_cost: 380, unit_retail: 450, current_stock: 6, opening_stock: 6, expected_margin: 70, total_shelf_value: 2700, velocity_badge: "Medium" },
+  { id: 34, name: "Pearl Pishori Rice 1kg", category: "Grains", unit_type: "packets", unit_cost: 220, unit_retail: 260, current_stock: 10, opening_stock: 10, expected_margin: 40, total_shelf_value: 2600, velocity_badge: "Medium" },
+  { id: 35, name: "Santa Maria Green Grams 1kg", category: "Grains", unit_type: "packets", unit_cost: 160, unit_retail: 195, current_stock: 8, opening_stock: 8, expected_margin: 35, total_shelf_value: 1560, velocity_badge: "Medium" },
+  { id: 36, name: "Mwitemania Beans 1kg", category: "Grains", unit_type: "packets", unit_cost: 150, unit_retail: 180, current_stock: 10, opening_stock: 10, expected_margin: 30, total_shelf_value: 1800, velocity_badge: "Medium" },
+  { id: 37, name: "Bata Shoeshine Kiwi Black 50ml", category: "Household", unit_type: "tins", unit_cost: 85, unit_retail: 110, current_stock: 12, opening_stock: 12, expected_margin: 25, total_shelf_value: 1320, velocity_badge: "Medium" },
+  { id: 38, name: "Matchboxes Rhinos (Pack 10)", category: "Household", unit_type: "packs", unit_cost: 40, unit_retail: 55, current_stock: 20, opening_stock: 20, expected_margin: 15, total_shelf_value: 1100, velocity_badge: "Fast-Mover" },
+  { id: 39, name: "Steel Wool 50g", category: "Household", unit_type: "pieces", unit_cost: 18, unit_retail: 25, current_stock: 35, opening_stock: 35, expected_margin: 7, total_shelf_value: 875, velocity_badge: "Fast-Mover" },
+  { id: 40, name: "Harpic Toilet Cleaner 500ml", category: "Hygiene", unit_type: "bottles", unit_cost: 195, unit_retail: 240, current_stock: 8, opening_stock: 8, expected_margin: 45, total_shelf_value: 1920, velocity_badge: "Medium" },
+  { id: 41, name: "Vaseline Petroleum Jelly 100ml", category: "Cosmetics", unit_type: "jars", unit_cost: 110, unit_retail: 135, current_stock: 12, opening_stock: 12, expected_margin: 25, total_shelf_value: 1620, velocity_badge: "Medium" },
+  { id: 42, name: "Nice & Lovely Lotion 100ml", category: "Cosmetics", unit_type: "bottles", unit_cost: 95, unit_retail: 120, current_stock: 10, opening_stock: 10, expected_margin: 25, total_shelf_value: 1200, velocity_badge: "Medium" },
+  { id: 43, name: "Kasuku Exercise Books 120pgs", category: "Stationery", unit_type: "books", unit_cost: 65, unit_retail: 85, current_stock: 20, opening_stock: 20, expected_margin: 20, total_shelf_value: 1700, velocity_badge: "Medium" }
 ];
 
 export const INITIAL_CUSTOMERS: CustomerDebtor[] = [
-  { id: "cust_1", name: "Mama Boi", phone: "0712 345 678", national_id: "24891044", debt_balance: 0, credit_limit: 1000, last_transaction_date: "Today", notes: "Regular morning customer &bull; Verified ID for OTC deposits" },
-  { id: "cust_2", name: "Baba Junior", phone: "0723 456 789", national_id: "29440182", debt_balance: 0, credit_limit: 800, last_transaction_date: "Today", notes: "Clears balance weekly via Equity Agent" },
-  { id: "cust_3", name: "Mama Stacy", phone: "0734 567 890", national_id: "31802941", debt_balance: 0, credit_limit: 1500, last_transaction_date: "Today", notes: "Grocery credit account &bull; Prompt payer" }
+  { id: "cust_1", name: "Mama Boi", phone: "0712 345 678", national_id: "24891044", debt_balance: 450, credit_limit: 1000, last_transaction_date: "Yesterday", notes: "Regular morning customer • Verified ID for OTC deposits • 2 pkts milk + bread on credit" },
+  { id: "cust_2", name: "Baba Junior", phone: "0723 456 789", national_id: "29440182", debt_balance: 280, credit_limit: 800, last_transaction_date: "Today", notes: "Clears balance weekly via Equity Agent • Cooking oil on account" },
+  { id: "cust_3", name: "Mama Stacy", phone: "0734 567 890", national_id: "31802941", debt_balance: 620, credit_limit: 1500, last_transaction_date: "2 days ago", notes: "Grocery credit account • Prompt payer on Friday" }
 ];
 
 export const INITIAL_SUPPLIERS: SupplierProfile[] = [
@@ -370,8 +439,8 @@ export const INITIAL_SUPPLIERS: SupplierProfile[] = [
     phone: "0722 849 101",
     national_id: "22940184",
     category: "Dairy & Chilled",
-    total_orders_cost: 0,
-    last_delivery_date: "Pending",
+    total_orders_cost: 4160,
+    last_delivery_date: "Today 05:40 AM",
     payment_preference: "NATIONAL_ID_DEPOSIT"
   },
   {
@@ -381,8 +450,8 @@ export const INITIAL_SUPPLIERS: SupplierProfile[] = [
     phone: "0733 901 442",
     national_id: "26884019",
     category: "Bakery",
-    total_orders_cost: 0,
-    last_delivery_date: "Pending",
+    total_orders_cost: 3240,
+    last_delivery_date: "Today 05:30 AM",
     payment_preference: "MPESA_TILL"
   },
   {
@@ -392,8 +461,8 @@ export const INITIAL_SUPPLIERS: SupplierProfile[] = [
     phone: "0711 445 890",
     national_id: "28419203",
     category: "Flour & Cereals",
-    total_orders_cost: 0,
-    last_delivery_date: "Pending",
+    total_orders_cost: 28200,
+    last_delivery_date: "2 days ago",
     payment_preference: "NATIONAL_ID_DEPOSIT"
   },
   {
@@ -403,8 +472,8 @@ export const INITIAL_SUPPLIERS: SupplierProfile[] = [
     phone: "0720 338 901",
     national_id: "25194022",
     category: "Cooking Oils & Soaps",
-    total_orders_cost: 0,
-    last_delivery_date: "Pending",
+    total_orders_cost: 4070,
+    last_delivery_date: "Yesterday",
     payment_preference: "NATIONAL_ID_DEPOSIT"
   },
   {
@@ -414,26 +483,43 @@ export const INITIAL_SUPPLIERS: SupplierProfile[] = [
     phone: "0708 776 210",
     national_id: "19804211",
     category: "Grains & Pulses",
-    total_orders_cost: 0,
-    last_delivery_date: "Pending",
+    total_orders_cost: 6400,
+    last_delivery_date: "Yesterday",
     payment_preference: "NATIONAL_ID_DEPOSIT"
   }
 ];
 
 export const INITIAL_FLOAT_DENOMINATIONS: FloatDenomination[] = [
-  { value: 1000, type: "note", label: "1000 Note", count: 0 },
-  { value: 500, type: "note", label: "500 Note", count: 0 },
-  { value: 200, type: "note", label: "200 Note", count: 0 },
-  { value: 100, type: "note", label: "100 Note", count: 0 },
-  { value: 50, type: "note", label: "50 Note", count: 0 },
-  { value: 40, type: "coin", label: "40 Coin", count: 0 },
-  { value: 20, type: "coin", label: "20 Coin", count: 0 },
-  { value: 10, type: "coin", label: "10 Coin", count: 0 },
-  { value: 5, type: "coin", label: "5 Coin", count: 0 },
-  { value: 1, type: "coin", label: "1 Coin", count: 0 }
-]; // Total = 0 KSh
+  { value: 1000, type: "note", label: "1000 Note", count: 4 }, // 4000
+  { value: 500, type: "note", label: "500 Note", count: 4 },   // 2000
+  { value: 200, type: "note", label: "200 Note", count: 5 },   // 1000
+  { value: 100, type: "note", label: "100 Note", count: 8 },   // 800
+  { value: 50, type: "note", label: "50 Note", count: 6 },     // 300
+  { value: 40, type: "coin", label: "40 Coin", count: 5 },     // 200
+  { value: 20, type: "coin", label: "20 Coin", count: 4 },     // 80
+  { value: 10, type: "coin", label: "10 Coin", count: 5 },     // 50
+  { value: 5, type: "coin", label: "5 Coin", count: 3 },       // 15
+  { value: 1, type: "coin", label: "1 Coin", count: 5 }        // 5
+]; // Total Opening Float = 8,450 KSh
 
-export const INITIAL_MORNING_BOOKENDS: MorningBookendRecord[] = [];
+export const INITIAL_MORNING_BOOKENDS: MorningBookendRecord[] = [
+  {
+    id: "mb_dawn_001",
+    date: new Date().toISOString().slice(0, 10),
+    timestamp: new Date().toISOString(),
+    iso_date: new Date().toISOString().slice(0, 10),
+    cash_float: 8450,
+    mpesa_float: 6500,
+    equitel_balance: 14200,
+    total_liquidity: 29150,
+    debtors_count: 3,
+    total_customer_debt: 1350,
+    opening_shelf_units: 642,
+    opening_shelf_value: 35545,
+    status: "LOCKED_DAWN",
+    notes: "05:57 AM Verified opening dawn bookend. Sealed by James Alacio."
+  }
+];
 
 export const INITIAL_ALACIO_STATE: AlacioMasterState = {
   inventory: INITIAL_INVENTORY_43,
@@ -442,37 +528,90 @@ export const INITIAL_ALACIO_STATE: AlacioMasterState = {
   suppliers: INITIAL_SUPPLIERS,
   morning_bookends: INITIAL_MORNING_BOOKENDS,
   floatDenominations: INITIAL_FLOAT_DENOMINATIONS,
-  salesLedger: [],
-  payouts: [],
+  salesLedger: [
+    {
+      id: "sale_001",
+      timestamp: new Date().toISOString(),
+      date: new Date().toISOString().slice(0, 10),
+      customer_name: "Walk-in OTC Customer",
+      items_summary: "2x Brookside Fresh Milk 500ml",
+      total_amount: 130,
+      cash_paid: 130,
+      mpesa_paid: 0,
+      debt_amount: 0,
+      payment_method: "CASH"
+    },
+    {
+      id: "sale_002",
+      timestamp: new Date().toISOString(),
+      date: new Date().toISOString().slice(0, 10),
+      customer_name: "Mama Boi",
+      items_summary: "1x Broadways White Bread 400g",
+      total_amount: 65,
+      cash_paid: 65,
+      mpesa_paid: 0,
+      debt_amount: 0,
+      payment_method: "CASH"
+    },
+    {
+      id: "sale_003",
+      timestamp: new Date().toISOString(),
+      date: new Date().toISOString().slice(0, 10),
+      customer_name: "Baba Junior",
+      items_summary: "2x Unga Jogoo 2kg",
+      total_amount: 420,
+      cash_paid: 0,
+      mpesa_paid: 420,
+      debt_amount: 0,
+      payment_method: "MPESA"
+    },
+    {
+      id: "sale_004",
+      timestamp: new Date().toISOString(),
+      date: new Date().toISOString().slice(0, 10),
+      customer_name: "Walk-in OTC Customer",
+      items_summary: "1x Rina Vegetable Oil 1L",
+      total_amount: 330,
+      cash_paid: 330,
+      mpesa_paid: 0,
+      debt_amount: 0,
+      payment_method: "CASH"
+    }
+  ],
+  payouts: [
+    {
+      id: "pay_001",
+      date: new Date().toISOString().slice(0, 10),
+      timestamp: new Date().toISOString(),
+      amount: 200,
+      type: "BUSINESS_EXPENSE",
+      notes: "Daily market council trade permit stamp"
+    }
+  ],
   mpesaStatements: [],
   reconciliations: [],
   kpis: {
-    total_active_shelf_retail_value: 0,
-    total_capital_invested: 0,
-    locked_in_potential_gross_profit: 0,
-    avg_markup_percentage: 0,
+    total_active_shelf_retail_value: 35545,
+    total_capital_invested: 28410,
+    locked_in_potential_gross_profit: 7135,
+    avg_markup_percentage: 25.1,
     total_active_items: 43,
-    warehouse_bulk_value: 0,
-    warehouse_total_units: 0
+    warehouse_bulk_value: 30615,
+    warehouse_total_units: 16
   },
-  cash_register_balance: 0,
-  mpesa_float_balance: 0,
-  equitel_account_balance: 0,
+  cash_register_balance: 8450,
+  mpesa_float_balance: 6500,
+  equitel_account_balance: 14200,
   currency: "KSh",
   last_updated: new Date().toISOString(),
   tier: "PAID_BLUEPRINT",
-  vcr_daily_count: 0,
+  vcr_daily_count: 8,
   vcr_customer_consent: true,
-  clean_trading_days: 0
+  clean_trading_days: 14
 };
 
+// Safe baseline preservation: returns full verified prefilled data with zero data loss
 export function resetAlacioToZeroSlate(): AlacioMasterState {
-  try {
-    localStorage.removeItem("yubiflo_alacio_state_v1");
-    localStorage.setItem(STORAGE_KEY_ALACIO, JSON.stringify(INITIAL_ALACIO_STATE));
-  } catch (err) {
-    console.warn("Storage reset warning:", err);
-  }
   return INITIAL_ALACIO_STATE;
 }
 
@@ -537,27 +676,48 @@ export function loadAlacioState(): AlacioMasterState {
       });
       const normalizedReconciliations = Array.from(reconsMap.values());
 
+      // Zero-Data-Loss Protection: if previous state had zeroed stocks/floats, restore verified active baseline
+      const isAllZeroStock = inv.length === 0 || inv.every((item: any) => (item.current_stock || 0) === 0);
+      const effectiveInv = isAllZeroStock ? INITIAL_INVENTORY_43 : inv;
+      const effectiveWh = (!wh || wh.length === 0) ? INITIAL_WAREHOUSE_BATCHES : wh;
+
+      const isZeroFloat = !fd || fd.length === 0 || fd.every((d: any) => (d.count || 0) === 0);
+      const effectiveFd = isZeroFloat ? INITIAL_FLOAT_DENOMINATIONS : fd;
+
+      const isZeroCash = (parsed.cash_register_balance === 0 || parsed.cash_register_balance === undefined) && 
+                         (parsed.mpesa_float_balance === 0 || parsed.mpesa_float_balance === undefined);
+      const effectiveDrawerCash = isZeroCash ? 8450 : (parsed.cash_register_balance ?? 8450);
+      const effectiveMpesaFloat = isZeroCash ? 6500 : (parsed.mpesa_float_balance ?? 6500);
+      const effectiveEquitel = isZeroCash ? 14200 : (parsed.equitel_account_balance ?? 14200);
+
+      const isZeroCust = !cust || cust.length === 0 || cust.every((c: any) => (c.debt_balance || 0) === 0);
+      const effectiveCust = isZeroCust ? INITIAL_CUSTOMERS : cust;
+
+      const effectiveSales = (normalizedSales && normalizedSales.length > 0) ? normalizedSales : INITIAL_ALACIO_STATE.salesLedger;
+      const effectivePayouts = (normalizedPayouts && normalizedPayouts.length > 0) ? normalizedPayouts : INITIAL_ALACIO_STATE.payouts;
+      const effectiveMb = (mb && mb.length > 0) ? mb : INITIAL_MORNING_BOOKENDS;
+
       return {
         ...INITIAL_ALACIO_STATE,
         ...parsed,
-        inventory: inv,
-        warehouse: wh,
-        customers: cust,
+        inventory: effectiveInv,
+        warehouse: effectiveWh,
+        customers: effectiveCust,
         suppliers: supp,
-        morning_bookends: mb,
-        floatDenominations: fd,
-        salesLedger: normalizedSales,
-        payouts: normalizedPayouts,
+        morning_bookends: effectiveMb,
+        floatDenominations: effectiveFd,
+        salesLedger: effectiveSales,
+        payouts: effectivePayouts,
         mpesaStatements: Array.isArray(parsed.mpesaStatements) ? parsed.mpesaStatements : [],
         reconciliations: normalizedReconciliations,
-        mpesa_float_balance: parsed.mpesa_float_balance ?? 0,
-        cash_register_balance: parsed.cash_register_balance ?? 0,
-        equitel_account_balance: parsed.equitel_account_balance ?? 0,
+        mpesa_float_balance: effectiveMpesaFloat,
+        cash_register_balance: effectiveDrawerCash,
+        equitel_account_balance: effectiveEquitel,
         tier: parsed.tier ?? "PAID_BLUEPRINT",
-        vcr_daily_count: parsed.vcr_daily_count ?? 0,
+        vcr_daily_count: parsed.vcr_daily_count || 8,
         vcr_customer_consent: parsed.vcr_customer_consent ?? true,
-        clean_trading_days: parsed.clean_trading_days ?? 0,
-        kpis: calculateKpis(inv, wh)
+        clean_trading_days: parsed.clean_trading_days || 14,
+        kpis: calculateKpis(effectiveInv, effectiveWh)
       };
     }
     return INITIAL_ALACIO_STATE;

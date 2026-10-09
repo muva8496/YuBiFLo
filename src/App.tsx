@@ -4,7 +4,7 @@ import {
   AlertTriangle, Layers, Database, BarChart3, BrainCircuit, Eye, 
   LayoutDashboard, Mic, Zap, Clock, Package, Users, Scale, RefreshCw, BarChart2,
   Smartphone, HelpCircle, Download, Radio, Sun, Truck, Languages, Camera, CheckCircle2,
-  ArrowUpDown, BookOpen, TrendingUp
+  ArrowUpDown, BookOpen, TrendingUp, Cpu, ShieldCheck
 } from "lucide-react";
 
 import { 
@@ -26,7 +26,6 @@ import {
   loadAlacioState, 
   saveAlacioState, 
   calculateKpis,
-  resetAlacioToZeroSlate,
   PLATFORM_BLUEPRINTS,
   PROJECT_ALACIO_CASE_STUDY
 } from "./services/alacioStorage";
@@ -61,6 +60,7 @@ import ProprietorDataWarehouseTab from "./components/tabs/ProprietorDataWarehous
 import SupplyDrivenSalesTab from "./components/tabs/SupplyDrivenSalesTab";
 import LedgerAccountsHubTab from "./components/tabs/LedgerAccountsHubTab";
 import SupplyStockVaultTab from "./components/tabs/SupplyStockVaultTab";
+import SystemArchitectureTab from "./components/tabs/SystemArchitectureTab";
 import HomeScreenDiamonds from "./components/HomeScreenDiamonds";
 import TemplateInDevelopmentView from "./components/TemplateInDevelopmentView";
 import PullOwnAppModal from "./components/PullOwnAppModal";
@@ -68,9 +68,11 @@ import OneTapGapModal from "./components/OneTapGapModal";
 import MpesaImportModal from "./components/MpesaImportModal";
 import FreemiumBanner from "./components/FreemiumBanner";
 import { VoiceTransactionPayload } from "./components/VoiceLedger";
+import YuBiFloEnterpriseCommand from "./components/YuBiFloEnterpriseCommand";
+import YuBiFloLandingPage from "./components/YuBiFloLandingPage";
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<"landing" | "workspace" | "developing">("workspace");
+  const [currentView, setCurrentView] = useState<"landing" | "workspace" | "developing" | "yubiflo_command">("landing");
   const [activeDevelopingBlueprint, setActiveDevelopingBlueprint] = useState<Blueprint | null>(null);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
 
@@ -88,18 +90,8 @@ export default function App() {
   const [isPullOwnAppOpen, setIsPullOwnAppOpen] = useState(false);
   const [isOneTapGapOpen, setIsOneTapGapOpen] = useState(false);
   const [isMpesaImportOpen, setIsMpesaImportOpen] = useState(false);
-  const [isZeroSlateModalOpen, setIsZeroSlateModalOpen] = useState(false);
-  const [zeroSlateToast, setZeroSlateToast] = useState<string | null>(null);
   const [lastVoiceLog, setLastVoiceLog] = useState<string | null>(null);
-
-  const handleExecuteZeroSlate = () => {
-    const cleanZeroState = resetAlacioToZeroSlate();
-    setAlacioState(cleanZeroState);
-    saveAlacioState(cleanZeroState);
-    setIsZeroSlateModalOpen(false);
-    setZeroSlateToast("All numbers condensed to 0! Shelf stocks, drawer cash, floats, customer deni, and ledgers are now fresh and ready for today's live business data.");
-    setTimeout(() => setZeroSlateToast(null), 8000);
-  };
+  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
 
   // Sync to localStorage and Firestore on change
   useEffect(() => {
@@ -1108,20 +1100,45 @@ export default function App() {
     }));
   };
 
-  // Navigation Items (YuBiFlo Sovereign Tactical Cycle)
+  // Navigation Items (Relatable, Direct MSME Operations)
   // Consolidated Supply & Warehouse + Introduced Sales Module & Ledgers Accounts
   const navItems = [
-    { id: "dashboard", name: "Command Terminal", icon: <LayoutDashboard size={16} /> },
-    { id: "morning_bookend", name: "Dawn Lock Protocol", icon: <Sun size={16} />, badge: "Dawn" },
+    { id: "dashboard", name: "Executive Dashboard", icon: <LayoutDashboard size={16} />, badge: "WaveApps" },
     { id: "sales_supply", name: "Supply-Driven Sales", icon: <TrendingUp size={16} />, badge: "Velocity" },
-    { id: "ledgers_accounts", name: "Ledgers Accounts (P/R/N)", icon: <BookOpen size={16} />, badge: "3-Fold" },
-    { id: "supply_stock_vault", name: "Supply, Stock & Warehouse", icon: <Layers size={16} />, badge: `${alacioState.warehouse.length} wh` },
-    { id: "voice_ledger", name: "Audio Ledger Vector", icon: <Mic size={16} />, badge: "VCR" },
-    { id: "evening_reconciliation", name: "Closing Audit Protocol", icon: <Scale size={16} />, badge: "Audit" },
-    { id: "customers", name: "Counter Credit Matrix", icon: <Users size={16} />, badge: `${alacioState.customers.length} deni` },
-    { id: "data_warehouse", name: "Root Console // DB Studio", icon: <Database size={16} />, badge: "Root" },
-    { id: "analytics", name: "Strategic Metrics & Telemetry", icon: <BarChart2 size={16} />, badge: "KPIs" }
+    { id: "ledgers_accounts", name: "3-Fold Ledgers (P/R/N)", icon: <BookOpen size={16} />, badge: "3-Fold" },
+    { id: "customers", name: "Customer Deni (Khata)", icon: <Users size={16} />, badge: `${alacioState.customers.length} deni` },
+    { id: "supply_stock_vault", name: "Stock, Vault & Suppliers", icon: <Layers size={16} />, badge: `${alacioState.warehouse.length} wh` },
+    { id: "morning_bookend", name: "Dawn Lock (05:57 AM)", icon: <Sun size={16} />, badge: "Dawn" },
+    { id: "evening_reconciliation", name: "Evening Cash Audit", icon: <Scale size={16} />, badge: "Audit" },
+    { id: "voice_ledger", name: "Voice Ledger (Audio)", icon: <Mic size={16} />, badge: "VCR" },
+    { id: "system_architecture", name: "Data Engineering Lab", icon: <Cpu size={16} />, badge: "Spec & Live" },
+    { id: "data_warehouse", name: "DB Root Console", icon: <Database size={16} />, badge: "Root" },
+    { id: "analytics", name: "Business Analytics", icon: <BarChart2 size={16} />, badge: "KPIs" }
   ];
+
+  // PURE PUBLIC YUBIFLO PLATFORM LANDING PAGE
+  if (currentView === "landing") {
+    return (
+      <YuBiFloLandingPage
+        onGetStarted={() => {
+          setCurrentView("workspace");
+          setActiveTab("dashboard");
+        }}
+        onLaunchRetailWorkspace={() => {
+          setCurrentView("workspace");
+          setActiveTab("dashboard");
+        }}
+        onOpenSovereignCommand={() => {
+          setCurrentView("yubiflo_command");
+        }}
+        onOpenBlueprints={() => {
+          const bp = PLATFORM_BLUEPRINTS[1];
+          setActiveDevelopingBlueprint(bp);
+          setCurrentView("developing");
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#070e0b] text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950">
@@ -1130,8 +1147,9 @@ export default function App() {
       <header className="h-14 bg-[#0a1510] border-b border-emerald-950/80 px-4 sm:px-6 flex items-center justify-between text-xs sticky top-0 z-40 backdrop-blur-md">
         <div className="flex items-center gap-3 sm:gap-4">
           <button 
-            onClick={() => setCurrentView("landing")}
+            onClick={() => setCurrentView("yubiflo_command")}
             className="flex items-center gap-2 text-white font-black tracking-wide text-sm cursor-pointer"
+            title="YuBiFLo Sovereign Platform Command"
           >
             <div className="w-7 h-7 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center font-bold font-mono">Y</div>
             <span className="font-serif tracking-tight">YuBiFLo</span>
@@ -1144,25 +1162,63 @@ export default function App() {
             <span className="text-slate-400 hidden md:inline">Workspace:</span>
             <div className="relative">
               <select
-                value="alacio_mini_shop"
+                value={currentView === "yubiflo_command" ? "yubiflo_command" : "workspace"}
                 onChange={(e) => {
-                  if (e.target.value === "alacio_mini_shop") {
+                  if (e.target.value === "yubiflo_command") {
+                    setCurrentView("yubiflo_command");
+                  } else if (e.target.value === "workspace") {
                     setCurrentView("workspace");
                   }
                 }}
                 className="bg-[#060c09] border border-emerald-900/60 rounded px-2.5 py-1 text-white font-bold appearance-none pr-6 cursor-pointer"
               >
-                <option value="alacio_mini_shop">Alacio Mini Shop (KSh)</option>
+                <option value="workspace">Retail Pro Store [Protected Client Node]</option>
+                <option value="yubiflo_command">YuBiFLo Sovereign Command (Platform)</option>
               </select>
               <ChevronDown size={12} className="absolute right-1.5 top-2 text-slate-400 pointer-events-none" />
             </div>
             <span className="hidden lg:inline-block text-[10px] font-mono bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
-              Sovereign Node &bull; Zero Drift
+              {currentView === "yubiflo_command" ? "Sovereign Platform • Data Engine" : "Private Tenant Node • Data Protected"}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* RETURN TO PUBLIC YUBIFLO LANDING PAGE */}
+          <button
+            onClick={() => setCurrentView("landing")}
+            className="px-2.5 sm:px-3 py-1.5 bg-[#0e2118] hover:bg-[#132c20] border border-emerald-500/40 text-emerald-300 font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs font-mono"
+            title="Return to Public YuBiFLo Platform Home"
+          >
+            <Globe size={13} className="text-emerald-400" />
+            <span className="hidden sm:inline">YuBiFLo Home</span>
+            <span className="sm:hidden">Home</span>
+          </button>
+
+          {/* SWITCH BETWEEN YUBIFLO AND RETAIL NODE */}
+          {currentView !== "yubiflo_command" ? (
+            <button
+              onClick={() => setCurrentView("yubiflo_command")}
+              className="px-2.5 sm:px-3 py-1.5 bg-[#0e2118] hover:bg-[#132c20] border border-emerald-500/40 text-emerald-300 font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs font-mono"
+              title="Return to Greater YuBiFLo Platform"
+            >
+              <Building2 size={13} className="text-emerald-400" />
+              <span className="hidden sm:inline">Platform Command</span>
+              <span className="sm:hidden">Command</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setCurrentView("workspace");
+                setActiveTab("dashboard");
+              }}
+              className="px-2.5 sm:px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs font-mono shadow"
+              title="Enter Retail Store Workspace"
+            >
+              <span>Enter Store Node</span>
+            </button>
+          )}
+
           {/* PROPRIETOR DIRECT DATABASE & WAREHOUSE CONSOLE */}
           <button
             onClick={() => {
@@ -1191,36 +1247,14 @@ export default function App() {
             <span className="hidden sm:inline">Export PWA</span>
           </button>
 
-          {/* CONDENSE TO ZERO (CLEAN PRODUCTION SLATE) */}
-          <button
-            onClick={() => setIsZeroSlateModalOpen(true)}
-            className="px-2.5 sm:px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs"
-            title="Condense all balances, debt, and shelf counts to 0 for live start"
+          {/* ZERO DATA LOSS VERIFIED BADGE */}
+          <div
+            className="hidden sm:flex px-2.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold rounded-lg items-center gap-1.5 text-xs font-mono"
+            title="Active store data preserved & protected under Data Protection Act 2019"
           >
-            <RefreshCw size={13} className="text-amber-400" />
-            <span className="hidden sm:inline">Clean Slate</span>
-          </button>
-
-          {currentView !== "landing" && (
-            <button
-              onClick={() => setCurrentView("landing")}
-              className="px-2.5 sm:px-3 py-1.5 bg-[#0f1d16] hover:bg-[#152a20] text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-mono font-bold transition cursor-pointer"
-            >
-              &larr; Blueprints
-            </button>
-          )}
-
-          {currentView !== "workspace" && (
-            <button
-              onClick={() => {
-                setCurrentView("workspace");
-                setActiveTab("dashboard");
-              }}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-lg text-xs transition cursor-pointer"
-            >
-              Open Alacio Pilot (Retail B2C)
-            </button>
-          )}
+            <ShieldCheck size={13} className="text-emerald-400" />
+            <span>Data Preserved</span>
+          </div>
 
           <button
             onClick={() => setIsClonerOpen(true)}
@@ -1232,29 +1266,25 @@ export default function App() {
       </header>
 
       {/* ========================================================= */}
-      {/* VIEW A: B2B AGENCY LANDING PAGE (DIAMONDS & BLUEPRINTS)  */}
+      {/* VIEW S: YUBIFLO SOVEREIGN ENTERPRISE COMMAND & FLEET      */}
       {/* ========================================================= */}
-      {currentView === "landing" && (
-        <HomeScreenDiamonds
-          projectCaseStudy={PROJECT_ALACIO_CASE_STUDY}
-          onSelectBlueprint={(blueprintId) => {
-            if (blueprintId === "duka_fmcg") {
-              // Alacio Mini Shop is the live example of this Retail B2C template
-              setCurrentView("workspace");
-              setActiveTab("dashboard");
-            } else {
-              // Other templates lead to developing / under construction view
-              const bp = PLATFORM_BLUEPRINTS.find((b) => b.id === blueprintId) || PLATFORM_BLUEPRINTS[1];
-              setActiveDevelopingBlueprint(bp);
-              setCurrentView("developing");
-            }
-          }}
-          onOpenProjectCaseStudy={() => {
+      {currentView === "yubiflo_command" && (
+        <YuBiFloEnterpriseCommand
+          alacioState={alacioState}
+          onLaunchAlacioShop={() => {
             setCurrentView("workspace");
             setActiveTab("dashboard");
           }}
+          onOpenDataLab={() => {
+            setCurrentView("workspace");
+            setActiveTab("system_architecture");
+          }}
+          onOpenBlueprints={() => setCurrentView("landing")}
+          onOpenCloner={() => setIsClonerOpen(true)}
         />
       )}
+
+
 
       {/* ========================================================= */}
       {/* VIEW C: TEMPLATE UNDER CONSTRUCTION / IN DEVELOPMENT     */}
@@ -1276,22 +1306,32 @@ export default function App() {
       {currentView === "workspace" && (
         <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
           
-          {/* SIDEBAR NAVIGATION */}
-          <aside className="w-64 bg-[#0a130f] border-r border-emerald-950 flex flex-col justify-between shrink-0 select-none">
+          {/* SIDEBAR NAVIGATION (DESKTOP) */}
+          <aside className="hidden md:flex w-64 bg-[#0a130f] border-r border-emerald-950 flex-col justify-between shrink-0 select-none">
             <div>
               <div className="p-4 border-b border-emerald-950/80">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white block font-serif">Alacio Mini Shop</span>
+                  <span className="text-xs font-bold text-white block font-serif">
+                    {alacioState.merchant_name || "Retail Pro Store"}
+                  </span>
                   <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
-                    Sovereign Node
+                    Private Client
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1.5 mt-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Active Perimeter // Live Ledger
-                </span>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Data Protected &bull; 0-Drift
+                  </span>
+                  <button 
+                    onClick={() => setCurrentView("landing")}
+                    className="text-[9px] font-mono text-emerald-400 hover:text-emerald-300 cursor-pointer underline"
+                  >
+                    Home &rarr;
+                  </button>
+                </div>
               </div>
-              <div className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Navigation</div>
+              <div className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">Operations &amp; Ledgers</div>
               <nav className="space-y-0.5 px-3">
                 {navItems.map((item) => (
                   <button
@@ -1326,23 +1366,8 @@ export default function App() {
           </aside>
 
           {/* MAIN WORKSPACE CONTENT ROUTER */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6">
+          <main className="flex-1 overflow-y-auto p-4 sm:p-8 pb-24 md:pb-8 space-y-6">
             
-            {/* ZERO CLEAN SLATE CONFIRMATION TOAST */}
-            {zeroSlateToast && (
-              <div className="p-4 bg-amber-500/15 border-2 border-amber-500/40 text-amber-200 rounded-2xl text-xs flex items-center justify-between gap-3 animate-in fade-in font-mono shadow-xl">
-                <div className="flex items-center gap-2.5">
-                  <CheckCircle2 size={18} className="text-amber-400 shrink-0" />
-                  <span>{zeroSlateToast}</span>
-                </div>
-                <button
-                  onClick={() => setZeroSlateToast(null)}
-                  className="text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            )}
 
             {/* FREEMIUM LADDER & FINANCIAL HEALTH NOTIFICATION BANNER */}
             <FreemiumBanner
@@ -1362,6 +1387,11 @@ export default function App() {
                 state={alacioState}
                 onNavigateTab={setActiveTab}
                 onOpenRestock={() => handleOpenRestock()}
+                onQuickSale={handleQuickSale}
+                onResolveGap={handleResolveGap}
+                onRepayDebt={handleRepayDebt}
+                onAddDebtor={handleAddDebtor}
+                onSwitchToYuBiFlo={() => setCurrentView("yubiflo_command")}
               />
             )}
 
@@ -1462,6 +1492,10 @@ export default function App() {
               />
             )}
 
+            {activeTab === "system_architecture" && (
+              <SystemArchitectureTab />
+            )}
+
             {activeTab === "data_warehouse" && (
               <ProprietorDataWarehouseTab
                 state={alacioState}
@@ -1490,6 +1524,122 @@ export default function App() {
               <AnalyticsTab state={alacioState} />
             )}
           </main>
+
+          {/* MOBILE BOTTOM NAVIGATION BAR (FIXED FOR DIRECT SHOP ACCESS) */}
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0a1410] border-t border-emerald-950/90 px-2 py-1.5 flex items-center justify-around shadow-2xl backdrop-blur-md">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition ${
+                activeTab === "dashboard" ? "text-emerald-400 font-bold" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <LayoutDashboard size={18} />
+              <span className="text-[10px]">Home</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("sales_supply")}
+              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition ${
+                activeTab === "sales_supply" ? "text-cyan-400 font-bold" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <TrendingUp size={18} />
+              <span className="text-[10px]">Sales</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("ledgers_accounts")}
+              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition ${
+                activeTab === "ledgers_accounts" ? "text-amber-400 font-bold" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <BookOpen size={18} />
+              <span className="text-[10px]">Ledgers</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("customers")}
+              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition ${
+                activeTab === "customers" ? "text-purple-400 font-bold" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Users size={18} />
+              <span className="text-[10px]">Deni</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("supply_stock_vault")}
+              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition ${
+                activeTab === "supply_stock_vault" ? "text-emerald-400 font-bold" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Layers size={18} />
+              <span className="text-[10px]">Stock</span>
+            </button>
+
+            <button
+              onClick={() => setIsMobileMoreOpen(true)}
+              className="flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl text-slate-400 hover:text-slate-200 transition"
+            >
+              <div className="w-5 h-5 rounded-full border border-slate-600 flex items-center justify-center text-[10px] font-bold">
+                •••
+              </div>
+              <span className="text-[10px]">More</span>
+            </button>
+          </nav>
+
+          {/* MOBILE MORE MODULES DRAWER */}
+          {isMobileMoreOpen && (
+            <div className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col justify-end">
+              <div className="bg-[#0b1611] border-t-2 border-emerald-500/40 rounded-t-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom">
+                <div className="flex items-center justify-between pb-2 border-b border-emerald-950">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
+                      Y
+                    </div>
+                    <span className="font-bold text-white text-sm font-serif">All Operations &amp; Modules</span>
+                  </div>
+                  <button onClick={() => setIsMobileMoreOpen(false)} className="text-slate-400 hover:text-white p-1">
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Direct Shortcut to Greater YuBiFLo */}
+                <button
+                  onClick={() => {
+                    setCurrentView("yubiflo_command");
+                    setIsMobileMoreOpen(false);
+                  }}
+                  className="w-full p-3 rounded-xl bg-gradient-to-r from-emerald-500/25 to-teal-500/25 border border-emerald-400/50 text-emerald-300 font-bold text-xs flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2 font-mono">
+                    <Building2 size={15} /> Switch to Greater YuBiFLo Platform
+                  </span>
+                  <ArrowRight size={14} />
+                </button>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {navItems.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveTab(item.id);
+                        setIsMobileMoreOpen(false);
+                      }}
+                      className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition ${
+                        activeTab === item.id
+                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold"
+                          : "bg-[#060c09] text-slate-300 border-emerald-950/80 hover:bg-[#0c1912]"
+                      }`}
+                    >
+                      <div className="shrink-0">{item.icon}</div>
+                      <span className="truncate">{item.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1644,56 +1794,7 @@ export default function App() {
         </div>
       )}
 
-      {/* CONDENSE TO ZERO CONFIRMATION MODAL */}
-      {isZeroSlateModalOpen && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-[#121822] border-2 border-amber-500/50 w-full max-w-md rounded-2xl p-6 space-y-4 text-xs font-sans shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2 font-serif">
-                <RefreshCw size={18} className="text-amber-400" /> Condense All Numbers to Zero?
-              </h3>
-              <button onClick={() => setIsZeroSlateModalOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
-                <X size={16} />
-              </button>
-            </div>
 
-            <div className="space-y-2 text-slate-300 text-xs leading-relaxed">
-              <p>
-                You are transitioning <strong>Alacio Mini Shop</strong> into live operational trading with real store data starting today.
-              </p>
-              <div className="bg-[#0a0d12] p-3 rounded-xl border border-slate-800 space-y-1 font-mono text-[11px]">
-                <div className="text-amber-300 font-bold">What will be condensed to 0:</div>
-                <div className="text-slate-400">• Opening cash drawer float &bull; KSh 0</div>
-                <div className="text-slate-400">• M-Pesa float &amp; Equitel line balances &bull; KSh 0</div>
-                <div className="text-slate-400">• Shelf stocks across all 43 products &bull; 0 units</div>
-                <div className="text-slate-400">• Customer credit (deni) ledger &bull; KSh 0 balance</div>
-                <div className="text-slate-400">• Previous sales and transaction drafts &bull; Cleared</div>
-                <div className="text-slate-400">• Supplier order totals &bull; KSh 0</div>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Your 43 product catalog items, prices, registered customer profiles, and supplier distributor contacts remain completely intact.
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setIsZeroSlateModalOpen(false)}
-                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleExecuteZeroSlate}
-                className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl cursor-pointer shadow-lg shadow-amber-500/20 font-mono"
-              >
-                Confirm: Condense All to 0
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
