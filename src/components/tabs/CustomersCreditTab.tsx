@@ -21,6 +21,7 @@ interface CustomersCreditTabProps {
   }) => void;
   onEditCustomer?: (customerId: string, updatedData: Partial<CustomerDebtor>) => void;
   onDeleteCustomer?: (customerId: string) => void;
+  initialFilter?: "all" | "has_debt";
 }
 
 export default function CustomersCreditTab({ 
@@ -29,7 +30,8 @@ export default function CustomersCreditTab({
   onRepayDebt, 
   onAddDebtor,
   onEditCustomer,
-  onDeleteCustomer
+  onDeleteCustomer,
+  initialFilter = "all"
 }: CustomersCreditTabProps) {
   const [isRepayOpen, setIsRepayOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -255,7 +257,7 @@ export default function CustomersCreditTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80 font-mono">
-              {customers.map((cust) => {
+              {(initialFilter === "has_debt" ? customers.filter(c => c.debt_balance > 0) : customers).map((cust) => {
                 const ratio = cust.credit_limit > 0 ? (cust.debt_balance / cust.credit_limit) * 100 : 0;
                 return (
                   <tr key={cust.id} className="hover:bg-slate-800/30 transition">

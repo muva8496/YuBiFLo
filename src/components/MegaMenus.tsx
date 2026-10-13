@@ -832,18 +832,18 @@ export function MobileNavAccordions({
             onClose();
             onLaunchWorkspace();
           }}
-          className="w-full py-2.5 rounded-full border border-[#000000] text-[#000000] font-bold text-center"
+          className="w-full py-2.5 rounded-full border border-[#000000] text-[#000000] font-bold text-center cursor-pointer"
         >
-          Client Log in (Passcode 8496)
+          Sign in
         </button>
         <button
           onClick={() => {
             onClose();
             onLaunchWorkspace();
           }}
-          className="w-full py-3 rounded-full bg-[#000000] text-white font-bold text-center shadow-sm"
+          className="w-full py-3 rounded-full bg-[#000000] text-white font-bold text-center shadow-sm cursor-pointer"
         >
-          Start free with VCR
+          Sign up
         </button>
       </div>
 

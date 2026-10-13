@@ -733,79 +733,7 @@ export default function SupplierLogTab({
         </div>
       )}
 
-      {/* QUICK PRESETS ROW (MULTI-ITEM SHIPMENTS) */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="text-[11px] font-mono uppercase text-slate-400 font-semibold flex items-center gap-1.5">
-            <Sparkles size={13} className="text-amber-400" /> Presets // Inbound Vectors:
-          </div>
-          <button
-            type="button"
-            onClick={handleClearDeliveryItems}
-            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-mono cursor-pointer transition border border-slate-700 flex items-center gap-1"
-          >
-            <RefreshCw size={11} className="text-slate-400" />
-            <span>Reset Intake</span>
-          </button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <button
-            type="button"
-            onClick={() => applyMultiPreset("COMBO_420" as any)}
-            className="p-3 bg-[#0c141d] hover:bg-[#121f2d] border-2 border-cyan-500/50 rounded-xl text-left transition cursor-pointer text-xs shadow-md shadow-cyan-950/40"
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-white block">Sugar &amp; Oil Drop ({currency} 420)</span>
-              <span className="text-[10px] text-cyan-300 font-mono font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-500/40">140 + 280</span>
-            </div>
-            <span className="text-[10px] text-cyan-200/80 block mt-1">
-              Mumias Sugar ({currency} 140) + Cooking Oil ({currency} 280) &bull; Exact {currency} 420 Delivery
-            </span>
-          </button>
 
-          <button
-            type="button"
-            onClick={() => applyMultiPreset("BROOKSIDE")}
-            className="p-3 bg-[#0a1610] hover:bg-[#0f241a] border border-cyan-500/30 rounded-xl text-left transition cursor-pointer text-xs"
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-white block">Brookside Dairy Van (3 Items)</span>
-              <span className="text-[10px] text-cyan-400 font-mono font-bold">3 Products</span>
-            </div>
-            <span className="text-[10px] text-slate-400 block mt-1">
-              2 Crates Milk (48 pkts) + 1 Crate Mala (24 pkts) + 1 Tray Yoghurt
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => applyMultiPreset("BROADWAY")}
-            className="p-3 bg-[#0a1610] hover:bg-[#0f241a] border border-amber-500/30 rounded-xl text-left transition cursor-pointer text-xs"
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-white block">Broadway Bakeries (3 Items)</span>
-              <span className="text-[10px] text-amber-400 font-mono font-bold">3 Products</span>
-            </div>
-            <span className="text-[10px] text-slate-400 block mt-1">
-              25 White Loaves + 10 Brown Loaves + 15 Sweet Buns
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => applyMultiPreset("MEGA_WHOLESALE")}
-            className="p-3 bg-[#0a1610] hover:bg-[#0f241a] border border-emerald-500/30 rounded-xl text-left transition cursor-pointer text-xs"
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-white block">Mega Wholesaler (3 Items)</span>
-              <span className="text-[10px] text-emerald-400 font-mono font-bold">3 Products</span>
-            </div>
-            <span className="text-[10px] text-slate-400 block mt-1">
-              1 Bag Sugar (200 quarters) + 4 Bales Unga (48 pkts) + 2 Ctns Cooking Oil
-            </span>
-          </button>
-        </div>
-      </div>
 
       {/* MULTI-ITEM DELIVERY LOGGING FORM */}
       <form 

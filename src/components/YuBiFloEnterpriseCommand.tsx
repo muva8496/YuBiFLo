@@ -14,14 +14,12 @@ import WaveAppsExecutiveDashboard from "./WaveAppsExecutiveDashboard";
 interface YuBiFloEnterpriseCommandProps {
   alacioState: AlacioMasterState;
   onLaunchAlacioShop: () => void;
-  onOpenDataLab: () => void;
   onOpenBlueprints: () => void;
 }
 
 export default function YuBiFloEnterpriseCommand({
   alacioState,
   onLaunchAlacioShop,
-  onOpenDataLab,
   onOpenBlueprints
 }: YuBiFloEnterpriseCommandProps) {
   const [pipelineStep, setPipelineStep] = useState<number>(1);
@@ -89,14 +87,6 @@ export default function YuBiFloEnterpriseCommand({
             >
               <span>Launch Alacio Flagship</span>
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            <button
-              onClick={onOpenDataLab}
-              className="px-5 py-3 rounded-2xl bg-[#18181b] hover:bg-[#27272a] text-zinc-200 border border-zinc-700 text-xs font-bold font-mono flex items-center justify-center gap-2 transition cursor-pointer"
-            >
-              <Cpu size={15} className="text-white" />
-              <span>Data Engineering Lab & Schemas</span>
             </button>
           </div>
         </div>
@@ -529,13 +519,6 @@ export default function YuBiFloEnterpriseCommand({
                 How YuBiFLo performs the heavy lifting: raw multi-modal ingestion, automated ETL, canonical normalization, and 3-pillar ledger accounting.
               </p>
             </div>
-
-            <button
-              onClick={onOpenDataLab}
-              className="px-4 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold font-mono transition flex items-center gap-1.5 self-start cursor-pointer"
-            >
-              <Cpu size={14} /> Open Architecture Schemas &amp; Fallbacks
-            </button>
           </div>
 
           {/* Interactive 4-Stage Pipeline Walkthrough */}

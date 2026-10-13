@@ -25,6 +25,7 @@ interface UnifiedVoiceLedgerTabProps {
   lastLoggedMessage: string | null;
   customerConsent?: boolean;
   onToggleConsent?: (val: boolean) => void;
+  isDemo?: boolean;
 }
 
 export type VoiceHubMode = "mic_vcr" | "ambient_muva" | "dialect_studio";
@@ -36,7 +37,8 @@ export default function UnifiedVoiceLedgerTab({
   onApproveDraft,
   lastLoggedMessage,
   customerConsent = true,
-  onToggleConsent
+  onToggleConsent,
+  isDemo = false
 }: UnifiedVoiceLedgerTabProps) {
   const { currency, inventory, customers } = state;
 
@@ -126,6 +128,24 @@ export default function UnifiedVoiceLedgerTab({
   const startListening = () => {
     setParsedIntentResult(null);
     setTranscript("");
+
+    if (isDemo) {
+      // Duka Space Demo: Use Voice Simulator instead of real microphone, record no real audio
+      setIsRecording(true);
+      const demoPhrases = [
+        "nimeuza maziwa mawili na mkate moja cash 185",
+        "Customer amelipa unga Pembe mbili na mafuta Salit mpesa 540",
+        "Mama Brayo amechukua sukari kilo moja na maziwa weka kwa deni",
+        "Baba Junior amelipa deni ya jana KES 350 kwa till"
+      ];
+      const randomPhrase = demoPhrases[Math.floor(Math.random() * demoPhrases.length)];
+      setTimeout(() => {
+        setIsRecording(false);
+        setTranscript(randomPhrase);
+        parseSpeechText(randomPhrase);
+      }, 1000);
+      return;
+    }
 
     const win = window as any;
     const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
@@ -466,14 +486,16 @@ export default function UnifiedVoiceLedgerTab({
               >
                 {isRecording ? <MicOff size={30} /> : <Mic size={30} />}
                 <span className="text-[9px] font-mono font-bold mt-1 uppercase">
-                  {isRecording ? "Listening" : "Speak"}
+                  {isRecording ? "Simulating" : (isDemo ? "Simulate" : "Speak")}
                 </span>
               </button>
 
               <div className="flex-1 space-y-2 text-center sm:text-left w-full">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono uppercase text-slate-400 font-bold">
-                    {isRecording ? "🔴 Listening to Counter Dialogue..." : "Tap mic or test a sample phrase:"}
+                    {isDemo 
+                      ? (isRecording ? "🔴 Voice Simulator: Emulating counter conversation..." : "Voice Simulator (Demo Sandbox — No real audio recorded):")
+                      : (isRecording ? "🔴 Listening to Counter Dialogue..." : "Tap mic or test a sample phrase:")}
                   </span>
                   {transcript && (
                     <span className="text-[10px] font-mono text-emerald-400">

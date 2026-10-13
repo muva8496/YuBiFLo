@@ -4,7 +4,7 @@ import {
   Zap, Clock, Scale, Users, CheckCircle2, ShieldCheck, RefreshCw, Mic,
   Building2, Sun, Truck, Plus, Coins, Smartphone, DollarSign,
   Coffee, ShoppingBag, ArrowDownLeft, ArrowUpRight, Search, 
-  MessageSquare, Sparkles, Database, Cpu, Check, X, BarChart3, LayoutDashboard
+  MessageSquare, Sparkles, Database, Cpu, Check, X, BarChart3, LayoutDashboard, BarChart2, Layers
 } from "lucide-react";
 import { AlacioMasterState, InventoryItem, CustomerDebtor, PayoutOrDrawing, SalesLedgerItem } from "../../types/alacio";
 import WaveAppsExecutiveDashboard from "../WaveAppsExecutiveDashboard";
@@ -118,7 +118,7 @@ export default function DashboardTab({
       onResolveGap(payout);
       showToast(`Expense recorded: ${currency} ${amount.toLocaleString()} [${expenseType.replace("_", " ")}] deducted from cash drawer`);
     } else {
-      onNavigateTab("evening_reconciliation");
+      onNavigateTab("analytics");
     }
     setIsExpenseOpen(false);
     setExpenseAmount("");
@@ -239,15 +239,6 @@ export default function DashboardTab({
               <span>YuBiFLo Command</span>
             </button>
           )}
-          <button
-            onClick={() => onNavigateTab("system_architecture")}
-            className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 cursor-pointer font-mono"
-            title="Inspect Data Pipelining & Heavy Lifting Architecture"
-          >
-            <Cpu size={14} className="text-white" />
-            <span className="hidden sm:inline">Data Pipeline Lab</span>
-            <span className="sm:hidden">Engine</span>
-          </button>
           <button
             onClick={onOpenRestock}
             className="px-3.5 py-1.5 bg-black hover:bg-zinc-900 text-white border border-zinc-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-md font-mono"
@@ -529,16 +520,16 @@ export default function DashboardTab({
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
-              onClick={() => onNavigateTab("system_architecture")}
+              onClick={() => onNavigateTab("analytics")}
               className="px-4 py-2 bg-black hover:bg-zinc-900 text-white border border-zinc-700 font-bold text-xs rounded-xl transition flex items-center gap-2 shadow cursor-pointer font-mono"
             >
-              <Cpu size={15} /> Architecture &amp; Schemas
+              <BarChart2 size={15} className="text-emerald-400" /> Business Analytics (36 Tools)
             </button>
             <button
-              onClick={() => onNavigateTab("ledgers_accounts")}
+              onClick={() => onNavigateTab("supply_stock_vault")}
               className="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 font-semibold text-xs rounded-xl transition flex items-center gap-2 cursor-pointer font-mono"
             >
-              <Scale size={15} className="text-amber-400" /> 3-Fold Ledgers (P/R/N)
+              <Layers size={15} className="text-amber-400" /> Stock Vault &amp; Suppliers
             </button>
           </div>
         </div>
@@ -565,10 +556,10 @@ export default function DashboardTab({
 
           <div className="p-3 bg-black/60 rounded-xl border border-zinc-800">
             <div className="font-bold text-amber-300 flex items-center gap-1.5 mb-1 font-mono">
-              <Sun size={14} /> 3. Dawn-to-Dusk Audit Lock
+              <Sun size={14} /> 3. Real-Time Telemetry
             </div>
             <p className="text-[11px] text-zinc-400">
-              05:57 AM dawn opening baseline matches 9:00 PM evening cash audit to catch and resolve leaks in 1 tap.
+              Live counter sales, supplier intake, customer deni, and 36 specialized analytics tools tracking your store.
             </p>
           </div>
         </div>
@@ -617,23 +608,23 @@ export default function DashboardTab({
             </div>
           </div>
 
-          {/* EVENING RECONCILIATION AUDIT WIDGET */}
-          <div className="bg-[#0f171d] border border-cyan-500/40 rounded-2xl p-4 shadow-lg space-y-3">
+          {/* 36 BUSINESS ANALYTICS SUITE WIDGET */}
+          <div className="bg-[#0f171d] border border-emerald-500/40 rounded-2xl p-4 shadow-lg space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
-                  <Scale size={15} />
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <BarChart2 size={15} />
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-white block font-mono">Evening Cash Audit</span>
-                  <span className="text-[10px] text-slate-400">Close of business check</span>
+                  <span className="text-xs font-bold text-white block font-mono">Business Analytics Suite</span>
+                  <span className="text-[10px] text-slate-400">36 Live Telemetry Tools</span>
                 </div>
               </div>
               <button
-                onClick={() => onNavigateTab("evening_reconciliation")}
-                className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold font-mono flex items-center gap-1"
+                onClick={() => onNavigateTab("analytics")}
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold font-mono flex items-center gap-1 cursor-pointer"
               >
-                Reconcile &rarr;
+                Inspect 36 &rarr;
               </button>
             </div>
             <div className="p-3 bg-[#080d12] rounded-xl border border-slate-800 text-xs font-mono space-y-1.5">
@@ -642,12 +633,12 @@ export default function DashboardTab({
                 <span className="text-white font-bold">{currency} {salesLedger.reduce((a, b) => a + b.total_amount, 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-slate-400 text-[11px]">
-                <span>Owner Drawings &amp; Chai:</span>
-                <span className="text-amber-400 font-bold">{currency} {payouts.filter(p => p.type === "OWNER_DRAWING").reduce((a, b) => a + b.amount, 0).toLocaleString()}</span>
+                <span>Active Analytics Metrics:</span>
+                <span className="text-emerald-400 font-bold">36 Specialized Tools</span>
               </div>
               <div className="flex justify-between text-slate-400 text-[11px]">
-                <span>Audit Status:</span>
-                <span className="text-white font-bold">Zero Unresolved Gaps</span>
+                <span>Health &amp; Integrity:</span>
+                <span className="text-cyan-400 font-bold">99.4% Zero Drift</span>
               </div>
             </div>
           </div>
@@ -773,10 +764,10 @@ export default function DashboardTab({
           <div className="pt-2 flex justify-between items-center text-xs text-zinc-400">
             <span className="text-[11px] font-mono">Showing latest verified entries</span>
             <button 
-              onClick={() => onNavigateTab("ledgers_accounts")} 
-              className="text-zinc-200 hover:underline font-mono text-xs flex items-center gap-1 font-bold"
+              onClick={() => onNavigateTab("supply_stock_vault")} 
+              className="text-zinc-200 hover:underline font-mono text-xs flex items-center gap-1 font-bold cursor-pointer"
             >
-              Open Classical Ledgers Matrix &rarr;
+              Open Stock &amp; Supply Vault &rarr;
             </button>
           </div>
         </div>

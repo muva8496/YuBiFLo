@@ -30,6 +30,9 @@ interface YuBiFloLandingPageProps {
   onLaunchAlacioShop?: () => void;
   state?: AlacioMasterState;
   onCompleteOnboarding?: (customState: Partial<AlacioMasterState>) => void;
+  onOpenAuth?: (mode: "signin" | "signup") => void;
+  isLoggedIn?: boolean;
+  onLaunchDukaDemo?: () => void;
 }
 
 // -------------------------------------------------------------
@@ -155,7 +158,10 @@ export default function YuBiFloLandingPage({
   onOpenBlueprints,
   onLaunchAlacioShop,
   state,
-  onCompleteOnboarding
+  onCompleteOnboarding,
+  onOpenAuth,
+  isLoggedIn = false,
+  onLaunchDukaDemo
 }: YuBiFloLandingPageProps) {
   const handleLaunchWorkspace = onLaunchRetailWorkspace || onLaunchAlacioShop || onGetStarted;
 
@@ -438,31 +444,51 @@ export default function YuBiFloLandingPage({
 
           {/* Right Action Buttons */}
           <div className="hidden sm:flex items-center gap-3.5">
-            <button
-              onClick={handleLaunchWorkspace}
-              className="px-4 py-2 rounded-full border border-[#e4e4e7] hover:border-[#000000] text-[#222222] hover:text-[#000000] font-semibold text-xs transition cursor-pointer"
-              title="Client Log in (Passcode 8496)"
-            >
-              Client Log in
-            </button>
+            {isLoggedIn ? (
+              <button
+                onClick={handleLaunchWorkspace}
+                className="px-5 py-2.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-semibold text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>Open dashboard</span>
+                <ArrowRight size={14} />
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => onOpenAuth ? onOpenAuth("signin") : handleLaunchWorkspace()}
+                  className="text-[#222222] hover:text-[#000000] font-semibold text-xs transition cursor-pointer px-2 py-1"
+                >
+                  Sign in
+                </button>
 
-            <button
-              onClick={handleLaunchWorkspace}
-              className="px-5 py-2.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-semibold text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <span>Start free with VCR</span>
-              <ArrowRight size={14} />
-            </button>
+                <button
+                  onClick={() => onOpenAuth ? onOpenAuth("signup") : handleLaunchWorkspace()}
+                  className="px-5 py-2.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-semibold text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Sign up</span>
+                  <ArrowRight size={14} />
+                </button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
           <div className="flex md:hidden items-center gap-2">
-            <button
-              onClick={handleLaunchWorkspace}
-              className="px-3 py-1.5 rounded-full bg-[#000000] text-white text-xs font-semibold"
-            >
-              Start
-            </button>
+            {isLoggedIn ? (
+              <button
+                onClick={handleLaunchWorkspace}
+                className="px-3.5 py-1.5 rounded-full bg-[#000000] text-white text-xs font-semibold"
+              >
+                Open dashboard
+              </button>
+            ) : (
+              <button
+                onClick={() => onOpenAuth ? onOpenAuth("signup") : handleLaunchWorkspace()}
+                className="px-3.5 py-1.5 rounded-full bg-[#000000] text-white text-xs font-semibold"
+              >
+                Sign up
+              </button>
+            )}
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 text-[#222222]"
@@ -1017,8 +1043,11 @@ export default function YuBiFloLandingPage({
                   </p>
                 </div>
                 <button
-                  onClick={handleLaunchWorkspace}
-                  className="px-5 py-2 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs shadow-xs"
+                  onClick={() => {
+                    if (onLaunchDukaDemo) onLaunchDukaDemo();
+                    else handleLaunchWorkspace();
+                  }}
+                  className="px-5 py-2 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs shadow-xs cursor-pointer"
                 >
                   Launch Duka Workspace
                 </button>
@@ -1400,7 +1429,7 @@ export default function YuBiFloLandingPage({
             <div className="space-y-2 text-xs">
               <div className="font-bold text-white uppercase tracking-wider text-[11px]">Business Apps</div>
               <ul className="space-y-1.5 text-slate-400">
-                <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition">Duka &amp; Retail (Available now)</button></li>
+                <li><button onClick={() => { if (onLaunchDukaDemo) onLaunchDukaDemo(); else handleLaunchWorkspace(); }} className="hover:text-white transition cursor-pointer">Duka &amp; Retail (Available now)</button></li>
                 <li><button onClick={() => setWaitlistModalApp("Hardware & Construction")} className="hover:text-white transition">Hardware (Coming next)</button></li>
                 <li><button onClick={() => setWaitlistModalApp("Wholesale & Distribution")} className="hover:text-white transition">Wholesale (Coming soon)</button></li>
               </ul>
@@ -1450,8 +1479,8 @@ export default function YuBiFloLandingPage({
               >
                 <span>Engineering Lab (for partners)</span>
               </button>
-              <button onClick={handleLaunchWorkspace} className="hover:text-white cursor-pointer">Client Log in</button>
-              <button onClick={handleLaunchWorkspace} className="hover:text-white cursor-pointer">Workspace Portal</button>
+              <button onClick={() => onOpenAuth ? onOpenAuth("signin") : handleLaunchWorkspace()} className="hover:text-white cursor-pointer">Sign in</button>
+              <button onClick={() => onOpenAuth ? onOpenAuth("signup") : handleLaunchWorkspace()} className="hover:text-white cursor-pointer">Sign up</button>
             </div>
           </div>
 

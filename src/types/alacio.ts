@@ -9,7 +9,11 @@ export interface InventoryItem {
   opening_stock: number;
   expected_margin: number;
   total_shelf_value: number;
-  velocity_badge: string;
+  velocity_badge?: string;
+  reorder_point?: number;
+  bulk_pack_size?: number;
+  bulk_pack_name?: string;
+  is_bulk_decanted?: boolean;
 }
 
 export interface CustomerDebtor {
@@ -36,7 +40,11 @@ export interface SupplierProfile {
   payment_preference: "NATIONAL_ID_DEPOSIT" | "MPESA_TILL" | "CASH_DRAWER" | "BANK_TRANSFER";
   till_or_account?: string;
   payment_terms?: string;
+  lead_time_days?: number;
+  location?: string;
 }
+
+export type Supplier = SupplierProfile;
 
 export interface MorningBookendRecord {
   id: string;
@@ -75,6 +83,8 @@ export interface SalesLedgerItem {
   mpesa_paid: number;
   debt_amount: number;
   payment_method: "CASH" | "MPESA" | "SPLIT" | "CREDIT";
+  payment_channel?: string;
+  cash_received?: number;
 }
 
 export interface PayoutOrDrawing {
@@ -85,6 +95,7 @@ export interface PayoutOrDrawing {
   type: "BUSINESS_EXPENSE" | "OWNER_DRAWING" | "SUPPLIER_PAYOUT";
   notes: string;
   resolved_gap_id?: string;
+  payment_channel?: string;
 }
 
 export interface UnifiedTransaction {
@@ -189,6 +200,7 @@ export interface ProjectCaseStudy {
 
 export interface AlacioMasterState {
   merchant_name?: string;
+  client_type?: string;
   inventory: InventoryItem[];
   warehouse: WarehouseBatch[];
   customers: CustomerDebtor[];

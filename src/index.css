@@ -807,3 +807,11 @@
   border-color: #d8e4dc !important;
 }
 
+/* Print & Export watermark for Duka Space demo */
+@media print {
+  .demo-sample-watermark {
+    display: flex !important;
+    opacity: 0.12 !important;
+    z-index: 9999 !important;
+  }
+}
