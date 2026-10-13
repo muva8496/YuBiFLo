@@ -208,9 +208,9 @@ export function getBlueprintCardConfig(status: BlueprintStatus) {
     case "live":
       return {
         badgeText: "Available now",
-        badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+        badgeClass: "bg-black text-white border-zinc-700",
         buttonText: "Start free with VCR",
-        buttonClass: "bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold shadow-lg shadow-emerald-500/20",
+        buttonClass: "bg-black hover:bg-zinc-800 text-white font-bold border border-zinc-700 shadow-md",
         isLive: true
       };
     case "next":
@@ -224,9 +224,9 @@ export function getBlueprintCardConfig(status: BlueprintStatus) {
     case "soon":
       return {
         badgeText: "Coming soon",
-        badgeClass: "bg-teal-500/20 text-teal-300 border-teal-500/40",
+        badgeClass: "bg-zinc-800 text-zinc-300 border-zinc-700",
         buttonText: "Join the waitlist",
-        buttonClass: "bg-teal-500/15 hover:bg-teal-500/25 text-teal-300 border border-teal-500/40",
+        buttonClass: "bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700",
         isLive: false
       };
     case "request":

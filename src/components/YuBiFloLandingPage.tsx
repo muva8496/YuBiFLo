@@ -295,12 +295,12 @@ export default function YuBiFloLandingPage({
   };
 
   return (
-    <div className="min-h-screen bg-white text-[#222222] font-sans antialiased selection:bg-[#000000] selection:text-white">
+    <div className="min-h-screen bg-[#F0F4F8] text-[#0F1A24] font-sans antialiased selection:bg-[#2D5577] selection:text-white deep-steel-blue-bg">
       
       {/* ========================================================================= */}
       {/* 1. NAVIGATION BAR                                                         */}
       {/* ========================================================================= */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#e5e7eb]">
+      <header className="sticky top-0 z-40 bg-[#F0F4F8]/90 backdrop-blur-md border-b border-[#C8D7E3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           
           {/* Logo & Brand Signature */}
@@ -513,7 +513,7 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 2. HERO SECTION                                                           */}
       {/* ========================================================================= */}
-      <section className="pt-12 sm:pt-16 pb-20 bg-gradient-to-b from-white via-[#fafafa] to-[#f4f4f5]">
+      <section className="pt-12 sm:pt-16 pb-20 bg-gradient-to-b from-[#F0F4F8] via-[#DDE7F0]/60 to-[#CFDEEB]/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
@@ -577,7 +577,7 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 3. PROBLEM SECTION                                                        */}
       {/* ========================================================================= */}
-      <section className="py-20 bg-white border-t border-[#e5e7eb]">
+      <section className="py-20 bg-transparent border-t border-[#C8D7E3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
@@ -592,8 +592,8 @@ export default function YuBiFloLandingPage({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
             {/* Problem 1 */}
-            <div className="p-8 rounded-3xl bg-[#fafafa] border border-[#e4e4e7] space-y-3 shadow-xs">
-              <div className="w-12 h-12 rounded-2xl bg-[#f4f4f5] text-[#000000] flex items-center justify-center font-bold">
+            <div className="p-8 rounded-3xl bg-white/90 border border-[#C8D7E3] space-y-3 shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-[#DDE7F0] text-[#000000] flex items-center justify-center font-bold">
                 <AlertCircle size={22} />
               </div>
               <h3 className="text-xl font-serif font-bold text-[#000000]">
@@ -605,7 +605,7 @@ export default function YuBiFloLandingPage({
             </div>
 
             {/* Problem 2 */}
-            <div className="p-8 rounded-3xl bg-[#fafafa] border border-[#e4e4e7] space-y-3 shadow-xs">
+            <div className="p-8 rounded-3xl bg-white/90 border border-[#C8D7E3] space-y-3 shadow-xs">
               <div className="w-12 h-12 rounded-2xl bg-[#FAF6EE] text-[#996515] flex items-center justify-center font-bold">
                 <Users size={22} />
               </div>
@@ -618,8 +618,8 @@ export default function YuBiFloLandingPage({
             </div>
 
             {/* Problem 3 */}
-            <div className="p-8 rounded-3xl bg-[#fafafa] border border-[#e4e4e7] space-y-3 shadow-xs">
-              <div className="w-12 h-12 rounded-2xl bg-[#f4f4f5] text-[#000000] flex items-center justify-center font-bold">
+            <div className="p-8 rounded-3xl bg-white/90 border border-[#C8D7E3] space-y-3 shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-[#DDE7F0] text-[#000000] flex items-center justify-center font-bold">
                 <DollarSign size={22} />
               </div>
               <h3 className="text-xl font-serif font-bold text-[#000000]">
@@ -638,7 +638,7 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 4. SOLUTION SECTION (1, 2, 3 STEPS)                                       */}
       {/* ========================================================================= */}
-      <section id="how-it-works-section" className="py-20 bg-[#fafafa] border-t border-[#e5e7eb]">
+      <section id="how-it-works-section" className="py-20 bg-[#DDE7F0]/40 border-t border-[#C8D7E3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-3xl mx-auto space-y-3 mb-16">
@@ -707,10 +707,10 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 5. VCR LIVE FEED TICKER (TURNS HEARD SALE INTO TRANSACTIONS)               */}
       {/* ========================================================================= */}
-      <section className="py-20 bg-white border-t border-[#e5e7eb]">
+      <section className="py-20 bg-transparent border-t border-[#C8D7E3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="bg-[#fafafa] rounded-3xl border border-[#e4e4e7] p-6 sm:p-10 shadow-lg space-y-6">
+          <div className="bg-white/95 rounded-3xl border border-[#C8D7E3] p-6 sm:p-10 shadow-lg space-y-6">
             
             {/* Header with live ticker & pause button */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e5e7eb] pb-5">
@@ -825,7 +825,7 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 6. APPS & "SEE YOUR KIND OF BUSINESS" TABS (DUKA / HARDWARE / WHOLESALE)  */}
       {/* ========================================================================= */}
-      <section id="apps-section" className="py-20 bg-[#fafafa] border-t border-[#e5e7eb]">
+      <section id="apps-section" className="py-20 bg-[#DDE7F0]/40 border-t border-[#C8D7E3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-3xl mx-auto space-y-3 mb-12">
@@ -1048,7 +1048,7 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 7. PROJECTS SECTION                                                       */}
       {/* ========================================================================= */}
-      <section id="projects-section" className="py-20 bg-white border-t border-[#e5e7eb]">
+      <section id="projects-section" className="py-20 bg-transparent border-t border-[#C8D7E3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
@@ -1127,7 +1127,7 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 8. PRICING SECTION                                                        */}
       {/* ========================================================================= */}
-      <section id="pricing-section" className="py-20 bg-[#fafafa] border-t border-[#e5e7eb]">
+      <section id="pricing-section" className="py-20 bg-[#DDE7F0]/40 border-t border-[#C8D7E3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
@@ -1163,7 +1163,7 @@ export default function YuBiFloLandingPage({
 
               <button
                 onClick={handleLaunchWorkspace}
-                className="w-full py-3 rounded-full bg-[#f4f4f5] hover:bg-[#D9E8DD] text-[#000000] font-bold text-xs transition"
+                className="w-full py-3 rounded-full bg-[#f4f4f5] hover:bg-[#DDE7F0] text-[#000000] font-bold text-xs transition"
               >
                 Start free with VCR
               </button>
@@ -1214,7 +1214,7 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 9. FAQ SECTION (ANSWERS: WHAT VCR RECORDS, WHAT IS DELETED, WHO CAN SEE)  */}
       {/* ========================================================================= */}
-      <section className="py-20 bg-white border-t border-[#e5e7eb]">
+      <section className="py-20 bg-transparent border-t border-[#C8D7E3]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           
           <div className="text-center space-y-2">

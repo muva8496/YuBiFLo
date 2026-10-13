@@ -30,7 +30,7 @@ export default function DashboardTab({
   onAddDebtor,
   onSwitchToYuBiFlo
 }: DashboardTabProps) {
-  const [dashboardMode, setDashboardMode] = useState<"executive" | "counter">("executive");
+  const [dashboardMode, setDashboardMode] = useState<"executive" | "counter">("counter");
   const { 
     kpis, 
     currency, 
@@ -185,21 +185,21 @@ export default function DashboardTab({
       
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
-        <div className="p-3.5 bg-emerald-500/20 border border-emerald-400 text-emerald-200 rounded-2xl text-xs flex items-center justify-between gap-3 shadow-2xl animate-in fade-in">
+        <div className="p-3.5 bg-zinc-900 border border-zinc-700 text-white rounded-2xl text-xs flex items-center justify-between gap-3 shadow-2xl animate-in fade-in">
           <div className="flex items-center gap-2.5">
-            <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+            <CheckCircle2 size={18} className="text-white shrink-0" />
             <span className="font-semibold">{toastMessage}</span>
           </div>
-          <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white">
+          <button onClick={() => setToastMessage(null)} className="text-zinc-400 hover:text-white">
             <X size={14} />
           </button>
         </div>
       )}
 
       {/* TOP STORE IDENTITY & DATE BAR (SIGMA & GAMMA OPERATIVE DESIGNATION) */}
-      <div className="bg-[#0b1612] border border-emerald-950/90 rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-[#09090b] border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-slate-950 font-black flex items-center justify-center text-xl shadow-md shrink-0 font-serif">
+          <div className="w-12 h-12 rounded-2xl bg-black border border-zinc-700 text-white font-black flex items-center justify-center text-xl shadow-md shrink-0 font-serif">
             A
           </div>
           <div>
@@ -210,8 +210,8 @@ export default function DashboardTab({
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30">
                 RETAIL PILOT &bull; NODE 001
               </span>
-              <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-semibold border border-emerald-500/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-200 font-semibold border border-zinc-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 Live Trading &bull; 0-Drift
               </span>
             </div>
@@ -219,7 +219,7 @@ export default function DashboardTab({
               Kasarani / Hunters, Nairobi &bull; Equity Paybill 1450180372031 &bull; YuBiFLo Flagship Operative
             </p>
             <div className="mt-1.5 text-[11px] font-mono text-slate-400 flex items-center gap-2">
-              <span className="text-emerald-400 font-bold">&bull; Sigma Discipline:</span>
+              <span className="text-white font-bold">&bull; Sigma Discipline:</span>
               <span className="text-slate-300">Cold Mathematical Ledger &bull; Zero Emotional Leakage</span>
               <span className="text-slate-600 hidden sm:inline">|</span>
               <span className="text-cyan-400 font-bold hidden sm:inline">&bull; Gamma Precision:</span>
@@ -232,25 +232,25 @@ export default function DashboardTab({
           {onSwitchToYuBiFlo && (
             <button
               onClick={onSwitchToYuBiFlo}
-              className="px-3 py-1.5 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border border-emerald-400/40 text-emerald-300 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer font-mono"
+              className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer font-mono"
               title="Switch to greater YuBiFLo Platform & Network Command"
             >
-              <Building2 size={13} className="text-emerald-400" />
+              <Building2 size={13} className="text-white" />
               <span>YuBiFLo Command</span>
             </button>
           )}
           <button
             onClick={() => onNavigateTab("system_architecture")}
-            className="px-3 py-1.5 bg-[#12231b] hover:bg-[#183125] border border-emerald-500/30 text-emerald-300 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 cursor-pointer font-mono"
+            className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 cursor-pointer font-mono"
             title="Inspect Data Pipelining & Heavy Lifting Architecture"
           >
-            <Cpu size={14} className="text-emerald-400" />
+            <Cpu size={14} className="text-white" />
             <span className="hidden sm:inline">Data Pipeline Lab</span>
             <span className="sm:hidden">Engine</span>
           </button>
           <button
             onClick={onOpenRestock}
-            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-md font-mono"
+            className="px-3.5 py-1.5 bg-black hover:bg-zinc-900 text-white border border-zinc-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-md font-mono"
           >
             <RefreshCw size={14} /> Restock SKU
           </button>
@@ -258,43 +258,43 @@ export default function DashboardTab({
       </div>
 
       {/* ========================================================================= */}
-      {/* EXECUTIVE DASHBOARD VIEW SELECTOR: EXECUTIVE WHITE vs COUNTER SPEED       */}
+      {/* DASHBOARD VIEW SELECTOR: COUNTER RETAIL SPEED DECK vs FINANCIAL AUDIT       */}
       {/* ========================================================================= */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#08120d] border border-emerald-950 p-2.5 rounded-2xl">
-        <div className="flex items-center gap-1.5 p-1 bg-[#040806] rounded-xl border border-slate-900">
-          <button
-            onClick={() => setDashboardMode("executive")}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold font-mono transition flex items-center gap-2 cursor-pointer ${
-              dashboardMode === "executive"
-                ? "bg-emerald-500 text-slate-950 shadow-md"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <BarChart3 size={15} />
-            <span>Executive Dashboard (White Trust)</span>
-            <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-950/20 uppercase font-black">Center</span>
-          </button>
-
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#09090b] border border-zinc-800 p-2.5 rounded-2xl">
+        <div className="flex items-center gap-1.5 p-1 bg-black rounded-xl border border-zinc-800">
           <button
             onClick={() => setDashboardMode("counter")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold font-mono transition flex items-center gap-2 cursor-pointer ${
               dashboardMode === "counter"
-                ? "bg-emerald-500 text-slate-950 shadow-md"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-white text-black shadow-md font-black"
+                : "text-zinc-400 hover:text-white"
             }`}
           >
             <LayoutDashboard size={15} />
             <span>Counter Retail Speed Deck</span>
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-zinc-800 text-white uppercase font-black">Main</span>
+          </button>
+
+          <button
+            onClick={() => setDashboardMode("executive")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold font-mono transition flex items-center gap-2 cursor-pointer ${
+              dashboardMode === "executive"
+                ? "bg-white text-black shadow-md font-black"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            <BarChart3 size={15} />
+            <span>Executive Cashflow &amp; P&amp;L</span>
           </button>
         </div>
 
-        <div className="text-[11px] font-mono text-slate-400 px-2 flex items-center gap-2">
-          <Sparkles size={13} className="text-emerald-400" />
-          <span>At the centre of what the customer gets: Real-time Cashflow, Invoices &amp; P&amp;L</span>
+        <div className="text-[11px] font-mono text-zinc-400 px-2 flex items-center gap-2">
+          <Sparkles size={13} className="text-white" />
+          <span>Real-time Counter Velocity, Dawn Check &amp; Zero Emotional Drift</span>
         </div>
       </div>
 
-      {/* RENDER EXECUTIVE DASHBOARD AT THE CENTRE */}
+      {/* RENDER SELECTED DASHBOARD */}
       {dashboardMode === "executive" ? (
         <WaveAppsExecutiveDashboard
           state={state}
@@ -363,20 +363,20 @@ export default function DashboardTab({
         {/* PILLAR 3: LIQUID CASH & FLOATS (DRAWER + M-PESA + EQUITEL) */}
         <div 
           onClick={() => onNavigateTab("opening_float")}
-          className="bg-gradient-to-br from-[#0b1f17] to-[#07130e] border-2 border-emerald-500/40 hover:border-emerald-400/80 rounded-2xl p-4 sm:p-5 shadow-lg cursor-pointer transition group relative overflow-hidden"
+          className="bg-gradient-to-br from-[#121214] to-[#09090b] border-2 border-zinc-700 hover:border-zinc-500 rounded-2xl p-4 sm:p-5 shadow-lg cursor-pointer transition group relative overflow-hidden"
         >
-          <div className="flex items-center justify-between text-xs text-emerald-300 font-semibold mb-2">
+          <div className="flex items-center justify-between text-xs text-zinc-300 font-semibold mb-2">
             <span className="flex items-center gap-1.5 uppercase tracking-wider text-[11px] font-mono">
-              <Coins size={15} className="text-emerald-400" /> Liquid Money
+              <Coins size={15} className="text-white" /> Liquid Money
             </span>
-            <span className="text-[10px] bg-emerald-500/20 text-emerald-200 px-2 py-0.5 rounded-full font-bold">
+            <span className="text-[10px] bg-zinc-800 text-zinc-200 px-2 py-0.5 rounded-full font-bold border border-zinc-700">
               In hand &amp; till
             </span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-300 font-mono tracking-tight">
+          <div className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
             {currency} {totalLiquidMoney.toLocaleString()}
           </div>
-          <div className="mt-3 pt-2 border-t border-emerald-900/40 text-[10px] font-mono text-slate-300 flex justify-between gap-1">
+          <div className="mt-3 pt-2 border-t border-zinc-800 text-[10px] font-mono text-zinc-400 flex justify-between gap-1">
             <span>Cash: {currency} {cash_register_balance.toLocaleString()}</span>
             <span>M-Pesa: {currency} {mpesa_float_balance.toLocaleString()}</span>
           </div>
@@ -412,10 +412,10 @@ export default function DashboardTab({
       {/* ========================================================================= */}
       <div>
         <div className="flex items-center justify-between mb-2.5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 font-mono">
             Fast Daily Actions // 1-Tap Counter Controls
           </h2>
-          <span className="text-[11px] text-emerald-400 font-mono">Instant zero-drift capture</span>
+          <span className="text-[11px] text-zinc-300 font-mono">Instant zero-drift capture</span>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -423,19 +423,19 @@ export default function DashboardTab({
           {/* ACTION 1: RECORD SALE (WALK-IN) */}
           <button
             onClick={() => setIsQuickSaleOpen(true)}
-            className="p-4 bg-[#0e1d16] hover:bg-[#132a1f] border border-emerald-500/50 hover:border-emerald-400 rounded-2xl text-left transition shadow-md flex flex-col justify-between cursor-pointer group"
+            className="p-4 bg-[#121214] hover:bg-[#18181b] border border-zinc-700 hover:border-zinc-500 rounded-2xl text-left transition shadow-md flex flex-col justify-between cursor-pointer group"
           >
             <div className="flex items-center justify-between">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center group-hover:scale-110 transition">
+              <div className="w-10 h-10 rounded-xl bg-zinc-800 text-white flex items-center justify-center group-hover:scale-110 transition border border-zinc-700">
                 <Zap size={20} />
               </div>
-              <Plus size={16} className="text-emerald-400 opacity-60 group-hover:opacity-100" />
+              <Plus size={16} className="text-zinc-400 opacity-60 group-hover:opacity-100" />
             </div>
             <div className="mt-3">
-              <span className="block text-sm font-bold text-white group-hover:text-emerald-300 transition">
+              <span className="block text-sm font-bold text-white group-hover:text-zinc-200 transition">
                 + Record Sale
               </span>
-              <span className="block text-[11px] text-slate-400 mt-0.5">
+              <span className="block text-[11px] text-zinc-400 mt-0.5">
                 Quick counter walk-in sale (Cash / M-Pesa)
               </span>
             </div>
@@ -510,11 +510,11 @@ export default function DashboardTab({
       {/* ========================================================================= */}
       {/* THE DATA PIPELINING & HEAVY LIFTING EXPLAINER FOR MSMEs                   */}
       {/* ========================================================================= */}
-      <div className="bg-gradient-to-r from-[#0d1c14] via-[#091510] to-[#08121d] border-2 border-emerald-500/40 rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-[#121214] via-[#09090b] to-[#121214] border-2 border-zinc-700 rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="space-y-1.5 max-w-2xl">
             <div className="flex items-center gap-2">
-              <Sparkles size={18} className="text-emerald-400" />
+              <Sparkles size={18} className="text-white" />
               <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
                 The YuBiFLo Heavy Lifting Engine // Data Pipelining for MSMEs
               </span>
@@ -522,7 +522,7 @@ export default function DashboardTab({
             <h3 className="text-base sm:text-lg font-bold text-white font-serif">
               Simple at the counter. Industrial-grade data engineering behind the scenes.
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-zinc-300 leading-relaxed">
               You run your duka without scanning every 50-bob packet. When a new 21-pack of Mt Kenya milk arrives, YuBiFLo deduces units sold, deducts owner chai, updates double-entry ledgers, and detects cash drawer leaks automatically.
             </p>
           </div>
@@ -530,13 +530,13 @@ export default function DashboardTab({
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
               onClick={() => onNavigateTab("system_architecture")}
-              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center gap-2 shadow cursor-pointer font-mono"
+              className="px-4 py-2 bg-black hover:bg-zinc-900 text-white border border-zinc-700 font-bold text-xs rounded-xl transition flex items-center gap-2 shadow cursor-pointer font-mono"
             >
               <Cpu size={15} /> Architecture &amp; Schemas
             </button>
             <button
               onClick={() => onNavigateTab("ledgers_accounts")}
-              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl transition flex items-center gap-2 cursor-pointer font-mono"
+              className="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 font-semibold text-xs rounded-xl transition flex items-center gap-2 cursor-pointer font-mono"
             >
               <Scale size={15} className="text-amber-400" /> 3-Fold Ledgers (P/R/N)
             </button>
@@ -544,30 +544,30 @@ export default function DashboardTab({
         </div>
 
         {/* 3 CORE PILLARS OF THE ENGINE */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 pt-4 border-t border-emerald-950/80 text-xs">
-          <div className="p-3 bg-[#060e0a]/80 rounded-xl border border-emerald-900/40">
-            <div className="font-bold text-emerald-300 flex items-center gap-1.5 mb-1 font-mono">
-              <Truck size={14} /> 1. Supply-Driven Velocity
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 pt-4 border-t border-zinc-800 text-xs">
+          <div className="p-3 bg-black/60 rounded-xl border border-zinc-800">
+            <div className="font-bold text-zinc-200 flex items-center gap-1.5 mb-1 font-mono">
+              <Truck size={14} className="text-zinc-400" /> 1. Supply-Driven Velocity
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-zinc-400">
               Capacity (21) minus remaining shelf units minus owner consumption equals crystallized sales revenue and profit.
             </p>
           </div>
 
-          <div className="p-3 bg-[#060e0a]/80 rounded-xl border border-emerald-900/40">
+          <div className="p-3 bg-black/60 rounded-xl border border-zinc-800">
             <div className="font-bold text-cyan-300 flex items-center gap-1.5 mb-1 font-mono">
               <Database size={14} /> 2. Automated Double-Entry
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-zinc-400">
               Every coin is balanced across Personal (Debtors/Creditors), Real (Cash/Inventory), and Nominal (P&amp;L) accounts with zero manual math.
             </p>
           </div>
 
-          <div className="p-3 bg-[#060e0a]/80 rounded-xl border border-emerald-900/40">
+          <div className="p-3 bg-black/60 rounded-xl border border-zinc-800">
             <div className="font-bold text-amber-300 flex items-center gap-1.5 mb-1 font-mono">
               <Sun size={14} /> 3. Dawn-to-Dusk Audit Lock
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-zinc-400">
               05:57 AM dawn opening baseline matches 9:00 PM evening cash audit to catch and resolve leaks in 1 tap.
             </p>
           </div>
@@ -612,7 +612,7 @@ export default function DashboardTab({
               </div>
               <div className="flex justify-between text-slate-400 text-[11px]">
                 <span>Starting Total Liquidity:</span>
-                <span className="text-emerald-400 font-bold">{currency} {totalLiquidMoney.toLocaleString()}</span>
+                <span className="text-white font-bold">{currency} {totalLiquidMoney.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -647,7 +647,7 @@ export default function DashboardTab({
               </div>
               <div className="flex justify-between text-slate-400 text-[11px]">
                 <span>Audit Status:</span>
-                <span className="text-emerald-400 font-bold">Zero Unresolved Gaps</span>
+                <span className="text-white font-bold">Zero Unresolved Gaps</span>
               </div>
             </div>
           </div>
@@ -660,7 +660,7 @@ export default function DashboardTab({
               </span>
               <button 
                 onClick={() => onNavigateTab("supply_stock_vault")}
-                className="text-[11px] text-emerald-400 hover:underline font-mono"
+                className="text-[11px] text-zinc-300 hover:underline font-mono"
               >
                 Vault
               </button>
@@ -684,23 +684,23 @@ export default function DashboardTab({
         </div>
 
         {/* RIGHT 2 COLUMNS: UNIFIED RECENT ACTIVITY STREAM (SALES, DENI, EXPENSES) */}
-        <div className="lg:col-span-2 bg-[#0c1510] border border-emerald-950/80 rounded-2xl p-5 space-y-4 shadow-lg">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-emerald-950">
+        <div className="lg:col-span-2 bg-[#09090b] border border-zinc-800 rounded-2xl p-5 space-y-4 shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-800">
             <div>
               <h3 className="text-sm font-bold text-white font-serif flex items-center gap-2">
-                <Clock size={16} className="text-emerald-400" /> Recent Shop Activity Stream
+                <Clock size={16} className="text-zinc-300" /> Recent Shop Activity Stream
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-zinc-400">
                 Live stream of sales, owner chai drawings, credit (deni), and supplier drop-offs.
               </p>
             </div>
 
             {/* FILTER CHIPS */}
-            <div className="flex items-center gap-1 bg-[#060c08] p-1 rounded-xl border border-slate-800 text-[11px] font-mono">
+            <div className="flex items-center gap-1 bg-black p-1 rounded-xl border border-zinc-800 text-[11px] font-mono">
               <button
                 onClick={() => setRecentFilter("all")}
                 className={`px-2.5 py-1 rounded-lg transition cursor-pointer font-bold ${
-                  recentFilter === "all" ? "bg-emerald-500 text-slate-950" : "text-slate-400 hover:text-white"
+                  recentFilter === "all" ? "bg-white text-black font-black" : "text-zinc-400 hover:text-white"
                 }`}
               >
                 All
@@ -708,7 +708,7 @@ export default function DashboardTab({
               <button
                 onClick={() => setRecentFilter("sales")}
                 className={`px-2.5 py-1 rounded-lg transition cursor-pointer font-bold ${
-                  recentFilter === "sales" ? "bg-cyan-500 text-slate-950" : "text-slate-400 hover:text-white"
+                  recentFilter === "sales" ? "bg-cyan-500 text-black font-black" : "text-zinc-400 hover:text-white"
                 }`}
               >
                 Sales
@@ -716,7 +716,7 @@ export default function DashboardTab({
               <button
                 onClick={() => setRecentFilter("expenses")}
                 className={`px-2.5 py-1 rounded-lg transition cursor-pointer font-bold ${
-                  recentFilter === "expenses" ? "bg-amber-400 text-slate-950" : "text-slate-400 hover:text-white"
+                  recentFilter === "expenses" ? "bg-amber-400 text-black font-black" : "text-zinc-400 hover:text-white"
                 }`}
               >
                 Expenses
@@ -725,43 +725,43 @@ export default function DashboardTab({
           </div>
 
           {filteredActivities.length === 0 ? (
-            <div className="p-8 text-center bg-[#070e0a] rounded-xl border border-slate-800 text-slate-400 space-y-2">
-              <Package size={24} className="mx-auto text-slate-600" />
+            <div className="p-8 text-center bg-black/50 rounded-xl border border-zinc-800 text-zinc-400 space-y-2">
+              <Package size={24} className="mx-auto text-zinc-600" />
               <p className="text-xs">No activity recorded yet for this session.</p>
-              <p className="text-[11px] text-slate-500">Tap "+ Record Sale" or "+ Box Restock" above to start logging.</p>
+              <p className="text-[11px] text-zinc-500">Tap "+ Record Sale" or "+ Box Restock" above to start logging.</p>
             </div>
           ) : (
             <div className="space-y-2">
               {filteredActivities.map((act) => (
                 <div 
                   key={act.id} 
-                  className="p-3 bg-[#08100b] hover:bg-[#0c1811] border border-emerald-950/70 rounded-xl flex items-center justify-between text-xs transition"
+                  className="p-3 bg-[#121214] hover:bg-[#18181b] border border-zinc-800/80 rounded-xl flex items-center justify-between text-xs transition"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
                       act.type === "sale" 
-                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" 
+                        ? "bg-zinc-800 text-white border border-zinc-700" 
                         : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                     }`}>
                       {act.type === "sale" ? <ArrowUpRight size={16} /> : <ArrowDownLeft size={16} />}
                     </div>
                     <div>
-                      <div className="font-semibold text-slate-200">
+                      <div className="font-semibold text-zinc-200">
                         {act.title}
                       </div>
-                      <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                      <div className="text-[11px] text-zinc-400 flex items-center gap-2 mt-0.5">
                         <span>{act.party}</span>
                         <span>&bull;</span>
-                        <span className="font-mono text-[10px] text-slate-500">{act.time}</span>
+                        <span className="font-mono text-[10px] text-zinc-500">{act.time}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <div className={`font-mono font-bold text-sm ${act.isPositive ? "text-emerald-400" : "text-amber-400"}`}>
+                    <div className={`font-mono font-bold text-sm ${act.isPositive ? "text-white" : "text-amber-400"}`}>
                       {act.isPositive ? "+" : "-"}{currency} {act.amount.toLocaleString()}
                     </div>
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 uppercase">
                       {act.badge}
                     </span>
                   </div>
@@ -770,11 +770,11 @@ export default function DashboardTab({
             </div>
           )}
 
-          <div className="pt-2 flex justify-between items-center text-xs text-slate-400">
+          <div className="pt-2 flex justify-between items-center text-xs text-zinc-400">
             <span className="text-[11px] font-mono">Showing latest verified entries</span>
             <button 
               onClick={() => onNavigateTab("ledgers_accounts")} 
-              className="text-emerald-400 hover:underline font-mono text-xs flex items-center gap-1 font-bold"
+              className="text-zinc-200 hover:underline font-mono text-xs flex items-center gap-1 font-bold"
             >
               Open Classical Ledgers Matrix &rarr;
             </button>
@@ -790,27 +790,27 @@ export default function DashboardTab({
       {/* ========================================================================= */}
       {isQuickSaleOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0b1510] border-2 border-emerald-500/50 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-emerald-950">
+          <div className="bg-[#121214] border-2 border-zinc-700 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
               <div className="flex items-center gap-2">
-                <Zap size={18} className="text-emerald-400" />
+                <Zap size={18} className="text-white" />
                 <h3 className="text-sm font-bold text-white font-serif">+ Record Quick Counter Sale</h3>
               </div>
-              <button onClick={() => setIsQuickSaleOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsQuickSaleOpen(false)} className="text-zinc-400 hover:text-white">
                 <X size={16} />
               </button>
             </div>
 
             <form onSubmit={handleCommitQuickSale} className="space-y-3.5 text-xs">
               <div>
-                <label className="text-slate-300 font-semibold block mb-1">Item Name or Fast Selection:</label>
+                <label className="text-zinc-300 font-semibold block mb-1">Item Name or Fast Selection:</label>
                 <input
                   type="text"
                   list="inventory-suggestions"
                   placeholder="e.g. Brookside Milk, Unga Jogoo, Bread..."
                   value={quickSaleItem}
                   onChange={(e) => setQuickSaleItem(e.target.value)}
-                  className="w-full bg-[#050a07] border border-emerald-900/80 rounded-xl px-3 py-2 text-white font-medium focus:outline-none focus:border-emerald-400"
+                  className="w-full bg-black border border-zinc-700 rounded-xl px-3 py-2 text-white font-medium focus:outline-none focus:border-white"
                   autoFocus
                 />
                 <datalist id="inventory-suggestions">
@@ -822,37 +822,37 @@ export default function DashboardTab({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">Quantity:</label>
+                  <label className="text-zinc-300 font-semibold block mb-1">Quantity:</label>
                   <input
                     type="number"
                     min="1"
                     value={quickSaleQty}
                     onChange={(e) => setQuickSaleQty(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full bg-[#050a07] border border-emerald-900/80 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-400"
+                    className="w-full bg-black border border-zinc-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-white"
                   />
                 </div>
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">Total Amount ({currency}):</label>
+                  <label className="text-zinc-300 font-semibold block mb-1">Total Amount ({currency}):</label>
                   <input
                     type="number"
                     placeholder="Auto or custom"
                     value={quickSaleAmount}
                     onChange={(e) => setQuickSaleAmount(e.target.value)}
-                    className="w-full bg-[#050a07] border border-emerald-900/80 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-400"
+                    className="w-full bg-black border border-zinc-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-slate-300 font-semibold block mb-1">Payment Method:</label>
+                <label className="text-zinc-300 font-semibold block mb-1">Payment Method:</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setQuickSaleMethod("CASH")}
                     className={`py-2 rounded-xl font-bold font-mono text-xs border transition cursor-pointer ${
                       quickSaleMethod === "CASH" 
-                        ? "bg-emerald-500 text-slate-950 border-emerald-400 shadow" 
-                        : "bg-[#050a07] text-slate-300 border-emerald-950"
+                        ? "bg-white text-black border-white shadow" 
+                        : "bg-black text-zinc-300 border-zinc-800"
                     }`}
                   >
                     💵 Cash in Drawer
@@ -862,8 +862,8 @@ export default function DashboardTab({
                     onClick={() => setQuickSaleMethod("MPESA")}
                     className={`py-2 rounded-xl font-bold font-mono text-xs border transition cursor-pointer ${
                       quickSaleMethod === "MPESA" 
-                        ? "bg-teal-500 text-slate-950 border-teal-400 shadow" 
-                        : "bg-[#050a07] text-slate-300 border-emerald-950"
+                        ? "bg-cyan-500 text-black border-cyan-400 shadow font-bold" 
+                        : "bg-black text-zinc-300 border-zinc-800"
                     }`}
                   >
                     📱 M-Pesa Till
@@ -875,13 +875,13 @@ export default function DashboardTab({
                 <button
                   type="button"
                   onClick={() => setIsQuickSaleOpen(false)}
-                  className="px-3 py-1.5 bg-slate-800 text-slate-300 font-semibold rounded-xl hover:bg-slate-700"
+                  className="px-3 py-1.5 bg-zinc-800 text-zinc-300 font-semibold rounded-xl hover:bg-zinc-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow font-mono"
+                  className="px-4 py-1.5 bg-black hover:bg-zinc-900 text-white border border-zinc-700 font-bold rounded-xl shadow font-mono cursor-pointer"
                 >
                   Confirm Sale
                 </button>

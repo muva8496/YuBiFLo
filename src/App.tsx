@@ -1181,10 +1181,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-slate-100 font-sans selection:bg-black selection:text-white">
+    <div className="min-h-screen bg-[#0B1420] text-[#E2ECF3] font-sans selection:bg-[#2D5577] selection:text-white deep-steel-blue-bg-dark">
       
       {/* GLOBAL HEADER / WORKSPACE SWITCHER */}
-      <header className="h-14 bg-[#0c0c0e] border-b border-zinc-800 px-4 sm:px-6 flex items-center justify-between text-xs sticky top-0 z-40 backdrop-blur-md">
+      <header className="h-14 bg-[#0E1A29]/95 border-b border-[#182C40] px-4 sm:px-6 flex items-center justify-between text-xs sticky top-0 z-40 backdrop-blur-md">
         <div className="flex items-center gap-3 sm:gap-4">
           <button 
             onClick={() => setCurrentView("yubiflo_command")}
@@ -1325,9 +1325,9 @@ export default function App() {
         <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
           
           {/* SIDEBAR NAVIGATION (DESKTOP) */}
-          <aside className="hidden md:flex w-64 bg-[#0a0a0c] border-r border-zinc-800 flex-col justify-between shrink-0 select-none">
+          <aside className="hidden md:flex w-64 bg-[#0D1826] border-r border-[#182C40] flex-col justify-between shrink-0 select-none">
             <div>
-              <div className="p-4 border-b border-zinc-800">
+              <div className="p-4 border-b border-[#182C40]">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white block font-serif">
                     {alacioState.merchant_name || "Retail Pro Store"}

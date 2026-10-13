@@ -302,8 +302,8 @@ export default function AeroTechArchitectureStudioTab({ state }: AeroTechArchite
                     }}
                     className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
                       isSelected
-                        ? "bg-[#182017] border-amber-500 text-white shadow-md shadow-amber-950"
-                        : "bg-[#09090b] border-slate-800 text-slate-400 hover:bg-[#0c1410] hover:text-slate-200"
+                        ? "bg-zinc-900 border-amber-500 text-white shadow-md"
+                        : "bg-[#09090b] border-slate-800 text-slate-400 hover:bg-zinc-900 hover:text-slate-200"
                     }`}
                   >
                     <div>

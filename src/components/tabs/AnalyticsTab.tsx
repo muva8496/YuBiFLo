@@ -5,13 +5,14 @@ import {
   CheckCircle2, Clock, Calendar, Sparkles, Filter
 } from "lucide-react";
 import { AlacioMasterState } from "../../types/alacio";
+import SalesVelocityTrendChart from "../charts/SalesVelocityTrendChart";
 
 interface AnalyticsTabProps {
   state: AlacioMasterState;
 }
 
 export default function AnalyticsTab({ state }: AnalyticsTabProps) {
-  const { currency, inventory, kpis } = state;
+  const { currency, inventory, kpis, salesLedger = [] } = state;
 
   const [activeTimeframe, setActiveTimeframe] = useState<"7D" | "30D" | "ALL">("7D");
   const [selectedChartFilter, setSelectedChartFilter] = useState<"REVENUE" | "CATEGORY" | "DISCREPANCY" | "CHANNELS">("REVENUE");
@@ -183,6 +184,13 @@ export default function AnalyticsTab({ state }: AnalyticsTabProps) {
           </span>
         </div>
       </div>
+
+      {/* SALES VELOCITY TREND CHART (RECHARTS INTEGRATION) */}
+      <SalesVelocityTrendChart
+        salesLedger={salesLedger}
+        inventory={inventory}
+        currency={currency}
+      />
 
       {/* GRAPH ROW 1: 7-DAY STACKED REVENUE BAR CHART & SETTLEMENT SHARE DONUT */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

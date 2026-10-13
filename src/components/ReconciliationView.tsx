@@ -253,21 +253,21 @@ export const ReconciliationView: React.FC<ReconciliationViewProps> = ({
           id="reconciliation-status-card"
           className={`p-5 rounded-xl border space-y-4 shadow-2xl transition-all ${
             activeRecord.status === "PERFECT_MATCH"
-              ? "bg-[#18181b] border-emerald-500/40"
+              ? "bg-[#eef7f3] border-[#238662]"
               : activeRecord.status === "LEAKAGE_DETECTED"
-              ? "bg-[#18181b] border-red-500/40"
-              : "bg-[#18181b] border-indigo-500/40"
+              ? "bg-[#fdf2f2] border-[#c53030]"
+              : "bg-[#fdf4ed] border-[#d97736]"
           }`}
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 pb-3">
             <div className="flex items-center gap-3">
               <div
                 className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                   activeRecord.status === "PERFECT_MATCH"
-                    ? "bg-emerald-500/20 text-emerald-400"
+                    ? "bg-white text-[#238662] shadow-xs"
                     : activeRecord.status === "LEAKAGE_DETECTED"
-                    ? "bg-red-500/20 text-red-400"
-                    : "bg-indigo-500/20 text-indigo-300"
+                    ? "bg-white text-[#c53030] shadow-xs"
+                    : "bg-white text-[#d97736] shadow-xs"
                 }`}
               >
                 {activeRecord.status === "PERFECT_MATCH" ? (
@@ -278,7 +278,13 @@ export const ReconciliationView: React.FC<ReconciliationViewProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold tracking-tight text-slate-100">
+                  <h3 className={`text-base font-bold tracking-tight ${
+                    activeRecord.status === "PERFECT_MATCH"
+                      ? "text-[#238662]"
+                      : activeRecord.status === "LEAKAGE_DETECTED"
+                      ? "text-[#c53030]"
+                      : "text-[#d97736]"
+                  }`}>
                     {activeRecord.status === "PERFECT_MATCH"
                       ? "PERFECT CASH-TO-STOCK MATCH 🎯"
                       : activeRecord.status === "LEAKAGE_DETECTED"

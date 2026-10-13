@@ -86,13 +86,13 @@ export default function TemplateInDevelopmentView({
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-slate-100 font-sans p-4 sm:p-8 max-w-5xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#0B1420] text-[#E2ECF3] font-sans p-4 sm:p-8 max-w-5xl mx-auto space-y-8 deep-steel-blue-bg-dark">
       
       {/* TOP NAVIGATION BREADCRUMB */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-4">
         <button
           onClick={onBackToLanding}
-          className="flex items-center gap-2 text-xs font-mono text-emerald-400 hover:text-emerald-300 transition cursor-pointer"
+          className="flex items-center gap-2 text-xs font-mono text-zinc-300 hover:text-white transition cursor-pointer"
         >
           <ArrowLeft size={16} />
           <span>&larr; Back to YuBiFlo Blueprints &amp; Templates</span>
@@ -122,7 +122,7 @@ export default function TemplateInDevelopmentView({
             <h1 className="text-2xl sm:text-4xl font-extrabold text-white font-serif tracking-tight">
               {blueprint.name}
             </h1>
-            <p className="text-xs sm:text-sm font-mono text-emerald-400">
+            <p className="text-xs sm:text-sm font-mono text-zinc-400">
               Sector: {blueprint.industry} &bull; {blueprint.items_seed_count} Seed Stock Items Defined
             </p>
           </div>
@@ -149,10 +149,10 @@ export default function TemplateInDevelopmentView({
         </p>
 
         {/* IMPORTANT ARCHITECTURAL EXPLANATION */}
-        <div className="p-4 bg-[#070e0a] border border-emerald-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="p-4 bg-black border border-zinc-700 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 text-xs font-bold text-white font-serif">
-              <Store size={15} className="text-emerald-400" />
+              <Store size={15} className="text-white" />
               <span>Looking for the Live Operating Demonstration?</span>
             </div>
             <p className="text-xs text-slate-400 leading-normal max-w-2xl">
@@ -163,7 +163,7 @@ export default function TemplateInDevelopmentView({
 
           <button
             onClick={onLaunchAlacioPilot}
-            className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0 font-mono"
+            className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-black/40 shrink-0 font-mono"
           >
             <span>Launch Retail B2C Workspace</span>
             <ArrowRight size={14} />
@@ -200,7 +200,7 @@ export default function TemplateInDevelopmentView({
 
                 <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
                   mod.status === "COMPLETED"
-                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                    ? "bg-zinc-800 text-zinc-200 border border-zinc-700"
                     : mod.status === "IN_PROGRESS"
                     ? "bg-amber-500/10 text-amber-400 border border-amber-500/30"
                     : "bg-slate-800 text-slate-400"
@@ -227,8 +227,8 @@ export default function TemplateInDevelopmentView({
             </p>
 
             {submittedWaitlist ? (
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/40 rounded-2xl text-xs space-y-2 mt-4 animate-in fade-in">
-                <div className="flex items-center gap-2 font-bold text-emerald-400 font-mono">
+              <div className="p-4 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs space-y-2 mt-4 animate-in fade-in">
+                <div className="flex items-center gap-2 font-bold text-white font-mono">
                   <CheckCircle2 size={16} /> Priority Slot Registered!
                 </div>
                 <p className="text-slate-300">

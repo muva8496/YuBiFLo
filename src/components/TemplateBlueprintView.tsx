@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   ArrowLeft,
-  Copy,
   Plus,
   Settings,
   Sparkles,
@@ -193,9 +192,9 @@ export default function TemplateBlueprintView({
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0d12] text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950 flex flex-col">
+    <div className="min-h-screen bg-[#0B1420] text-[#E2ECF3] font-sans selection:bg-[#2D5577] selection:text-white flex flex-col deep-steel-blue-bg-dark">
       {/* 1. TOP SYSTEM LEVEL 2 BANNER */}
-      <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border-b border-emerald-500/30 px-6 py-3 sticky top-0 z-50 backdrop-blur-md">
+      <div className="bg-gradient-to-r from-black via-zinc-900 to-black border-b border-zinc-800 px-6 py-3 sticky top-0 z-50 backdrop-blur-md">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
@@ -204,7 +203,7 @@ export default function TemplateBlueprintView({
             </span>
             <span className="text-slate-400">|</span>
             <span className="text-white font-medium">
-              Viewing Template: <strong className="text-emerald-300">{currentConfig.name}</strong> (No Client Data Loaded)
+              Viewing Template: <strong className="text-white">{currentConfig.name}</strong> (No Client Data Loaded)
             </span>
           </div>
 
@@ -224,7 +223,7 @@ export default function TemplateBlueprintView({
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-mono text-emerald-400 mb-2">
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-mono text-zinc-300 mb-2">
                 <Sparkles size={12} /> Empty-State Engine Ready for Onboarding
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white">
@@ -250,7 +249,7 @@ export default function TemplateBlueprintView({
                     }}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
                       isSelected
-                        ? "bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/20"
+                        ? "bg-white text-black font-bold shadow-md shadow-black/40"
                         : "text-slate-400 hover:text-white hover:bg-slate-800/60"
                     }`}
                   >
@@ -269,7 +268,7 @@ export default function TemplateBlueprintView({
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="bg-[#121822] border border-slate-700 rounded-lg px-2.5 py-1 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                className="bg-[#121822] border border-slate-700 rounded-lg px-2.5 py-1 text-white font-mono focus:border-zinc-500 focus:outline-none"
               >
                 <option value="KSh">KSh (Kenyan Shilling)</option>
                 <option value="USD">USD ($)</option>
@@ -291,14 +290,14 @@ export default function TemplateBlueprintView({
               {templateItems.length === 0 && (
                 <button
                   onClick={handleAddStarterSample}
-                  className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-zinc-300 border border-zinc-700 rounded-lg transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <Zap size={13} /> Load 3 Starter Sample Items
                 </button>
               )}
               <button
                 onClick={() => setIsAddProductOpen(true)}
-                className="px-3 py-1.5 text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg transition flex items-center gap-1.5 shadow-sm shadow-emerald-500/20 cursor-pointer"
+                className="px-3 py-1.5 text-xs font-bold bg-white hover:bg-zinc-200 text-black rounded-lg transition flex items-center gap-1.5 shadow-sm shadow-black/40 cursor-pointer"
               >
                 <Plus size={14} /> Add Initial Product
               </button>
@@ -337,10 +336,10 @@ export default function TemplateBlueprintView({
             <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
               Locked-in Gross Profit
             </span>
-            <div className="text-2xl font-black text-emerald-400 font-mono mt-1">
+            <div className="text-2xl font-black text-white font-mono mt-1">
               {currency} {lockedProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-[11px] text-emerald-500/80 mt-1 font-mono">
+            <p className="text-[11px] text-zinc-400 mt-1 font-mono">
               Avg markup: {markupPct}%
             </p>
           </div>
@@ -471,7 +470,7 @@ export default function TemplateBlueprintView({
                 </button>
                 <button
                   onClick={() => setIsAddProductOpen(true)}
-                  className="px-4 py-2 text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg transition shadow-md shadow-emerald-500/20 cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold bg-white hover:bg-zinc-200 text-black rounded-lg transition shadow-md shadow-black/40 cursor-pointer"
                 >
                   Add Custom Product
                 </button>
@@ -498,7 +497,7 @@ export default function TemplateBlueprintView({
                     <tr key={item.id} className="hover:bg-slate-800/30 transition">
                       <td className="py-3.5 px-4 font-sans font-medium text-white">{item.name}</td>
                       <td className="py-3.5 px-4 text-slate-400">{item.category}</td>
-                      <td className="py-3.5 px-4 text-emerald-400">{item.unit_type}</td>
+                      <td className="py-3.5 px-4 text-zinc-300">{item.unit_type}</td>
                       <td className="py-3.5 px-4 text-slate-300">
                         {currency} {item.unit_cost.toLocaleString()}
                       </td>
@@ -508,7 +507,7 @@ export default function TemplateBlueprintView({
                       <td className="py-3.5 px-4 text-slate-400">
                         {item.current_stock} {item.unit_type}
                       </td>
-                      <td className="py-3.5 px-4 text-emerald-400 font-semibold">
+                      <td className="py-3.5 px-4 text-white font-semibold">
                         +{currency} {(item.unit_retail - item.unit_cost).toLocaleString()}
                       </td>
                       <td className="py-3.5 px-4 text-right">
@@ -530,7 +529,7 @@ export default function TemplateBlueprintView({
         {/* CLIENT ONBOARDING CTA BANNER */}
         <div className="bg-gradient-to-r from-slate-900 via-[#131b26] to-slate-900 border border-slate-700/80 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
           <div className="space-y-2 max-w-xl">
-            <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider">
+            <span className="text-xs font-mono font-bold text-zinc-300 uppercase tracking-wider">
               Ready to Deploy?
             </span>
             <h3 className="text-xl sm:text-2xl font-bold text-white">
@@ -544,7 +543,7 @@ export default function TemplateBlueprintView({
           <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
             <button
               onClick={onLaunchClientProject}
-              className="w-full sm:w-auto px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto px-5 py-3 bg-white hover:bg-zinc-200 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition shadow-lg shadow-black/40 flex items-center justify-center gap-2 cursor-pointer"
             >
               View Live Client #001
             </button>
@@ -650,7 +649,7 @@ export default function TemplateBlueprintView({
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition cursor-pointer"
+                  className="flex-1 py-2 bg-white hover:bg-zinc-200 text-black font-bold rounded-lg transition cursor-pointer"
                 >
                   Save to Blueprint
                 </button>
@@ -680,7 +679,7 @@ export default function TemplateBlueprintView({
                   <div className="font-semibold text-white">Auto-Close Preceding Batch</div>
                   <div className="text-[11px] text-slate-400">Implies full sale of previous stock on new restock</div>
                 </div>
-                <input type="checkbox" defaultChecked className="accent-emerald-500 w-4 h-4" />
+                <input type="checkbox" defaultChecked className="accent-white w-4 h-4" />
               </div>
 
               <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between">
@@ -688,7 +687,7 @@ export default function TemplateBlueprintView({
                   <div className="font-semibold text-white">Sheng & Swahili Voice Ingestion</div>
                   <div className="text-[11px] text-slate-400">Enable Gemini audio transcription for micro-sales</div>
                 </div>
-                <input type="checkbox" defaultChecked className="accent-emerald-500 w-4 h-4" />
+                <input type="checkbox" defaultChecked className="accent-white w-4 h-4" />
               </div>
 
               <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
@@ -708,7 +707,7 @@ export default function TemplateBlueprintView({
 
             <button
               onClick={() => setIsConfigOpen(false)}
-              className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition text-xs cursor-pointer"
+              className="w-full py-2.5 bg-white hover:bg-zinc-200 text-black font-bold rounded-lg transition text-xs cursor-pointer"
             >
               Apply Blueprint Rules
             </button>

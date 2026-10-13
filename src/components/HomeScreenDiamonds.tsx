@@ -71,13 +71,13 @@ export default function HomeScreenDiamonds({
       <section className="relative pt-12 sm:pt-16 pb-12 px-4 sm:px-6 text-center max-w-5xl mx-auto">
         
         {/* YUBIFLO NAME IN ROUNDED BOX AT THE TOP */}
-        <div className="inline-flex flex-col items-center gap-1.5 px-6 py-3 rounded-2xl bg-[#0d1e17] border-2 border-[#1FB88E]/40 shadow-xl shadow-emerald-950/40 mb-6 backdrop-blur-md">
+        <div className="inline-flex flex-col items-center gap-1.5 px-6 py-3 rounded-2xl bg-black border-2 border-zinc-700 shadow-xl shadow-black/80 mb-6 backdrop-blur-md">
           <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
             <span className="text-2xl sm:text-3xl font-black text-white tracking-widest font-mono">
               YuBiFLo
             </span>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-800 text-white font-bold border border-zinc-700">
               SOVEREIGN CDO // 0-DRIFT
             </span>
           </div>
@@ -90,7 +90,7 @@ export default function HomeScreenDiamonds({
         <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.15] font-serif max-w-4xl mx-auto">
           No notebooks.<br />
           No typing.<br />
-          Just <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300">know your numbers</span>.
+          Just <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-amber-300">know your numbers</span>.
         </h1>
 
         <p className="mt-4 text-sm sm:text-base text-slate-300 max-w-2xl mx-auto font-sans leading-relaxed">
@@ -108,20 +108,20 @@ export default function HomeScreenDiamonds({
               const target = document.getElementById("choose-your-app-section");
               target?.scrollIntoView({ behavior: "smooth" });
             }}
-            className="group relative bg-[#0f1d18] border-2 border-emerald-500/30 hover:border-emerald-400 rounded-3xl p-7 transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-950/60 cursor-pointer overflow-hidden flex flex-col justify-between"
+            className="group relative bg-[#121214] border-2 border-zinc-700 hover:border-zinc-500 rounded-3xl p-7 transition-all duration-300 hover:shadow-2xl hover:shadow-black/60 cursor-pointer overflow-hidden flex flex-col justify-between"
           >
             {/* Diamond Badge */}
-            <div className="absolute top-4 right-4 w-9 h-9 rotate-45 bg-emerald-500/10 border border-emerald-400/40 flex items-center justify-center group-hover:bg-emerald-400 group-hover:text-slate-950 transition-colors">
-              <span className="-rotate-45 font-mono text-[11px] font-black text-emerald-400 group-hover:text-slate-950">
+            <div className="absolute top-4 right-4 w-9 h-9 rotate-45 bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-colors">
+              <span className="-rotate-45 font-mono text-[11px] font-black text-zinc-300 group-hover:text-black">
                 ◆
               </span>
             </div>
 
             <div>
-              <div className="text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-bold mb-2 flex items-center gap-1.5">
+              <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-300 font-bold mb-2 flex items-center gap-1.5">
                 <Store size={14} /> Vector 1 &bull; Blueprints
               </div>
-              <h3 className="text-2xl font-bold text-white group-hover:text-emerald-300 transition-colors font-serif">
+              <h3 className="text-2xl font-bold text-white group-hover:text-zinc-200 transition-colors font-serif">
                 Built for your vertical
               </h3>
               <p className="text-xs text-slate-300 mt-2 leading-relaxed">
@@ -129,7 +129,7 @@ export default function HomeScreenDiamonds({
               </p>
             </div>
 
-            <div className="mt-6 flex items-center justify-between text-xs font-mono text-emerald-400 font-semibold pt-4 border-t border-slate-800">
+            <div className="mt-6 flex items-center justify-between text-xs font-mono text-zinc-300 font-semibold pt-4 border-t border-slate-800">
               <span>Inspect {blueprints.length} Verticals</span>
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </div>
@@ -294,7 +294,7 @@ export default function HomeScreenDiamonds({
           <div className="flex items-center gap-2.5 shrink-0">
             <button
               onClick={handleOpenCustomRequest}
-              className="px-3 py-1.5 bg-[#0f2117] hover:bg-[#142e20] text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition shadow"
+              className="px-3.5 py-1.5 bg-black hover:bg-zinc-900 text-white border border-zinc-700 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition shadow"
             >
               <Plus size={13} /> Request Another Type
             </button>
@@ -321,8 +321,8 @@ export default function HomeScreenDiamonds({
                 key={bp.id}
                 className={`border rounded-2xl p-5 space-y-4 transition flex flex-col justify-between ${
                   cardCfg.isLive
-                    ? "bg-[#0d1612] border-emerald-500/50 hover:border-emerald-400 shadow-xl shadow-emerald-950/40"
-                    : "bg-[#0c1410] border-slate-800/90 hover:border-slate-700"
+                    ? "bg-[#121214] border-zinc-600 hover:border-white shadow-xl shadow-black/80"
+                    : "bg-[#09090b] border-zinc-800 hover:border-zinc-700"
                 }`}
               >
                 <div>
@@ -330,7 +330,7 @@ export default function HomeScreenDiamonds({
                   <div className="flex items-center justify-between">
                     <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${cardCfg.badgeClass} flex items-center gap-1.5`}>
                       {cardCfg.isLive && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                       )}
                       {bp.status === "next" && (
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
@@ -373,7 +373,7 @@ export default function HomeScreenDiamonds({
 
       {/* 5. PROJECT #1 CONSENTED CASE STUDY BANNER */}
       <section className="px-4 sm:px-6 max-w-5xl mx-auto">
-        <div className="bg-gradient-to-r from-[#111113] to-[#12231b] border-2 border-emerald-500/40 rounded-3xl p-8 sm:p-10 shadow-2xl space-y-6">
+        <div className="bg-gradient-to-r from-black via-[#121214] to-black border-2 border-zinc-700 rounded-3xl p-8 sm:p-10 shadow-2xl space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="inline-block px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-mono font-bold rounded-full mb-2">
@@ -389,7 +389,7 @@ export default function HomeScreenDiamonds({
 
             <button
               onClick={onOpenProjectCaseStudy}
-              className="px-5 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20 shrink-0 font-mono"
+              className="px-5 py-3 bg-white hover:bg-zinc-200 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-black/40 shrink-0 font-mono"
             >
               <span>Enter Workspace System</span>
               <ArrowRight size={15} />
@@ -407,14 +407,14 @@ export default function HomeScreenDiamonds({
               <div className="text-slate-300">&bull; {projectCaseStudy.before_metrics.stockout_frequency}</div>
             </div>
 
-            <div className="bg-[#09090b] border border-emerald-500/40 rounded-xl p-4 space-y-2">
-              <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">
+            <div className="bg-[#09090b] border border-zinc-700 rounded-xl p-4 space-y-2">
+              <span className="text-[10px] text-zinc-300 font-bold uppercase tracking-wider block">
                 After YuBiFLo (External CDO Platform)
               </span>
-              <div className="text-emerald-300">&bull; {projectCaseStudy.after_metrics.cash_gap_reconciliation}</div>
-              <div className="text-emerald-300">&bull; {projectCaseStudy.after_metrics.shelf_value_locked}</div>
-              <div className="text-emerald-300">&bull; {projectCaseStudy.after_metrics.payout_categorization}</div>
-              <div className="text-emerald-300 font-bold">&bull; Bankable Proof: 100% CDO-Verified &amp; Ledger-Backed</div>
+              <div className="text-white">&bull; {projectCaseStudy.after_metrics.cash_gap_reconciliation}</div>
+              <div className="text-white">&bull; {projectCaseStudy.after_metrics.shelf_value_locked}</div>
+              <div className="text-white">&bull; {projectCaseStudy.after_metrics.payout_categorization}</div>
+              <div className="text-white font-bold">&bull; Bankable Proof: 100% CDO-Verified &amp; Ledger-Backed</div>
             </div>
           </div>
         </div>

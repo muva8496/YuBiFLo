@@ -157,31 +157,33 @@ export default function EveningReconciliationTab({
         {/* RECONCILIATION GAP */}
         <div className={`border-2 rounded-2xl p-5 shadow-lg ${
           report.status === "LEAKAGE_DETECTED"
-            ? "bg-red-950/20 border-red-500/50"
+            ? "bg-[#fdf2f2] border-[#c53030]"
             : report.status === "MATCHED"
-            ? "bg-emerald-950/20 border-emerald-500/50"
-            : "bg-amber-950/20 border-amber-500/50"
+            ? "bg-[#eef7f3] border-[#238662]"
+            : "bg-[#fdf4ed] border-[#d97736]"
         }`}>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-slate-400 font-bold uppercase block">
+            <span className="text-[10px] text-slate-600 font-bold uppercase block">
               3. Reconciliation Gap
             </span>
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+            <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold border ${
               report.status === "MATCHED"
-                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                : "bg-red-500/20 text-red-300 border-red-500/30"
+                ? "badge-matched"
+                : report.status === "LEAKAGE_DETECTED"
+                ? "badge-unmatched"
+                : "badge-warning"
             }`}>
               {report.status}
             </span>
           </div>
 
           <div className={`text-3xl font-black mt-1 ${
-            report.status === "LEAKAGE_DETECTED" ? "text-red-400" : "text-emerald-400"
+            report.status === "LEAKAGE_DETECTED" ? "text-[#c53030]" : "text-[#238662]"
           }`}>
             {report.reconciliationGap >= 0 ? "+" : ""}{currency} {report.reconciliationGap.toLocaleString()}
           </div>
 
-          <span className="text-[11px] text-slate-400 font-sans mt-1 block">
+          <span className="text-[11px] text-slate-600 font-sans mt-1 block">
             {report.status === "LEAKAGE_DETECTED" ? "Cash shortage detected" : "Registers balanced"}
           </span>
         </div>
@@ -190,15 +192,15 @@ export default function EveningReconciliationTab({
       {/* DISCREPANCY ALERT BANNER (CRITICAL REQUIREMENT) */}
       <div className={`p-4 sm:p-5 rounded-2xl border-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs ${
         report.status === "LEAKAGE_DETECTED"
-          ? "bg-red-950/25 border-red-500/50 text-red-200"
-          : "bg-emerald-950/25 border-emerald-500/50 text-emerald-200"
+          ? "bg-[#fdf2f2] border-[#c53030] text-[#c53030]"
+          : "bg-[#eef7f3] border-[#238662] text-[#238662]"
       }`}>
         <div className="flex items-start gap-3">
-          <div className="p-2 rounded-xl bg-black/40 shrink-0 mt-0.5">
+          <div className="p-2 rounded-xl bg-white shrink-0 mt-0.5 shadow-xs">
             {report.status === "LEAKAGE_DETECTED" ? (
-              <AlertTriangle size={20} className="text-red-400" />
+              <AlertTriangle size={20} className="text-[#c53030]" />
             ) : (
-              <CheckCircle2 size={20} className="text-emerald-400" />
+              <CheckCircle2 size={20} className="text-[#238662]" />
             )}
           </div>
           <div>

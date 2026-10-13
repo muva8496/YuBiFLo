@@ -135,7 +135,7 @@ SI5299P1 Confirmed. Ksh 800.00 paid to KPLC PREPAID on 2/10/26 at 2:30 PM.`;
             <div className="flex justify-end pt-2">
               <button
                 onClick={handleCommit}
-                className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl transition cursor-pointer text-xs"
+                className="px-5 py-2.5 bg-brand hover:bg-[#26594b] text-white font-bold rounded-xl transition cursor-pointer text-xs"
               >
                 Commit &amp; Reconcile M-Pesa Float
               </button>

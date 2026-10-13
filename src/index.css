@@ -1,83 +1,201 @@
 @import "tailwindcss";
 
 @theme {
-  --color-emerald-50: #fafafa;
-  --color-emerald-100: #f4f4f5;
-  --color-emerald-200: #e4e4e7;
-  --color-emerald-300: #d4d4d8;
-  --color-emerald-400: #e4e4e7;
-  --color-emerald-500: #000000;
-  --color-emerald-600: #09090b;
-  --color-emerald-700: #18181b;
-  --color-emerald-800: #27272a;
-  --color-emerald-900: #3f3f46;
-  --color-emerald-950: #000000;
+  /* Deep Steel Blue Theme Palette */
+  --color-steel-50: #f0f4f8;
+  --color-steel-100: #dde7f0;
+  --color-steel-200: #bccfe0;
+  --color-steel-300: #8eafc9;
+  --color-steel-400: #5c8bb2;
+  --color-steel-500: #3e6f97;
+  --color-steel-600: #2d5577;
+  --color-steel-700: #21405b;
+  --color-steel-800: #162c40;
+  --color-steel-900: #0f1e2e;
+  --color-steel-950: #09131d;
+  --color-steel: #2d5577;
+  --color-steel-canvas: #f0f4f8;
+  --color-steel-mist: #e5edf4;
+  --color-steel-border: #c8d7e3;
+  --color-steel-dark: #111e2e;
+  --color-steel-deep: #0b1420;
+  --color-steel-midnight: #0d1926;
 
-  --color-teal-50: #fafafa;
-  --color-teal-100: #f4f4f5;
-  --color-teal-200: #e4e4e7;
-  --color-teal-300: #d4d4d8;
-  --color-teal-400: #e4e4e7;
-  --color-teal-500: #000000;
-  --color-teal-600: #09090b;
-  --color-teal-700: #18181b;
-  --color-teal-800: #27272a;
-  --color-teal-900: #3f3f46;
-  --color-teal-950: #000000;
+  /* Nordic Theme Palette */
+  --color-nordic-canvas: #f0f4f8;
+  --color-nordic-surface: #ffffff;
+  --color-nordic-border: #c8d7e3;
+  --color-nordic-text: #0f1a24;
+  --color-nordic-muted: #4a6275;
+  --color-nordic-spruce: #2d5577;
+  --color-nordic-spruce-dark: #21405b;
+  --color-nordic-sage: #8eafc9;
+  --color-nordic-tangerine: #d97736;
+  --color-nordic-mint: #238662;
 
-  --color-green-50: #fafafa;
-  --color-green-100: #f4f4f5;
-  --color-green-200: #e4e4e7;
-  --color-green-300: #d4d4d8;
-  --color-green-400: #e4e4e7;
-  --color-green-500: #000000;
-  --color-green-600: #09090b;
-  --color-green-700: #18181b;
-  --color-green-800: #27272a;
-  --color-green-900: #3f3f46;
-  --color-green-950: #000000;
+  /* Nordic Moss Scale */
+  --color-nordic-moss-50: #f2f6f3;
+  --color-nordic-moss-100: #e6efe9;
+  --color-nordic-moss-200: #cfe0d4;
+  --color-nordic-moss-300: #a9c6b2;
+  --color-nordic-moss-400: #7b9e86;
+  --color-nordic-moss-500: #4f775b;
+  --color-nordic-moss-600: #3a5c44;
+  --color-nordic-moss-700: #2c4734;
+  --color-nordic-moss-800: #1f3426;
+  --color-nordic-moss-900: #16251b;
+  --color-nordic-moss-950: #0e1711;
+  --color-nordic-moss: #3a5c44;
+  --color-nordic-moss-canvas: #eef4f0;
+  --color-nordic-moss-mist: #e5ede7;
+  --color-nordic-moss-lichen: #8aa693;
+  --color-nordic-moss-dark: #1a2920;
+  --color-nordic-moss-deep: #121d16;
+
+  /* Canvas & Containers - Deep Steel Blue */
+  --color-canvas: #f0f4f8;
+  --color-surface: #ffffff;
+  --color-border: #c8d7e3;
+  --color-border-custom: #c8d7e3;
+
+  /* Typography */
+  --color-text-primary: #0f1a24;
+  --color-text-secondary: #4a6275;
+
+  /* Brand & Actions */
+  --color-brand: #2d5577;
+  --color-brand-hover: #21405b;
+  --color-interactive-soft: #8eafc9;
+
+  /* Reconciliation Status Indicators */
+  --status-matched: #238662;
+  --status-matched-bg: #eef7f3;
+  --status-warning: #d97736;
+  --status-warning-bg: #fdf4ed;
+  --status-unmatched: #c53030;
+  --status-unmatched-bg: #fdf2f2;
+
+  --color-emerald-50: #eef7f3;
+  --color-emerald-100: #e1e8e4;
+  --color-emerald-200: #c2d5cd;
+  --color-emerald-300: #87a99c;
+  --color-emerald-400: #528b78;
+  --color-emerald-500: #2f6f5e;
+  --color-emerald-600: #26594b;
+  --color-emerald-700: #1d463b;
+  --color-emerald-800: #192a24;
+  --color-emerald-900: #121f1a;
+  --color-emerald-950: #0a120f;
+
+  --color-teal-50: #eef7f3;
+  --color-teal-100: #e1e8e4;
+  --color-teal-200: #c2d5cd;
+  --color-teal-300: #87a99c;
+  --color-teal-400: #528b78;
+  --color-teal-500: #2f6f5e;
+  --color-teal-600: #26594b;
+  --color-teal-700: #1d463b;
+  --color-teal-800: #192a24;
+  --color-teal-900: #121f1a;
+  --color-teal-950: #0a120f;
+
+  --color-green-50: #eef7f3;
+  --color-green-100: #e1e8e4;
+  --color-green-200: #c2d5cd;
+  --color-green-300: #87a99c;
+  --color-green-400: #38a169;
+  --color-green-500: #238662;
+  --color-green-600: #1c6d50;
+  --color-green-700: #15553e;
+  --color-green-800: #0e3d2c;
+  --color-green-900: #07251a;
+  --color-green-950: #03120d;
 }
 
 @layer base {
   :root {
-    color-scheme: dark;
-    --bg-canvas: #09090b;
-    --bg-page: #09090b;
-    --bg-card: #121214;
-    --bg-card-2: #18181b;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.16);
-    --teal: #ffffff;
-    --teal-dim: rgba(255, 255, 255, 0.10);
-    --gold: #D4A537;
-    --gold-dim: rgba(212, 165, 55, 0.14);
-    --text-hi: #F2F3F1;
-    --text-mid: #A8B0AC;
-    --text-low: #71717a;
-    --bg-surface: #121214;
-    --bg-surface-elevated: #18181b;
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-accent: rgba(255, 255, 255, 0.25);
-    --text-primary: #F2F3F1;
-    --text-secondary: #A8B0AC;
-    --text-muted: #71717a;
+    /* Canvas & Containers - Deep Steel Blue Palette */
+    --color-canvas: #f0f4f8;
+    --color-surface: #ffffff;
+    --color-border: #c8d7e3;
+
+    /* Typography */
+    --color-text-primary: #0f1a24;
+    --color-text-secondary: #4a6275;
+
+    /* Brand & Actions */
+    --color-brand: #2d5577;
+    --color-brand-hover: #21405b;
+    --color-interactive-soft: #8eafc9;
+
+    /* Deep Steel Blue Specific Tokens */
+    --color-steel: #2d5577;
+    --color-steel-dark: #111e2e;
+    --color-steel-deep: #0b1420;
+    --color-steel-mist: #e5edf4;
+    --color-steel-canvas: #f0f4f8;
+    --color-steel-border: #c8d7e3;
+
+    /* Nordic Moss Specific Tokens */
+    --color-moss: #3a5c44;
+    --color-moss-dark: #1a2920;
+    --color-moss-deep: #121d16;
+    --color-moss-mist: #e5ede7;
+    --color-moss-lichen: #8aa693;
+    --color-moss-canvas: #eef4f0;
+
+    /* Reconciliation Status Indicators */
+    --status-matched: #238662;
+    --status-matched-bg: #eef7f3;
+    --status-warning: #d97736;
+    --status-warning-bg: #fdf4ed;
+    --status-unmatched: #c53030;
+    --status-unmatched-bg: #fdf2f2;
+
+    /* Theme System Variables */
+    color-scheme: light dark;
+    --bg-canvas: var(--color-canvas);
+    --bg-page: var(--color-canvas);
+    --bg-card: var(--color-surface);
+    --bg-card-2: #ffffff;
+    --border: var(--color-border);
+    --border-strong: #b5c9d9;
+    --teal: var(--color-brand);
+    --teal-dim: rgba(45, 85, 119, 0.12);
+    --gold: var(--status-warning);
+    --gold-dim: rgba(217, 119, 54, 0.14);
+    --text-hi: var(--color-text-primary);
+    --text-mid: var(--color-text-secondary);
+    --text-low: var(--color-interactive-soft);
+    --bg-surface: var(--color-surface);
+    --bg-surface-elevated: #ffffff;
+    --border-subtle: var(--color-border);
+    --border-accent: var(--color-brand);
+    --text-primary: var(--color-text-primary);
+    --text-secondary: var(--color-text-secondary);
+    --text-muted: var(--color-text-secondary);
   }
 
   /* Light theme support for high-contrast daylight retail environments */
   .theme-light {
     color-scheme: light;
-    --bg-canvas: #ffffff;
+    --bg-canvas: #f0f4f8;
     --bg-surface: #ffffff;
-    --bg-surface-elevated: #f4f4f5;
-    --border-subtle: #e4e4e7;
-    --border-accent: #000000;
-    --text-primary: #09090b;
-    --text-secondary: #52525b;
-    --text-muted: #71717a;
+    --bg-surface-elevated: #f5f9fc;
+    --border-subtle: #c8d7e3;
+    --border-accent: #2d5577;
+    --text-primary: #0f1a24;
+    --text-secondary: #4a6275;
+    --text-muted: #6b8294;
   }
   
   body {
     background-color: var(--bg-canvas);
+    background-image: 
+      radial-gradient(at 12% 12%, rgba(45, 85, 119, 0.10) 0px, transparent 55%),
+      radial-gradient(at 88% 18%, rgba(92, 139, 178, 0.14) 0px, transparent 50%),
+      radial-gradient(at 48% 85%, rgba(33, 64, 91, 0.08) 0px, transparent 60%);
+    background-attachment: fixed;
     color: var(--text-primary);
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -533,4 +651,159 @@
   box-shadow: 0 4px 20px -2px rgba(244, 63, 94, 0.06);
 }
 
+/* User Defined Brand & Reconciliation Status Utilities */
+.badge-matched,
+.status-matched {
+  background-color: var(--status-matched-bg) !important;
+  color: var(--status-matched) !important;
+  border: 1px solid var(--status-matched) !important;
+}
+
+.badge-warning,
+.status-warning {
+  background-color: var(--status-warning-bg) !important;
+  color: var(--status-warning) !important;
+  border: 1px solid var(--status-warning) !important;
+}
+
+.badge-unmatched,
+.status-unmatched {
+  background-color: var(--status-unmatched-bg) !important;
+  color: var(--status-unmatched) !important;
+  border: 1px solid var(--status-unmatched) !important;
+}
+
+.btn-brand {
+  background-color: var(--color-brand);
+  color: #ffffff;
+  border: 1px solid var(--color-brand);
+  transition: all 0.15s ease;
+}
+.btn-brand:hover {
+  background-color: var(--color-brand-hover);
+  border-color: var(--color-brand-hover);
+}
+
+.btn-brand-soft {
+  background-color: var(--status-matched-bg);
+  color: var(--color-brand);
+  border: 1px solid var(--color-interactive-soft);
+  transition: all 0.15s ease;
+}
+.btn-brand-soft:hover {
+  background-color: var(--color-brand);
+  color: #ffffff;
+}
+
+.text-brand {
+  color: var(--color-brand);
+}
+.bg-brand {
+  background-color: var(--color-brand);
+}
+.border-brand {
+  border-color: var(--color-brand);
+}
+.bg-canvas {
+  background-color: var(--color-canvas);
+}
+.bg-surface {
+  background-color: var(--color-surface);
+}
+.border-theme {
+  border-color: var(--color-border);
+}
+.text-primary-theme {
+  color: var(--color-text-primary);
+}
+.text-secondary-theme {
+  color: var(--color-text-secondary);
+}
+
+/* Deep Steel Blue Palette Utilities */
+.bg-steel {
+  background-color: #2d5577 !important;
+}
+.bg-steel-50 {
+  background-color: #f0f4f8 !important;
+}
+.bg-steel-canvas {
+  background-color: #f0f4f8 !important;
+}
+.bg-steel-mist {
+  background-color: #e5edf4 !important;
+}
+.bg-steel-dark {
+  background-color: #111e2e !important;
+}
+.bg-steel-deep {
+  background-color: #0b1420 !important;
+}
+.bg-steel-midnight {
+  background-color: #0d1926 !important;
+}
+.text-steel {
+  color: #2d5577 !important;
+}
+.text-steel-dark {
+  color: #111e2e !important;
+}
+.text-steel-muted {
+  color: #4a6275 !important;
+}
+.border-steel {
+  border-color: #c8d7e3 !important;
+}
+.border-steel-dark {
+  border-color: #182c40 !important;
+}
+
+/* Atmospheric Deep Steel Blue Backgrounds */
+.deep-steel-blue-bg,
+.steel-bg,
+.nordic-moss-bg {
+  background-color: #f0f4f8 !important;
+  background-image: 
+    radial-gradient(at 12% 12%, rgba(45, 85, 119, 0.10) 0px, transparent 55%),
+    radial-gradient(at 88% 18%, rgba(92, 139, 178, 0.14) 0px, transparent 50%),
+    radial-gradient(at 48% 85%, rgba(33, 64, 91, 0.08) 0px, transparent 60%) !important;
+  background-attachment: fixed;
+}
+
+.deep-steel-blue-bg-dark,
+.steel-bg-dark,
+.nordic-moss-bg-dark {
+  background-color: #0b1420 !important;
+  background-image: 
+    radial-gradient(at 15% 10%, rgba(45, 85, 119, 0.35) 0px, transparent 55%),
+    radial-gradient(at 85% 85%, rgba(15, 30, 46, 0.50) 0px, transparent 60%),
+    radial-gradient(at 50% 0%, rgba(58, 111, 151, 0.22) 0px, transparent 65%) !important;
+  background-attachment: fixed;
+}
+
+/* Nordic Moss Palette Utilities */
+.bg-nordic-moss {
+  background-color: #3a5c44 !important;
+}
+.bg-nordic-moss-canvas {
+  background-color: #eef4f0 !important;
+}
+.bg-nordic-moss-mist {
+  background-color: #e5ede7 !important;
+}
+.bg-nordic-moss-dark {
+  background-color: #1a2920 !important;
+}
+.bg-nordic-moss-deep {
+  background-color: #121d16 !important;
+}
+.text-nordic-moss {
+  color: #3a5c44 !important;
+}
+.text-nordic-moss-dark {
+  color: #1a2920 !important;
+}
+.border-nordic-moss {
+  border-color: #d8e4dc !important;
+}
 

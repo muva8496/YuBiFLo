@@ -502,15 +502,15 @@ export default function UnifiedVoiceLedgerTab({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 <button
                   onClick={() => handleTestPhrase("Nimeuza maziwa mawili na mkate moja cash mia moja na themanini na tano")}
-                  className="p-2.5 bg-[#070e0a] hover:bg-[#0d1c14] border border-slate-800 hover:border-emerald-500/40 rounded-xl text-left transition cursor-pointer text-slate-300"
+                  className="p-2.5 bg-[#121214] hover:bg-[#18181b] border border-slate-800 hover:border-zinc-600 rounded-xl text-left transition cursor-pointer text-slate-300"
                 >
-                  <span className="text-emerald-400 font-bold block text-[11px]">💰 Fast Cash Sale</span>
+                  <span className="text-white font-bold block text-[11px]">💰 Fast Cash Sale</span>
                   <span className="text-[10px] text-slate-400 truncate block">"2 maziwa + 1 mkate cash 185"</span>
                 </button>
 
                 <button
                   onClick={() => handleTestPhrase("Leta maziwa crate mbili ya Brookside na mikate ishirini M-Pesa")}
-                  className="p-2.5 bg-[#070e0a] hover:bg-[#0d1c14] border border-slate-800 hover:border-cyan-500/40 rounded-xl text-left transition cursor-pointer text-slate-300"
+                  className="p-2.5 bg-[#121214] hover:bg-[#18181b] border border-slate-800 hover:border-cyan-500/40 rounded-xl text-left transition cursor-pointer text-slate-300"
                 >
                   <span className="text-cyan-400 font-bold block text-[11px]">🚚 Wholesale Restock</span>
                   <span className="text-[10px] text-slate-400 truncate block">"Crate 2 maziwa + 20 mkate"</span>
@@ -518,7 +518,7 @@ export default function UnifiedVoiceLedgerTab({
 
                 <button
                   onClick={() => handleTestPhrase("Kamau amechukua sukari robo deni nitaandika kwa kitabu")}
-                  className="p-2.5 bg-[#070e0a] hover:bg-[#0d1c14] border border-slate-800 hover:border-amber-500/40 rounded-xl text-left transition cursor-pointer text-slate-300"
+                  className="p-2.5 bg-[#121214] hover:bg-[#18181b] border border-slate-800 hover:border-amber-500/40 rounded-xl text-left transition cursor-pointer text-slate-300"
                 >
                   <span className="text-amber-400 font-bold block text-[11px]">📒 Customer Deni Book</span>
                   <span className="text-[10px] text-slate-400 truncate block">"Kamau sukari robo deni"</span>
@@ -791,10 +791,10 @@ export default function UnifiedVoiceLedgerTab({
                   key={draft.id}
                   className={`p-4 rounded-2xl border transition space-y-3 ${
                     isApproved 
-                      ? "bg-[#060e0a] border-emerald-500/30 opacity-75"
+                      ? "bg-zinc-900 border-zinc-700 opacity-75"
                       : draft.status === "DISMISSED"
                       ? "bg-[#0c0c0c] border-slate-900 opacity-40"
-                      : "bg-[#070e0a] border-slate-800 hover:border-slate-700 shadow-lg"
+                      : "bg-[#121214] border-slate-800 hover:border-slate-700 shadow-lg"
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2">

@@ -162,17 +162,17 @@ export default function ReconciliationScreen({
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400">Audit Status:</span>
           {reconciliationSummary.status === "MATCHED" && (
-            <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full text-xs font-semibold">
+            <span className="flex items-center gap-1.5 px-3 py-1 badge-matched rounded-full text-xs font-bold">
               <CheckCircle2 size={14} /> Perfect Match
             </span>
           )}
           {reconciliationSummary.status === "LEAKAGE_DETECTED" && (
-            <span className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full text-xs font-semibold">
+            <span className="flex items-center gap-1.5 px-3 py-1 badge-unmatched rounded-full text-xs font-bold">
               <AlertTriangle size={14} /> Leakage / Deni Detected
             </span>
           )}
           {reconciliationSummary.status === "SURPLUS_DETECTED" && (
-            <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full text-xs font-semibold">
+            <span className="flex items-center gap-1.5 px-3 py-1 badge-warning rounded-full text-xs font-bold">
               <TrendingUp size={14} /> Cash Surplus
             </span>
           )}

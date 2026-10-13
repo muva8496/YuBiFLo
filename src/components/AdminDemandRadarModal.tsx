@@ -219,7 +219,7 @@ export default function AdminDemandRadarModal({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <span className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-emerald-400" /> Blueprint Status Manager
+                <ShieldCheck size={14} className="text-white" /> Blueprint Status Manager
               </span>
               <p className="text-[11px] text-slate-400">
                 Change status of any card on the landing page instantly without code updates.
@@ -229,7 +229,7 @@ export default function AdminDemandRadarModal({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsAddingNew(!isAddingNew)}
-                className="px-3 py-1.5 bg-[#0f2117] hover:bg-[#152e20] text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
+                className="px-3.5 py-1.5 bg-black hover:bg-zinc-900 text-white border border-zinc-700 rounded-xl text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
               >
                 <Plus size={13} /> Add Business
               </button>
@@ -245,8 +245,8 @@ export default function AdminDemandRadarModal({
 
           {/* ADD NEW BUSINESS FORM */}
           {isAddingNew && (
-            <form onSubmit={handleAddNewBusiness} className="p-3 bg-[#09090b] border border-emerald-500/40 rounded-xl space-y-2 text-xs font-mono">
-              <span className="text-emerald-400 font-bold block">Add New Industry Blueprint:</span>
+            <form onSubmit={handleAddNewBusiness} className="p-3 bg-[#09090b] border border-zinc-700 rounded-xl space-y-2 text-xs font-mono">
+              <span className="text-white font-bold block">Add New Industry Blueprint:</span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input
                   type="text"
@@ -277,7 +277,7 @@ export default function AdminDemandRadarModal({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1 bg-emerald-500 text-slate-950 font-bold rounded-lg cursor-pointer"
+                  className="px-4 py-1 bg-white hover:bg-zinc-200 text-black font-bold rounded-lg cursor-pointer"
                 >
                   Save Business
                 </button>
@@ -295,9 +295,9 @@ export default function AdminDemandRadarModal({
                   <th className="p-2.5 text-right">Card Button Text</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80 bg-[#070e0a]">
+              <tbody className="divide-y divide-slate-800/80 bg-[#09090b]">
                 {blueprints.map((bp) => (
-                  <tr key={bp.id} className="hover:bg-[#0c1611]">
+                  <tr key={bp.id} className="hover:bg-zinc-900/60">
                     <td className="p-2.5 font-bold text-white">{bp.name}</td>
                     <td className="p-2.5">
                       <select
@@ -305,11 +305,11 @@ export default function AdminDemandRadarModal({
                         onChange={(e: any) => handleStatusChange(bp.id, e.target.value)}
                         className={`rounded px-2 py-1 text-[11px] font-bold border cursor-pointer focus:outline-none ${
                           bp.status === "live"
-                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                            ? "bg-black text-white border-zinc-600"
                             : bp.status === "next"
                             ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
                             : bp.status === "soon"
-                            ? "bg-teal-500/20 text-teal-300 border-teal-500/40"
+                            ? "bg-zinc-800 text-zinc-300 border-zinc-700"
                             : "bg-slate-800 text-slate-300 border-slate-700"
                         }`}
                       >
@@ -362,16 +362,16 @@ export default function AdminDemandRadarModal({
                   <th className="p-2.5 text-right">Consent</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80 bg-[#070e0a]">
+              <tbody className="divide-y divide-slate-800/80 bg-[#09090b]">
                 {filteredRequests.map((req) => (
-                  <tr key={req.id} className="hover:bg-[#0c1611]">
+                  <tr key={req.id} className="hover:bg-zinc-900/60">
                     <td className="p-2.5 font-bold text-white">{req.name}</td>
                     <td className="p-2.5 text-amber-300 font-semibold">{req.businessType}</td>
                     <td className="p-2.5 text-slate-300">{req.location}</td>
                     <td className="p-2.5 text-slate-400">{req.phone}</td>
                     <td className="p-2.5 text-right">
                       {req.consent ? (
-                        <span className="text-emerald-400 font-bold">✓ Consented</span>
+                        <span className="text-zinc-200 font-bold">✓ Consented</span>
                       ) : (
                         <span className="text-slate-500">No</span>
                       )}
@@ -387,7 +387,7 @@ export default function AdminDemandRadarModal({
         <div className="pt-3 border-t border-slate-800 flex justify-end">
           <button
             onClick={onClose}
-            className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs font-mono cursor-pointer shadow-lg shadow-emerald-500/20"
+            className="px-6 py-2.5 bg-white hover:bg-zinc-200 text-black font-bold rounded-xl text-xs font-mono cursor-pointer shadow-lg shadow-black/40"
           >
             Close Admin View
           </button>

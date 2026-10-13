@@ -114,7 +114,7 @@ export default function WaveAppsExecutiveDashboard({
   // Expense categories breakdown
   const expenseBreakdown = [
     { category: "Wholesale Restock & Inventory", amount: 54200, pct: 64, color: "bg-blue-600" },
-    { category: "Operating Logistics & Delivery", amount: 12800, pct: 15, color: "bg-emerald-600" },
+    { category: "Operating Logistics & Delivery", amount: 12800, pct: 15, color: "bg-zinc-800" },
     { category: "Premises Rent & Council Levy", amount: 9500, pct: 11, color: "bg-amber-600" },
     { category: "Owner Personal Drawings (Documented)", amount: 5200, pct: 6, color: "bg-purple-600" },
     { category: "Utilities (Tokens & Internet)", amount: 3100, pct: 4, color: "bg-pink-600" },
@@ -136,10 +136,10 @@ export default function WaveAppsExecutiveDashboard({
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif tracking-tight">
                 YuBiFlo Executive Financial Command
               </h1>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#f4f4f5] text-[#000000] font-bold border border-[#e4e4e7]">
-                FOREST GREEN EDITION
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-black text-white font-bold border border-zinc-700">
+                SOVEREIGN BLACK EDITION
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 flex items-center gap-1">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-100 text-black font-bold border border-zinc-300 flex items-center gap-1">
                 <ShieldCheck size={11} /> CLIENT SECURE VAULT
               </span>
             </div>
@@ -206,7 +206,7 @@ export default function WaveAppsExecutiveDashboard({
 
           <button
             onClick={onOpenQuickSale}
-            className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer font-mono"
+            className="px-3 py-1.5 bg-black hover:bg-zinc-800 text-white border border-zinc-700 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer font-mono"
           >
             <Plus size={14} /> Add Sale (Cash/Till)
           </button>
@@ -300,7 +300,7 @@ export default function WaveAppsExecutiveDashboard({
                       href={`https://wa.me/${c.phone.replace(/[^0-9]/g, "")}?text=Hi%20${encodeURIComponent(c.name)},%20gentle%20reminder%20for%20balance%20of%20KES%20${c.debt_balance}.`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold hover:bg-emerald-200"
+                      className="px-2 py-0.5 rounded bg-black text-white text-[10px] font-mono font-bold hover:bg-zinc-800"
                     >
                       WhatsApp
                     </a>
@@ -448,12 +448,12 @@ export default function WaveAppsExecutiveDashboard({
 
         {/* SUMMARY KPI RIBBON IN WHITE / SOFT TONES */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100">
+          <div className="p-3.5 bg-zinc-50 rounded-xl border border-zinc-200">
             <div className="text-[10px] uppercase font-mono tracking-wider text-slate-500">Total Liquid Position</div>
-            <div className="text-xl font-bold font-mono text-emerald-700 mt-1">
+            <div className="text-xl font-bold font-mono text-black mt-1">
               {currency} {totalLiquidCash.toLocaleString()}
             </div>
-            <div className="text-[10px] text-emerald-600 mt-0.5 font-mono">Drawer + Paybill + Till</div>
+            <div className="text-[10px] text-zinc-600 mt-0.5 font-mono">Drawer + Paybill + Till</div>
           </div>
 
           <div className="p-3.5 bg-blue-50/60 rounded-xl border border-blue-100">
@@ -573,8 +573,8 @@ export default function WaveAppsExecutiveDashboard({
                 <span className="font-mono text-amber-700">-{currency} 74,450</span>
               </div>
               <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-xs">
-                <span className="text-emerald-700 font-bold">Gross Margin Profit:</span>
-                <span className="font-mono font-black text-emerald-600">{currency} 38,050 (33.8%)</span>
+                <span className="text-black font-bold">Gross Margin Profit:</span>
+                <span className="font-mono font-black text-black">{currency} 38,050 (33.8%)</span>
               </div>
             </div>
 
@@ -598,13 +598,13 @@ export default function WaveAppsExecutiveDashboard({
           <div className="pt-2">
             <div className="text-[11px] font-mono text-slate-500 mb-2 flex justify-between">
               <span>Trailing 6 Months Net Profit Trend:</span>
-              <span className="text-emerald-600 font-bold">+28.5% Growth Trajectory</span>
+              <span className="text-black font-bold">+28.5% Growth Trajectory</span>
             </div>
             <div className="grid grid-cols-6 gap-2 text-center">
               {pnlData.map((d, i) => (
                 <div key={i} className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="text-[10px] text-slate-500 font-mono">{d.month}</div>
-                  <div className="text-xs font-mono font-bold text-emerald-600 mt-1">
+                  <div className="text-xs font-mono font-bold text-black mt-1">
                     +{Math.round(d.net / 1000)}k
                   </div>
                 </div>
@@ -670,7 +670,7 @@ export default function WaveAppsExecutiveDashboard({
             </p>
           </div>
 
-          <div className="text-xs font-mono text-emerald-600 flex items-center gap-1.5">
+          <div className="text-xs font-mono text-black flex items-center gap-1.5 font-bold">
             <CheckCircle2 size={15} /> All accounts reconciled to 05:57 AM dawn baseline
           </div>
         </div>
@@ -678,16 +678,16 @@ export default function WaveAppsExecutiveDashboard({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           
           {/* TILL 1: CASH DRAWER */}
-          <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100 space-y-2">
+          <div className="p-4 bg-zinc-50 rounded-xl border border-zinc-200 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-900 font-serif flex items-center gap-1.5">
-                <Wallet size={15} className="text-emerald-600" /> Counter Cash Drawer
+                <Wallet size={15} className="text-black" /> Counter Cash Drawer
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-black text-white font-bold">
                 PHYSICAL
               </span>
             </div>
-            <div className="text-2xl font-black font-mono text-emerald-700">
+            <div className="text-2xl font-black font-mono text-black">
               {currency} {drawerCash.toLocaleString()}
             </div>
             <p className="text-[11px] text-slate-500">
@@ -696,7 +696,7 @@ export default function WaveAppsExecutiveDashboard({
             <div className="pt-2 flex justify-between items-center text-xs">
               <button
                 onClick={() => onNavigateTab("morning_bookend")}
-                className="text-emerald-700 hover:underline font-mono text-[11px]"
+                className="text-black hover:underline font-mono text-[11px] font-bold"
               >
                 Inspect Float &rarr;
               </button>

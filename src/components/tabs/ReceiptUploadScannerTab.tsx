@@ -517,7 +517,7 @@ export default function ReceiptUploadScannerTab({
             </div>
 
             {/* SUPPLY-BASED FINANCIAL IMPACT BANNER */}
-            <div className="p-3.5 bg-[#070e0a] border border-emerald-500/40 rounded-xl grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+            <div className="p-3.5 bg-[#121214] border border-zinc-700 rounded-xl grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
               <div>
                 <span className="text-slate-500 block text-[10px] uppercase">Invoice Cost</span>
                 <strong className="text-amber-400 text-sm">
