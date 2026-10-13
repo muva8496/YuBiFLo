@@ -50,19 +50,19 @@ export default function YuBiFloEnterpriseCommand({
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md shadow-white/30" />
               <div className="px-3 py-1 rounded-full bg-zinc-800 text-white font-mono text-xs font-bold border border-zinc-700 tracking-wider">
-                YUBIFLO &bull; SOVEREIGN ENTERPRISE OS
+                YUBIFLO &bull; FINANCIAL HEALTH PLATFORM
               </div>
               <span className="text-xs font-mono text-amber-300/90 bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/20">
-                0-Drift Micro-Enterprise Engine
+                Deterministic Micro-Enterprise Engine
               </span>
             </div>
 
             <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white font-serif tracking-tight leading-tight">
-              YuBiFLo Sovereign Platform
+              YuBiFLo Management Platform
             </h1>
             
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-sans">
-              <strong className="text-white font-serif italic">"Your Business Is A Flower"</strong> — Built to do the heavy mathematical and data engineering lifting for African MSMEs. We turn messy counters, unrecorded chalk debts, and chaotic milk supplies into bulletproof financial ledgers and predictive supply pipelines.
+              <strong className="text-white font-serif italic">"Your Business Is A Flower"</strong> — Built to do the heavy mathematical and data engineering lifting for African MSMEs. We turn messy counters, unrecorded chalk debts, and chaotic milk supplies into verified financial ledgers and predictive supply pipelines.
             </p>
 
             <div className="pt-2 flex flex-wrap items-center gap-3 text-xs font-mono">
@@ -128,11 +128,11 @@ export default function YuBiFloEnterpriseCommand({
           </div>
 
           <div className="bg-[#000000]/80 rounded-xl p-3 border border-zinc-800">
-            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-400">Ledger Precision & Drift</div>
+            <div className="text-[10px] uppercase font-mono tracking-wider text-slate-400">Ledger Balance & Audit</div>
             <div className="text-lg sm:text-xl font-bold font-mono text-zinc-200 mt-0.5">
-              0.00% Drift
+              100% Balanced
             </div>
-            <div className="text-[10px] text-white mt-0.5 font-mono">Mathematical Sovereignty</div>
+            <div className="text-[10px] text-white mt-0.5 font-mono">Deterministic Integrity</div>
           </div>
         </div>
       </div>

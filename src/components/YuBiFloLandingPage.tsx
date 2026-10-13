@@ -11,6 +11,7 @@ import PrdViewerModal from "./PrdViewerModal";
 import LoopingDashboardDemo from "./LoopingDashboardDemo";
 import ProofBand from "./ProofBand";
 import EngineeringLabModal from "./EngineeringLabModal";
+import OnboardingModal from "./OnboardingModal";
 import {
   SolutionsMegaMenu,
   BusinessTypesMegaMenu,
@@ -28,6 +29,7 @@ interface YuBiFloLandingPageProps {
   onOpenBlueprints?: () => void;
   onLaunchAlacioShop?: () => void;
   state?: AlacioMasterState;
+  onCompleteOnboarding?: (customState: Partial<AlacioMasterState>) => void;
 }
 
 // -------------------------------------------------------------
@@ -152,9 +154,19 @@ export default function YuBiFloLandingPage({
   onOpenSovereignCommand,
   onOpenBlueprints,
   onLaunchAlacioShop,
-  state
+  state,
+  onCompleteOnboarding
 }: YuBiFloLandingPageProps) {
   const handleLaunchWorkspace = onLaunchRetailWorkspace || onLaunchAlacioShop || onGetStarted;
+
+  // Onboarding Modal state (Path A: Start Fresh, Path B: Bring your records)
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [onboardingInitialPath, setOnboardingInitialPath] = useState<"A" | "B">("A");
+
+  const handleStartOnboarding = (path: "A" | "B" = "A") => {
+    setOnboardingInitialPath(path);
+    setIsOnboardingOpen(true);
+  };
 
   // Navigation states & mega-menus
   const [solutionsMenuOpen, setSolutionsMenuOpen] = useState(false);
@@ -526,22 +538,24 @@ export default function YuBiFloLandingPage({
                 <span>Built with Kenya&apos;s Data Protection Act in mind</span>
               </div>
 
-              {/* Hero Headline (Three lines requested by user) */}
+              {/* Hero Headline */}
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-black text-[#000000] tracking-tight leading-[1.12]">
-                No notebooks.<br />
-                No typing.<br />
-                Just know your numbers.
+                Your business,{" "}
+                <span className="italic bg-gradient-to-r from-blue-600 via-amber-500 to-[#B8860B] bg-clip-text text-transparent">
+                  finally in numbers
+                </span>
+                .
               </h1>
 
-              {/* Sub-line */}
-              <p className="text-base sm:text-lg text-[#444444] leading-relaxed max-w-xl">
-                Tell us your starting cash each morning. YuBiFlo listens at the counter and shows you your real profit.
+              {/* Body Text */}
+              <p className="text-base sm:text-lg text-[#444444] leading-relaxed max-w-[60ch]">
+                YuBiFLo sets up how your business collects, keeps and understands its numbers. Start fresh or bring the records you already keep, and your dashboard shows what happened, why, and what to do next.
               </p>
 
               {/* Action Buttons */}
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
                 <button
-                  onClick={handleLaunchWorkspace}
+                  onClick={() => handleStartOnboarding("A")}
                   className="px-7 py-3.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-sm shadow-md shadow-[#000000]/20 transition cursor-pointer text-center flex items-center justify-center gap-2"
                 >
                   <span>Start free with VCR</span>
@@ -549,11 +563,10 @@ export default function YuBiFloLandingPage({
                 </button>
 
                 <button
-                  onClick={() => setIsVoiceRecordingModalOpen(true)}
-                  className="px-6 py-3.5 rounded-full bg-white hover:bg-[#f4f4f5] border border-[#B8860B] text-[#996515] font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  onClick={() => handleStartOnboarding("B")}
+                  className="px-7 py-3.5 rounded-full bg-transparent hover:bg-black/5 border-2 border-[#000000] text-[#000000] font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                 >
-                  <Volume2 size={16} className="text-[#B8860B]" />
-                  <span>Try the Voice Simulator</span>
+                  <span>Bring my records</span>
                 </button>
               </div>
 
@@ -571,6 +584,99 @@ export default function YuBiFloLandingPage({
             </div>
 
           </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 2.5 VALUE PROPOSITION SECTION (MANDATED SPEC)                             */}
+      {/* ========================================================================= */}
+      <section className="py-16 sm:py-20 bg-white border-y border-[#C8D7E3]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <h2 className="text-3xl sm:text-4xl font-serif font-black text-[#000000] tracking-tight">
+              We set up how your business collects, keeps and understands its numbers.
+            </h2>
+            <p className="text-base sm:text-lg text-[#555555]">
+              Then your dashboard tells you what happened, why, and what to do next.
+            </p>
+          </div>
+
+          {/* Two Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            {/* Card 1: Starting from scratch */}
+            <div className="p-8 sm:p-10 rounded-3xl bg-[#F0F4F8] border border-[#C8D7E3] space-y-5 flex flex-col justify-between shadow-xs">
+              <div className="space-y-3">
+                <span className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold block">
+                  Path A &bull; Start Fresh
+                </span>
+                <h3 className="text-2xl font-serif font-black text-[#000000]">
+                  Starting from scratch?
+                </h3>
+                <p className="text-sm sm:text-base text-[#444444] leading-relaxed">
+                  We design how your shop collects its numbers (voice, M-Pesa, a daily cash check), keep them safe, and turn them into a dashboard you can read in a minute.
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => handleStartOnboarding("A")}
+                  className="px-6 py-3.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
+                >
+                  <span>Start free with VCR</span>
+                  <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Card 2: Already keep records */}
+            <div className="p-8 sm:p-10 rounded-3xl bg-[#F0F4F8] border border-[#C8D7E3] space-y-5 flex flex-col justify-between shadow-xs">
+              <div className="space-y-3">
+                <span className="text-xs font-mono uppercase tracking-wider text-emerald-700 font-bold block">
+                  Path B &bull; Bring Your Data
+                </span>
+                <h3 className="text-2xl font-serif font-black text-[#000000]">
+                  Already keep records?
+                </h3>
+                <p className="text-sm sm:text-base text-[#444444] leading-relaxed">
+                  Bring your Excel sheets, till exports or M-Pesa statements. We organise them, find what they are telling you, and show where your business is heading.
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => handleStartOnboarding("B")}
+                  className="px-6 py-3.5 rounded-full bg-[#262626] hover:bg-[#000000] text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
+                >
+                  <span>Bring my records</span>
+                  <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Under the cards: Four-step strip */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-[#FAF6EE] border border-[#EADBBD] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-[#222222]">
+            <div className="space-y-1">
+              <div className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold">1. Collect</div>
+              <p className="text-xs sm:text-sm text-[#444444]">Voice at the counter, till cash &amp; M-Pesa float each morning.</p>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold">2. Keep safe</div>
+              <p className="text-xs sm:text-sm text-[#444444]">Numbers kept, raw voice discarded immediately after parsing.</p>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold">3. Understand</div>
+              <p className="text-xs sm:text-sm text-[#444444]">Real profit, inventory velocity and credit (deni) without typing.</p>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold">4. Decide</div>
+              <p className="text-xs sm:text-sm text-[#444444]">Plain actions on restocks, debt collection and margin leaks.</p>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -1594,6 +1700,47 @@ export default function YuBiFloLandingPage({
         onClose={() => setIsEngineeringLabOpen(false)}
         onLaunchWorkspace={handleLaunchWorkspace}
       />
+
+      {/* ========================================================================= */}
+      {/* 14. ONBOARDING MODAL (TWO PATHS, ONE DASHBOARD)                           */}
+      {/* ========================================================================= */}
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        initialPath={onboardingInitialPath}
+        onCompleteOnboarding={(customState) => {
+          if (onCompleteOnboarding) {
+            onCompleteOnboarding(customState);
+          }
+          handleLaunchWorkspace();
+        }}
+      />
+
+      {/* ========================================================================= */}
+      {/* 15. STICKY BOTTOM BAR ON MOBILE (AS MANDATED)                             */}
+      {/* ========================================================================= */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#000000]/95 backdrop-blur-md border-t border-[#27272a] px-4 py-3 flex items-center justify-between gap-3 shadow-2xl">
+        <div className="flex flex-col">
+          <span className="text-xs font-black font-serif text-white tracking-tight">YuBiFLo VCR</span>
+          <span className="text-[10px] text-[#FFD54F] font-mono">Zero data entry</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsVoiceRecordingModalOpen(true)}
+            className="p-2.5 rounded-full bg-white/10 text-[#FFD54F] hover:bg-white/20 transition cursor-pointer"
+            title="Try Voice Simulator"
+          >
+            <Volume2 size={16} />
+          </button>
+          <button
+            onClick={() => handleStartOnboarding("A")}
+            className="px-4 py-2.5 rounded-full bg-[#FFD54F] hover:bg-[#FFE082] text-[#000000] font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
+          >
+            <span>Start free with VCR</span>
+            <ArrowRight size={13} />
+          </button>
+        </div>
+      </div>
 
     </div>
   );

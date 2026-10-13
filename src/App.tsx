@@ -70,6 +70,7 @@ import { VoiceTransactionPayload } from "./components/VoiceLedger";
 import YuBiFloEnterpriseCommand from "./components/YuBiFloEnterpriseCommand";
 import YuBiFloLandingPage from "./components/YuBiFloLandingPage";
 import AlacioAccessGateModal from "./components/AlacioAccessGateModal";
+import PullYourOwnAppModal from "./components/PullYourOwnAppModal";
 
 export default function App() {
   const [currentView, setCurrentView] = useState<"landing" | "workspace" | "developing" | "yubiflo_command">("landing");
@@ -93,6 +94,7 @@ export default function App() {
 
   const [isOneTapGapOpen, setIsOneTapGapOpen] = useState(false);
   const [isMpesaImportOpen, setIsMpesaImportOpen] = useState(false);
+  const [isPullYourOwnAppOpen, setIsPullYourOwnAppOpen] = useState(false);
   const [lastVoiceLog, setLastVoiceLog] = useState<string | null>(null);
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
 
@@ -1154,6 +1156,13 @@ export default function App() {
             setActiveDevelopingBlueprint(bp);
             setCurrentView("developing");
           }}
+          onCompleteOnboarding={(customState) => {
+            setAlacioState((prev) => ({
+              ...prev,
+              ...customState,
+              last_updated: new Date().toISOString()
+            }));
+          }}
         />
 
         {/* PASSWORD GATE MODAL ("8496") */}
@@ -1275,6 +1284,17 @@ export default function App() {
             <span className="sm:hidden">DB</span>
           </button>
 
+
+          {/* PULL YOUR OWN APP (STANDALONE SINGLE-BUSINESS PWA) */}
+          <button
+            onClick={() => setIsPullYourOwnAppOpen(true)}
+            className="px-2.5 sm:px-3 py-1.5 bg-[#FFD54F]/10 hover:bg-[#FFD54F]/20 border border-[#FFD54F]/40 text-[#FFD54F] font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer text-xs font-mono shadow-xs"
+            title="Export configured workspace as standalone single-business PWA"
+          >
+            <Smartphone size={13} className="text-[#FFD54F]" />
+            <span className="hidden sm:inline">Pull Your Own App</span>
+            <span className="sm:hidden">Pull App</span>
+          </button>
 
           {/* ZERO DATA LOSS VERIFIED BADGE */}
           <div
@@ -1779,6 +1799,13 @@ export default function App() {
           setIsPasswordModalOpen(false);
           setPendingActionAfterPassword(null);
         }}
+      />
+
+      {/* PULL YOUR OWN APP (STANDALONE SINGLE-BUSINESS PWA & DATA EXPORT) */}
+      <PullYourOwnAppModal
+        isOpen={isPullYourOwnAppOpen}
+        onClose={() => setIsPullYourOwnAppOpen(false)}
+        state={alacioState}
       />
 
     </div>

@@ -78,7 +78,7 @@ export default function HomeScreenDiamonds({
               YuBiFLo
             </span>
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-800 text-white font-bold border border-zinc-700">
-              SOVEREIGN CDO // 0-DRIFT
+              FINANCIAL HEALTH // DETERMINISTIC ENGINE
             </span>
           </div>
           <span className="text-xs font-serif italic text-amber-300/90 tracking-wide">
