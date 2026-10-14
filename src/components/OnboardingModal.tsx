@@ -22,7 +22,7 @@ const SAMPLE_DUKA_DATASET = `Date,Item,Amount,Channel,Type,Customer
 2026-05-01,Mumias Sugar 1kg,160,Mpesa,Sale,Mama Otis
 2026-05-01,Unga Jogoo 2kg,210,Mpesa,Sale,Walk-in
 2026-05-02,Milk Restock Crate (21 pkts),1155,Cash,Restock,Brookside Dairy Ltd
-2026-05-02,Kipande Chai & Mandazi,50,Cash,Drawing,Owner Personal
+2026-05-02,Proprietor Morning Chai,50,Cash,Drawing,Owner Personal
 2026-05-02,Broadways Bread 400g,65,Credit,Deni,Baba Junior
 2026-05-03,Rina Vegetable Oil 1L,290,Mpesa,Sale,Walk-in
 2026-05-03,Royco Cubes 40s,120,Cash,Sale,Auntie Wambui

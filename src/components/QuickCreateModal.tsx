@@ -1,7 +1,8 @@
 import React from "react";
 import { 
   X, Mic, ShoppingBag, Sun, Users, BookOpen, Layers, 
-  ArrowRight, Sparkles, FileText, Receipt, ArrowLeftRight, DollarSign 
+  ArrowRight, Sparkles, FileText, Receipt, ArrowLeftRight, DollarSign,
+  Truck, Camera
 } from "lucide-react";
 
 interface QuickCreateModalProps {
@@ -39,15 +40,27 @@ export default function QuickCreateModal({
     },
     {
       id: "purchase",
-      title: "Log Wholesale Restock",
-      desc: "Record arriving wholesale cartons, supplier payouts, and margin updates",
+      title: "Log Inbound Cargo & Lots of Goods",
+      desc: "Record supplier batches with multiple goods, quantities, and wholesale costs",
       icon: <ShoppingBag className="text-blue-600" size={20} />,
-      badge: "Inventory",
+      badge: "Inbound Cargo",
       bg: "bg-blue-50 hover:bg-blue-100/70 border-blue-200",
       action: () => {
         onClose();
         if (onOpenQuickPurchase) onOpenQuickPurchase();
         else onNavigateTab("purchases");
+      }
+    },
+    {
+      id: "supplier",
+      title: "Register Supplier (Phone & National ID)",
+      desc: "Capture counterparty National ID and phone number for agency cash deposits",
+      icon: <Truck className="text-cyan-600" size={20} />,
+      badge: "Suppliers",
+      bg: "bg-cyan-50 hover:bg-cyan-100/70 border-cyan-200",
+      action: () => {
+        onClose();
+        onNavigateTab("suppliers");
       }
     },
     {

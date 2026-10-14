@@ -425,13 +425,17 @@ export default function CustomersCreditTab({
               <button onClick={() => setIsRepayOpen(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={16} /></button>
             </div>
             
-            <div className="p-3 bg-[#0a0d12] border border-slate-800 rounded-xl text-xs space-y-1 font-mono">
-              <div className="flex justify-between">
+            <div className="p-3 bg-[#0a0d12] border border-slate-800 rounded-xl text-xs space-y-1.5 font-mono">
+              <div className="flex justify-between items-center">
                 <span className="text-slate-400">Current Balance Owed:</span>
                 <strong className="text-purple-300">{currency} {selectedCust.debt_balance.toLocaleString()}</strong>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Registered National ID:</span>
+              <div className="flex justify-between items-center pt-1 border-t border-slate-800">
+                <span className="text-slate-400">Phone (M-Pesa / SMS):</span>
+                <span className="text-blue-400 font-bold">{selectedCust.phone}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">National ID (For OTC Deposit):</span>
                 <span className="text-emerald-400 font-bold">{selectedCust.national_id || "Unregistered"}</span>
               </div>
             </div>

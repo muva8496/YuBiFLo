@@ -455,17 +455,19 @@ export default function YuBiFloLandingPage({
             ) : (
               <>
                 <button
-                  onClick={() => onOpenAuth ? onOpenAuth("signin") : handleLaunchWorkspace()}
-                  className="text-[#222222] hover:text-[#000000] font-semibold text-xs transition cursor-pointer px-2 py-1"
+                  onClick={() => onLaunchDukaDemo ? onLaunchDukaDemo() : handleLaunchWorkspace()}
+                  className="px-4 py-2 rounded-full border border-zinc-300 hover:border-black text-[#222222] hover:text-[#000000] font-semibold text-xs transition cursor-pointer"
+                  title="Explore live demo duka"
                 >
-                  Sign in
+                  Meet the Demo
                 </button>
 
                 <button
                   onClick={() => onOpenAuth ? onOpenAuth("signup") : handleLaunchWorkspace()}
                   className="px-5 py-2.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-semibold text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                  title="Sign up and start using the app directly"
                 >
-                  <span>Sign up</span>
+                  <span>Meet Your Biz</span>
                   <ArrowRight size={14} />
                 </button>
               </>
@@ -482,12 +484,20 @@ export default function YuBiFloLandingPage({
                 Open dashboard
               </button>
             ) : (
-              <button
-                onClick={() => onOpenAuth ? onOpenAuth("signup") : handleLaunchWorkspace()}
-                className="px-3.5 py-1.5 rounded-full bg-[#000000] text-white text-xs font-semibold"
-              >
-                Sign up
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => onLaunchDukaDemo ? onLaunchDukaDemo() : handleLaunchWorkspace()}
+                  className="px-2.5 py-1.5 rounded-full border border-zinc-300 text-zinc-800 text-[11px] font-semibold"
+                >
+                  Demo
+                </button>
+                <button
+                  onClick={() => onOpenAuth ? onOpenAuth("signup") : handleLaunchWorkspace()}
+                  className="px-3 py-1.5 rounded-full bg-[#000000] text-white text-[11px] font-semibold"
+                >
+                  Meet Your Biz
+                </button>
+              </div>
             )}
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -581,18 +591,21 @@ export default function YuBiFloLandingPage({
               {/* Action Buttons */}
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
                 <button
-                  onClick={() => handleStartOnboarding("A")}
-                  className="px-7 py-3.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-sm shadow-md shadow-[#000000]/20 transition cursor-pointer text-center flex items-center justify-center gap-2"
+                  onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
+                  className="px-7 py-3.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-sm shadow-md shadow-[#000000]/20 transition cursor-pointer text-center flex items-center justify-center gap-2 group"
+                  title="Sign up and start using the app for your business"
                 >
-                  <span>Start free with VCR</span>
-                  <ArrowRight size={16} />
+                  <span>Meet Your Biz</span>
+                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                 </button>
 
                 <button
-                  onClick={() => handleStartOnboarding("B")}
-                  className="px-7 py-3.5 rounded-full bg-transparent hover:bg-black/5 border-2 border-[#000000] text-[#000000] font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  onClick={() => onLaunchDukaDemo ? onLaunchDukaDemo() : handleLaunchWorkspace()}
+                  className="px-7 py-3.5 rounded-full bg-white hover:bg-zinc-50 border-2 border-[#000000] text-[#000000] font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  title="Explore live demo duka"
                 >
-                  <span>Bring my records</span>
+                  <Sparkles size={16} className="text-[#B8860B]" />
+                  <span>Meet the Demo</span>
                 </button>
               </div>
 
@@ -604,9 +617,19 @@ export default function YuBiFloLandingPage({
 
             </div>
 
-            {/* HERO RIGHT: OWNER'S DAILY DASHBOARD (LOOPING ANIMATED DEMO) */}
+            {/* HERO RIGHT: OWNER'S DAILY DASHBOARD (REAL WORKSPACE DEMONSTRATION) */}
             <div className="lg:col-span-7">
-              <LoopingDashboardDemo onLaunchWorkspace={handleLaunchWorkspace} />
+              <LoopingDashboardDemo 
+                userName="Musa"
+                businessName="Musa General Retailers"
+                onLaunchWorkspace={() => {
+                  if (onLaunchDukaDemo) {
+                    onLaunchDukaDemo();
+                  } else {
+                    handleLaunchWorkspace();
+                  }
+                }} 
+              />
             </div>
 
           </div>
@@ -647,10 +670,10 @@ export default function YuBiFloLandingPage({
 
               <div className="pt-2">
                 <button
-                  onClick={() => handleStartOnboarding("A")}
+                  onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
                   className="px-6 py-3.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
                 >
-                  <span>Start free with VCR</span>
+                  <span>Meet Your Biz (Start Fresh)</span>
                   <ArrowRight size={14} />
                 </button>
               </div>
@@ -672,10 +695,10 @@ export default function YuBiFloLandingPage({
 
               <div className="pt-2">
                 <button
-                  onClick={() => handleStartOnboarding("B")}
+                  onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("B")}
                   className="px-6 py-3.5 rounded-full bg-[#262626] hover:bg-[#000000] text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
                 >
-                  <span>Bring my records</span>
+                  <span>Meet Your Biz (Bring Records)</span>
                   <ArrowRight size={14} />
                 </button>
               </div>
@@ -1035,11 +1058,16 @@ export default function YuBiFloLandingPage({
             <div className="bg-white rounded-3xl border border-[#e4e4e7] p-6 sm:p-8 shadow-md space-y-6 animate-in fade-in">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e5e7eb] pb-4">
                 <div>
-                  <h3 className="text-xl font-serif font-bold text-[#000000]">
-                    Duka Dashboard &bull; Sample data
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-serif font-bold text-[#000000]">
+                      Good morning, Musa
+                    </h3>
+                    <span className="text-[10px] font-mono uppercase tracking-wider bg-amber-500/15 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold">
+                      SAMPLE DATA
+                    </span>
+                  </div>
                   <p className="text-xs text-[#666666] mt-0.5">
-                    Break-bulk packaging, daily bread/milk count, and customer deni.
+                    Duka Space demo &bull; Break-bulk packaging, fast-moving restock velocity, and customer deni.
                   </p>
                 </div>
                 <button
@@ -1755,17 +1783,16 @@ export default function YuBiFloLandingPage({
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setIsVoiceRecordingModalOpen(true)}
-            className="p-2.5 rounded-full bg-white/10 text-[#FFD54F] hover:bg-white/20 transition cursor-pointer"
-            title="Try Voice Simulator"
+            onClick={() => onLaunchDukaDemo ? onLaunchDukaDemo() : handleLaunchWorkspace()}
+            className="px-3 py-2 rounded-full border border-slate-700 hover:border-slate-500 text-slate-200 text-xs font-semibold"
           >
-            <Volume2 size={16} />
+            Meet the Demo
           </button>
           <button
-            onClick={() => handleStartOnboarding("A")}
-            className="px-4 py-2.5 rounded-full bg-[#FFD54F] hover:bg-[#FFE082] text-[#000000] font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
+            onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
+            className="px-4 py-2 rounded-full bg-[#FFD54F] hover:bg-[#FFE082] text-[#000000] font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
           >
-            <span>Start free with VCR</span>
+            <span>Meet Your Biz</span>
             <ArrowRight size={13} />
           </button>
         </div>

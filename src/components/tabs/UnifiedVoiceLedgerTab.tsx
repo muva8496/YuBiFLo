@@ -4,7 +4,7 @@ import {
   ArrowRight, ShieldCheck, Check, Play, RefreshCw, Layers, 
   HelpCircle, Globe, BookOpen, AlertCircle, ShoppingBag, Truck, 
   Hourglass, Users, Trash2, Edit3, DollarSign, Plus, Languages,
-  Headphones, ChevronDown, CheckSquare
+  Headphones, ChevronDown, CheckSquare, Calendar
 } from "lucide-react";
 import { AlacioMasterState, SalesLedgerItem, InventoryItem } from "../../types/alacio";
 import { VoiceTransactionPayload } from "../VoiceLedger";
@@ -51,6 +51,7 @@ export default function UnifiedVoiceLedgerTab({
   const [isProcessing, setIsProcessing] = useState(false);
   const [parsedIntentResult, setParsedIntentResult] = useState<any>(null);
   const [successNote, setSuccessNote] = useState<string | null>(null);
+  const [salesDate, setSalesDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
 
   // Customer consent state
   const [localConsent, setLocalConsent] = useState(customerConsent);
@@ -335,6 +336,7 @@ export default function UnifiedVoiceLedgerTab({
       const salesItem: SalesLedgerItem = {
         id: `vs_${Date.now()}`,
         timestamp: "Just now",
+        date: salesDate,
         customer_name: "Walk-in Customer",
         items_summary: parsedIntentResult.items.map((i: any) => `${i.quantity}x ${i.itemName}`).join(", "),
         total_amount: parsedIntentResult.totalAmount,
@@ -714,6 +716,45 @@ export default function UnifiedVoiceLedgerTab({
               <div>
                 <span className="text-slate-500 text-[10px] block uppercase">Change Given</span>
                 <span className="text-slate-300 font-bold">{currency} {parsedIntentResult.changeGiven || 0}</span>
+              </div>
+            </div>
+
+            {/* TRANSACTION DATE (BACKDATING SUPPORT: TODAY / YESTERDAY / CUSTOM) */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-[#141824] rounded-xl border border-slate-800 text-xs font-mono">
+              <span className="text-slate-300 text-[11px] flex items-center gap-1.5 font-bold">
+                <Calendar size={13} className="text-emerald-400" />
+                Transaction Operating Date:
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setSalesDate(new Date().toISOString().slice(0, 10))}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                    salesDate === new Date().toISOString().slice(0, 10)
+                      ? "bg-emerald-500 text-slate-950 border-emerald-400"
+                      : "bg-[#1e2433] text-slate-300 border-slate-700 hover:border-slate-600"
+                  }`}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSalesDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10))}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                    salesDate === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+                      ? "bg-emerald-500 text-slate-950 border-emerald-400"
+                      : "bg-[#1e2433] text-slate-300 border-slate-700 hover:border-slate-600"
+                  }`}
+                >
+                  Yesterday
+                </button>
+                <input
+                  type="date"
+                  value={salesDate}
+                  onChange={(e) => setSalesDate(e.target.value)}
+                  className="bg-[#0b0e14] border border-slate-700 rounded px-2 py-0.5 text-[10px] text-white font-mono focus:outline-none focus:border-emerald-400"
+                  title="Select custom date"
+                />
               </div>
             </div>
 

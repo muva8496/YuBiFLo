@@ -4,7 +4,8 @@ import {
   Zap, Clock, Scale, Users, CheckCircle2, ShieldCheck, RefreshCw, Mic,
   Building2, Sun, Truck, Plus, Coins, Smartphone, DollarSign,
   Coffee, ShoppingBag, ArrowDownLeft, ArrowUpRight, Search, 
-  MessageSquare, Sparkles, Database, Cpu, Check, X, BarChart3, LayoutDashboard, BarChart2, Layers
+  MessageSquare, Sparkles, Database, Cpu, Check, X, BarChart3, LayoutDashboard, BarChart2, Layers,
+  Calendar
 } from "lucide-react";
 import { AlacioMasterState, InventoryItem, CustomerDebtor, PayoutOrDrawing, SalesLedgerItem } from "../../types/alacio";
 import WaveAppsExecutiveDashboard from "../WaveAppsExecutiveDashboard";
@@ -60,11 +61,13 @@ export default function DashboardTab({
   const [quickSaleQty, setQuickSaleQty] = useState(1);
   const [quickSaleAmount, setQuickSaleAmount] = useState("");
   const [quickSaleMethod, setQuickSaleMethod] = useState<"CASH" | "MPESA">("CASH");
+  const [quickSaleDate, setQuickSaleDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const [isExpenseOpen, setIsExpenseOpen] = useState(false);
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseType, setExpenseType] = useState<"OWNER_DRAWING" | "BUSINESS_EXPENSE" | "SUPPLIER_PAYOUT">("OWNER_DRAWING");
   const [expenseNotes, setExpenseNotes] = useState("");
+  const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const [isCreditOpen, setIsCreditOpen] = useState(false);
   const [creditCustomer, setCreditCustomer] = useState("");
@@ -89,8 +92,8 @@ export default function DashboardTab({
     const finalAmount = parseFloat(quickSaleAmount) || (qty * pricePerUnit);
 
     if (onQuickSale) {
-      onQuickSale(targetItemName, qty, finalAmount, quickSaleMethod);
-      showToast(`Sale recorded: ${qty}x ${targetItemName} (${currency} ${finalAmount.toLocaleString()}) via ${quickSaleMethod}`);
+      onQuickSale(targetItemName, qty, finalAmount, quickSaleMethod, quickSaleDate);
+      showToast(`Sale recorded: ${qty}x ${targetItemName} (${currency} ${finalAmount.toLocaleString()}) on ${quickSaleDate} via ${quickSaleMethod}`);
     } else {
       onNavigateTab("sales_supply");
     }
@@ -110,13 +113,13 @@ export default function DashboardTab({
       const payout: PayoutOrDrawing = {
         id: `payout_quick_${Date.now()}`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        date: new Date().toISOString().slice(0, 10),
+        date: expenseDate,
         amount,
         type: expenseType,
         notes: expenseNotes.trim() || (expenseType === "OWNER_DRAWING" ? "Owner Personal Drawing (Chai / Lunch)" : "Shop Expense")
       };
       onResolveGap(payout);
-      showToast(`Expense recorded: ${currency} ${amount.toLocaleString()} [${expenseType.replace("_", " ")}] deducted from cash drawer`);
+      showToast(`Expense recorded: ${currency} ${amount.toLocaleString()} [${expenseType.replace("_", " ")}] on ${expenseDate}`);
     } else {
       onNavigateTab("analytics");
     }
@@ -862,6 +865,58 @@ export default function DashboardTab({
                 </div>
               </div>
 
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-zinc-300 font-semibold flex items-center gap-1.5">
+                    <Calendar size={13} className="text-amber-400" /> Date of Sale:
+                  </label>
+                  <span className="text-[10px] font-mono text-zinc-400">
+                    Supports backdating
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setQuickSaleDate(new Date().toISOString().slice(0, 10))}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-mono border transition ${
+                      quickSaleDate === new Date().toISOString().slice(0, 10)
+                        ? "bg-amber-400 text-black border-amber-300 font-bold"
+                        : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white"
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickSaleDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10))}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-mono border transition ${
+                      quickSaleDate === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+                        ? "bg-amber-400 text-black border-amber-300 font-bold"
+                        : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white"
+                    }`}
+                  >
+                    Yesterday
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickSaleDate(new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10))}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-mono border transition ${
+                      quickSaleDate === new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
+                        ? "bg-amber-400 text-black border-amber-300 font-bold"
+                        : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white"
+                    }`}
+                  >
+                    Last Week
+                  </button>
+                  <input
+                    type="date"
+                    value={quickSaleDate}
+                    onChange={(e) => setQuickSaleDate(e.target.value)}
+                    className="flex-1 bg-black border border-zinc-700 rounded-lg px-2 py-1 text-white text-[11px] font-mono focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
@@ -960,6 +1015,58 @@ export default function DashboardTab({
                   onChange={(e) => setExpenseNotes(e.target.value)}
                   className="w-full bg-[#080503] border border-amber-900/80 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
                 />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-slate-300 font-semibold flex items-center gap-1.5">
+                    <Calendar size={13} className="text-amber-400" /> Outflow Date:
+                  </label>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    Backdate for yesterday/past week
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setExpenseDate(new Date().toISOString().slice(0, 10))}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-mono border transition ${
+                      expenseDate === new Date().toISOString().slice(0, 10)
+                        ? "bg-amber-400 text-black border-amber-300 font-bold"
+                        : "bg-[#090604] text-slate-400 border-amber-950 hover:text-white"
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExpenseDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10))}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-mono border transition ${
+                      expenseDate === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+                        ? "bg-amber-400 text-black border-amber-300 font-bold"
+                        : "bg-[#090604] text-slate-400 border-amber-950 hover:text-white"
+                    }`}
+                  >
+                    Yesterday
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExpenseDate(new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10))}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-mono border transition ${
+                      expenseDate === new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
+                        ? "bg-amber-400 text-black border-amber-300 font-bold"
+                        : "bg-[#090604] text-slate-400 border-amber-950 hover:text-white"
+                    }`}
+                  >
+                    Last Week
+                  </button>
+                  <input
+                    type="date"
+                    value={expenseDate}
+                    onChange={(e) => setExpenseDate(e.target.value)}
+                    className="flex-1 bg-[#080503] border border-amber-900/80 rounded-lg px-2 py-1 text-white text-[11px] font-mono focus:outline-none focus:border-amber-400"
+                  />
+                </div>
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-2">

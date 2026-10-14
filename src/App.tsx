@@ -18,7 +18,8 @@ import {
   MpesaStatementRecord,
   FreemiumTier,
   Blueprint,
-  SupplierProfile
+  SupplierProfile,
+  RestockReconciliationCard
 } from "./types/alacio";
 import { 
   loadAlacioState, 
@@ -43,7 +44,8 @@ import SaasAppShell from "./components/SaasAppShell";
 import SaasDashboardTab from "./components/tabs/SaasDashboardTab";
 import LaunchpadTab, { LaunchpadProgress } from "./components/tabs/LaunchpadTab";
 import SupplyDrivenSalesTab from "./components/tabs/SupplyDrivenSalesTab";
-import PurchasesTab from "./components/tabs/PurchasesTab";
+import PurchasesTab, { PurchaseItemLine } from "./components/tabs/PurchasesTab";
+import SuppliersTab from "./components/tabs/SuppliersTab";
 import StockVaultSuppliersTab from "./components/tabs/StockVaultSuppliersTab";
 import DawnLockTab from "./components/tabs/DawnLockTab";
 import UnifiedVoiceLedgerTab from "./components/tabs/UnifiedVoiceLedgerTab";
@@ -75,6 +77,7 @@ export default function App() {
 
   const [activeDevelopingBlueprint, setActiveDevelopingBlueprint] = useState<Blueprint | null>(null);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [preselectedSupplier, setPreselectedSupplier] = useState<string | undefined>(undefined);
 
   // DUKA SPACE DEMO SANDBOX ISOLATION
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
@@ -377,9 +380,10 @@ export default function App() {
 
   const handleCommitSupplyDrivenSale = (payload: any) => {
     setMasterState((prev) => {
+      const recordDate = payload.salesDate || new Date().toISOString().slice(0, 10);
       const newSaleRecord: SalesLedgerItem = {
         id: `sl_supply_${Date.now()}`,
-        date: new Date().toISOString().slice(0, 10),
+        date: recordDate,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         customer_name: "Counter Customers (Batch Clear)",
         items_summary: `${payload.unitsSold}x ${payload.skuName}`,
@@ -396,7 +400,7 @@ export default function App() {
       if (payload.ownerDrawingCost > 0) {
         newPayouts.push({
           id: `payout_owner_${Date.now()}`,
-          date: new Date().toISOString().slice(0, 10),
+          date: recordDate,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           amount: payload.ownerDrawingCost,
           type: "OWNER_DRAWING",
@@ -407,7 +411,7 @@ export default function App() {
       if (payload.supplyInvoiceCost > 0) {
         newPayouts.push({
           id: `payout_sup_${Date.now()}`,
-          date: new Date().toISOString().slice(0, 10),
+          date: recordDate,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           amount: payload.supplyInvoiceCost,
           type: "SUPPLIER_PAYOUT",
@@ -578,6 +582,321 @@ export default function App() {
     }));
   };
 
+  const handleAddSupplier = (supplier: SupplierProfile) => {
+    setMasterState((prev) => ({
+      ...prev,
+      suppliers: [supplier, ...(prev.suppliers || [])],
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  const handleEditSupplier = (supplierId: string, updatedData: Partial<SupplierProfile>) => {
+    setMasterState((prev) => ({
+      ...prev,
+      suppliers: (prev.suppliers || []).map((s) => (s.id === supplierId ? { ...s, ...updatedData } : s)),
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  const handleDeleteSupplier = (supplierId: string) => {
+    setMasterState((prev) => ({
+      ...prev,
+      suppliers: (prev.suppliers || []).filter((s) => s.id !== supplierId),
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  const handlePaySupplier = (payoutData: {
+    supplierId: string;
+    supplierName: string;
+    supplierPhone: string;
+    supplierNationalId: string;
+    amount: number;
+    paymentChannel: "NATIONAL_ID_DEPOSIT" | "MPESA_TILL" | "CASH_DRAWER" | "BANK_TRANSFER";
+    tillOrAccount?: string;
+    date: string;
+    notes?: string;
+  }) => {
+    const newPayout: PayoutOrDrawing = {
+      id: `payout_supp_${Date.now()}`,
+      date: payoutData.date,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      amount: payoutData.amount,
+      type: "SUPPLIER_PAYOUT",
+      payment_channel: payoutData.paymentChannel,
+      notes: `${payoutData.supplierName} (National ID: ${payoutData.supplierNationalId}, Phone: ${payoutData.supplierPhone}): ${payoutData.notes || "Supplier settlement"} [${payoutData.paymentChannel}]`
+    };
+
+    setMasterState((prev) => ({
+      ...prev,
+      payouts: [newPayout, ...(prev.payouts || [])],
+      suppliers: (prev.suppliers || []).map((s) => 
+        s.id === payoutData.supplierId || s.name === payoutData.supplierName
+          ? { ...s, total_orders_cost: (s.total_orders_cost || 0) + payoutData.amount, last_delivery_date: payoutData.date }
+          : s
+      ),
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  const handleLogMultiItemPurchase = (purchase: {
+    supplier: string;
+    supplierPhone?: string;
+    supplierNationalId?: string;
+    items: string;
+    itemLines?: PurchaseItemLine[];
+    amount: number;
+    payment_channel: "CASH" | "MPESA" | "NATIONAL_ID_DEPOSIT" | "SUPPLIER_CREDIT";
+    date: string;
+    notes?: string;
+    receiptImageUrl?: string;
+  }) => {
+    const newPayout: PayoutOrDrawing = {
+      id: `payout_cargo_${Date.now()}`,
+      date: purchase.date,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      amount: purchase.amount,
+      type: "SUPPLIER_PAYOUT",
+      payment_channel: purchase.payment_channel,
+      notes: `${purchase.supplier} [ID: ${purchase.supplierNationalId || "N/A"}, Phone: ${purchase.supplierPhone || "N/A"}]: ${purchase.items} [${purchase.payment_channel}]`
+    };
+
+    setMasterState((prev) => {
+      let updatedInventory = [...prev.inventory];
+      const newlyGeneratedRestockCards: RestockReconciliationCard[] = [];
+
+      if (purchase.itemLines && purchase.itemLines.length > 0) {
+        purchase.itemLines.forEach((line) => {
+          const existingIdx = updatedInventory.findIndex(
+            (inv) => inv.name.toLowerCase().trim() === line.itemName.toLowerCase().trim()
+          );
+
+          // AUTO-GENERATE RESTOCK RECONCILIATION CARD:
+          // "whenever we record a purchase... bringing in that today means we have dealt with all those of yesterday, meaning they are sales"
+          const prevBatchUnits = existingIdx >= 0 && updatedInventory[existingIdx].current_stock > 0
+            ? updatedInventory[existingIdx].current_stock
+            : line.quantity;
+
+          const unitWholesale = line.unitCost > 0 ? line.unitCost : (existingIdx >= 0 ? updatedInventory[existingIdx].unit_cost : 50);
+          const unitRetail = line.retailPrice && line.retailPrice > 0 ? line.retailPrice : (existingIdx >= 0 ? updatedInventory[existingIdx].unit_retail : unitWholesale * 1.2);
+          const defaultRemains = Math.max(0, Math.min(2, Math.round(prevBatchUnits * 0.15)));
+          const defaultEaten = 0;
+          const defaultSold = Math.max(0, prevBatchUnits - defaultRemains - defaultEaten);
+
+          const autoCard: RestockReconciliationCard = {
+            id: `restock_${Date.now()}_${Math.floor(Math.random() * 1000)}_${line.itemName.slice(0, 4).toLowerCase()}`,
+            skuName: line.itemName,
+            category: line.category || (existingIdx >= 0 ? updatedInventory[existingIdx].category : "Wholesale Supply"),
+            unitType: line.unit || "Packets",
+            piecesPerPack: line.unit?.toLowerCase().includes("crate") ? 24 : (line.unit?.toLowerCase().includes("bale") ? 12 : 1),
+            previousBatchQty: prevBatchUnits,
+            previousBatchTotalUnits: prevBatchUnits,
+            previousBatchDate: "Previous Batch Recorded (Yesterday)",
+            previousBatchCost: prevBatchUnits * unitWholesale,
+            newBatchQty: line.quantity,
+            newBatchDate: purchase.date || "Today Morning",
+            supplierName: purchase.supplier,
+            deliveryNoteNumber: purchase.notes || "Inward Restock Delivery",
+            remainsOnShelf: defaultRemains,
+            ownerConsumedQty: defaultEaten,
+            spoilageRejectsQty: 0,
+            giveawaysQty: 0,
+            unitRetailPrice: unitRetail,
+            unitCost: unitWholesale,
+            calculatedSoldQty: defaultSold,
+            calculatedRevenue: defaultSold * unitRetail,
+            calculatedCogs: defaultSold * unitWholesale,
+            calculatedGrossProfit: defaultSold * (unitRetail - unitWholesale),
+            calculatedOwnerDrawing: defaultEaten * unitWholesale,
+            calculatedSpoilageLoss: 0,
+            status: "PENDING_AUTHORIZATION",
+            paymentMethod: "CASH",
+            notes: `Auto-generated when ${line.quantity} ${line.unit} of ${line.itemName} arrived from ${purchase.supplier}. Authorize yesterday's sales without typing.`
+          };
+          newlyGeneratedRestockCards.push(autoCard);
+
+          if (existingIdx >= 0) {
+            const existing = updatedInventory[existingIdx];
+            const addedStock = line.quantity;
+            const updatedStock = existing.current_stock + addedStock;
+            const updatedCost = line.unitCost > 0 ? line.unitCost : existing.unit_cost;
+            const updatedRetail = line.retailPrice && line.retailPrice > 0 ? line.retailPrice : existing.unit_retail;
+            
+            updatedInventory[existingIdx] = {
+              ...existing,
+              current_stock: updatedStock,
+              unit_cost: updatedCost,
+              unit_retail: updatedRetail,
+              total_shelf_value: updatedStock * updatedRetail,
+              expected_margin: updatedRetail - updatedCost
+            };
+          } else {
+            const newSku: InventoryItem = {
+              id: `sku_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+              name: line.itemName,
+              category: line.category || "General Wholesaler",
+              unit_type: line.unit || "pcs",
+              unit_cost: line.unitCost,
+              unit_retail: line.retailPrice || (line.unitCost * 1.2),
+              current_stock: line.quantity,
+              opening_stock: line.quantity,
+              expected_margin: (line.retailPrice || (line.unitCost * 1.2)) - line.unitCost,
+              total_shelf_value: line.quantity * (line.retailPrice || (line.unitCost * 1.2)),
+              velocity_badge: "NORMAL",
+              reorder_point: 5,
+              bulk_pack_size: 1,
+              bulk_pack_name: line.unit,
+              is_bulk_decanted: false
+            };
+            updatedInventory = [newSku, ...updatedInventory];
+          }
+        });
+      }
+
+      const updatedSuppliers = (prev.suppliers || []).map((s) => {
+        if (s.name.toLowerCase() === purchase.supplier.toLowerCase()) {
+          return {
+            ...s,
+            total_orders_cost: (s.total_orders_cost || 0) + purchase.amount,
+            last_delivery_date: purchase.date
+          };
+        }
+        return s;
+      });
+
+      return {
+        ...prev,
+        inventory: updatedInventory,
+        payouts: [newPayout, ...(prev.payouts || [])],
+        suppliers: updatedSuppliers,
+        restockCards: [...newlyGeneratedRestockCards, ...(prev.restockCards || [])],
+        last_updated: new Date().toISOString()
+      };
+    });
+  };
+
+  // AUTHORIZE RESTOCK TURNOVER AS RECONCILED SALE
+  const handleAuthorizeRestockSale = (payload: {
+    cardId: string;
+    skuName: string;
+    soldQty: number;
+    revenue: number;
+    cogs: number;
+    ownerDrawingCost: number;
+    spoilageLoss: number;
+    ownerConsumedQty: number;
+    spoilageRejectsQty: number;
+    remainsOnShelf: number;
+    newBatchQty: number;
+    paymentMethod: "CASH" | "MPESA" | "SPLIT";
+    salesDate: string;
+    notes?: string;
+  }) => {
+    const updater = isDemoMode ? setDemoState : setAlacioState;
+    updater((prev) => {
+      // 1. Post to Sales Ledger
+      const newSale: SalesLedgerItem = {
+        id: `sale_restock_${Date.now()}`,
+        date: payload.salesDate,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        customer_name: "Walk-in Counter (Restock Authorized)",
+        items_summary: `Restock Turnover: ${payload.soldQty}x ${payload.skuName}`,
+        total_amount: payload.revenue,
+        cash_paid: payload.paymentMethod === "CASH" ? payload.revenue : (payload.paymentMethod === "SPLIT" ? payload.revenue / 2 : 0),
+        mpesa_paid: payload.paymentMethod === "MPESA" ? payload.revenue : (payload.paymentMethod === "SPLIT" ? payload.revenue / 2 : 0),
+        debt_amount: 0,
+        payment_method: payload.paymentMethod,
+        payment_channel: payload.paymentMethod,
+        cash_received: payload.paymentMethod === "CASH" ? payload.revenue : 0
+      };
+
+      // 2. Post Owner Drawing Payout if proprietor ate/drank items (protects cash drawer!)
+      const newPayouts: PayoutOrDrawing[] = [...(prev.payouts || [])];
+      if (payload.ownerConsumedQty > 0 && payload.ownerDrawingCost > 0) {
+        newPayouts.unshift({
+          id: `payout_owner_${Date.now()}`,
+          date: payload.salesDate,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          amount: payload.ownerDrawingCost,
+          type: "OWNER_DRAWING",
+          payment_channel: "CASH",
+          notes: `Proprietor consumption: ${payload.ownerConsumedQty}x ${payload.skuName} (Internal tea/family drawing) [Protected from cash gap]`
+        });
+      }
+
+      // 3. Post Spoilage / Damage Expense if rejects exist
+      if (payload.spoilageRejectsQty > 0 && payload.spoilageLoss > 0) {
+        newPayouts.unshift({
+          id: `payout_spoil_${Date.now()}`,
+          date: payload.salesDate,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          amount: payload.spoilageLoss,
+          type: "BUSINESS_EXPENSE",
+          payment_channel: "CASH",
+          notes: `Inventory shrinkage: ${payload.spoilageRejectsQty}x ${payload.skuName} stale/broken rejects write-off`
+        });
+      }
+
+      // 4. Update shelf stock: remainsOnShelf + newBatchQty
+      const updatedInventory = prev.inventory.map((inv) => {
+        if (inv.name.toLowerCase().includes(payload.skuName.toLowerCase()) || payload.skuName.toLowerCase().includes(inv.name.toLowerCase())) {
+          const targetStock = payload.remainsOnShelf + payload.newBatchQty;
+          return {
+            ...inv,
+            current_stock: targetStock,
+            total_shelf_value: targetStock * inv.unit_retail
+          };
+        }
+        return inv;
+      });
+
+      // 5. Update Restock Card state to AUTHORIZED_AND_RECONCILED
+      const updatedRestockCards = (prev.restockCards || []).map((c) => {
+        if (c.id === payload.cardId) {
+          return {
+            ...c,
+            status: "AUTHORIZED_AND_RECONCILED" as const,
+            authorizedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            authorizedDate: payload.salesDate,
+            remainsOnShelf: payload.remainsOnShelf,
+            ownerConsumedQty: payload.ownerConsumedQty,
+            spoilageRejectsQty: payload.spoilageRejectsQty,
+            calculatedSoldQty: payload.soldQty,
+            calculatedRevenue: payload.revenue,
+            calculatedCogs: payload.cogs,
+            calculatedGrossProfit: payload.revenue - payload.cogs,
+            calculatedOwnerDrawing: payload.ownerDrawingCost,
+            calculatedSpoilageLoss: payload.spoilageLoss,
+            paymentMethod: payload.paymentMethod
+          };
+        }
+        return c;
+      });
+
+      const cashDelta = payload.paymentMethod === "CASH" ? payload.revenue : (payload.paymentMethod === "SPLIT" ? payload.revenue / 2 : 0);
+      const mpesaDelta = payload.paymentMethod === "MPESA" ? payload.revenue : (payload.paymentMethod === "SPLIT" ? payload.revenue / 2 : 0);
+
+      return {
+        ...prev,
+        inventory: updatedInventory,
+        salesLedger: [newSale, ...(prev.salesLedger || [])],
+        payouts: newPayouts,
+        restockCards: updatedRestockCards,
+        cash_register_balance: prev.cash_register_balance + cashDelta,
+        mpesa_float_balance: prev.mpesa_float_balance + mpesaDelta,
+        last_updated: new Date().toISOString()
+      };
+    });
+  };
+
+  const handleDismissRestockCard = (cardId: string) => {
+    const updater = isDemoMode ? setDemoState : setAlacioState;
+    updater((prev) => ({
+      ...prev,
+      restockCards: (prev.restockCards || []).filter((c) => c.id !== cardId)
+    }));
+  };
+
   // -------------------------------------------------------------
   // VIEW 1: PUBLIC LANDING PAGE
   // -------------------------------------------------------------
@@ -727,7 +1046,7 @@ export default function App() {
         {activeTab === "dashboard" && (
           <SaasDashboardTab
             state={currentMasterState}
-            userName={currentUser?.name || "Trader"}
+            userName={currentUser?.name || "Musa"}
             onNavigateTab={setActiveTab}
             onOpenQuickSale={() => setActiveTab("voice_ledger")}
             onOpenQuickPurchase={() => setActiveTab("purchases")}
@@ -738,34 +1057,39 @@ export default function App() {
         )}
 
         {/* TAB 3: SUPPLY-DRIVEN SALES */}
-        {activeTab === "supply_sales" && (
+        {(activeTab === "supply_sales" || activeTab === "sales_supply") && (
           <SupplyDrivenSalesTab
             state={currentMasterState}
             onCommitSupplyDrivenSale={handleCommitSupplyDrivenSale}
+            onAuthorizeRestockSale={handleAuthorizeRestockSale}
+            onDismissRestockCard={handleDismissRestockCard}
           />
         )}
 
-        {/* TAB 4: PURCHASES */}
+        {/* TAB 4: PURCHASES (MULTI-GOODS RESTOCK & RECEIPT OCR) */}
         {activeTab === "purchases" && (
           <PurchasesTab
             state={currentMasterState}
-            onLogPurchase={(purchase) => {
-              const updater = isDemoMode ? setDemoState : setAlacioState;
-              updater((prev) => {
-                const newPayout: PayoutOrDrawing = {
-                  id: `payout_${Date.now()}`,
-                  date: purchase.date,
-                  timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                  amount: purchase.amount,
-                  type: "SUPPLIER_PAYOUT",
-                  notes: `${purchase.supplier}: ${purchase.items} [${purchase.payment_channel}]`
-                };
-                return {
-                  ...prev,
-                  payouts: [newPayout, ...(prev.payouts || [])],
-                  last_updated: new Date().toISOString()
-                };
-              });
+            initialSupplier={preselectedSupplier}
+            onNavigateTab={setActiveTab}
+            onLogPurchase={handleLogMultiItemPurchase}
+            onAuthorizeRestockSale={handleAuthorizeRestockSale}
+            onDismissRestockCard={handleDismissRestockCard}
+          />
+        )}
+
+        {/* TAB 4B: SUPPLIERS & DISTRIBUTORS (NATIONAL ID & PHONE COUNTERPARTY REGISTRY) */}
+        {activeTab === "suppliers" && (
+          <SuppliersTab
+            state={currentMasterState}
+            onNavigateTab={setActiveTab}
+            onAddSupplier={handleAddSupplier}
+            onEditSupplier={handleEditSupplier}
+            onDeleteSupplier={handleDeleteSupplier}
+            onPaySupplier={handlePaySupplier}
+            onSelectSupplierForPurchase={(supplierName) => {
+              setPreselectedSupplier(supplierName);
+              setActiveTab("purchases");
             }}
           />
         )}

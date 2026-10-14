@@ -4,7 +4,7 @@ import {
   Sun, Mic, Users, BookOpen, BarChart2, ChevronDown, HelpCircle, 
   LogOut, Settings, Building2, Menu, X, ArrowRight, Shield, 
   CheckCircle2, AlertCircle, Phone, Lock, Globe, Check, Sparkles,
-  Plus, Play, FileText, Bookmark
+  Plus, Play, FileText, Bookmark, Truck
 } from "lucide-react";
 import { UserProfile, signOut, signOutAllDevices } from "../services/authSessionService";
 import VideoFactorModal from "./VideoFactorModal";
@@ -66,12 +66,13 @@ export default function SaasAppShell({
     }
   }, [isDemo]);
 
-  // Exact 11 MSME modules from the workspace, rendered with Wave-style clean iconography:
+  // Exact MSME modules from the workspace including Suppliers, rendered with Wave-style clean iconography:
   const sidebarItems: SaasNavItem[] = [
     { id: "launchpad", name: "Launchpad", icon: <Rocket size={17} /> },
     { id: "dashboard", name: "Dashboard", icon: <LayoutDashboard size={17} /> },
     { id: "supply_sales", name: "Sales & Payments", icon: <TrendingUp size={17} /> },
     { id: "purchases", name: "Purchases", icon: <ShoppingBag size={17} /> },
+    { id: "suppliers", name: "Suppliers", icon: <Truck size={17} /> },
     { id: "stock_vault", name: "Stock Vault", icon: <Layers size={17} /> },
     { id: "dawn_lock", name: "Dawn Lock", icon: <Sun size={17} /> },
     { id: "voice_ledger", name: "Voice Ledger", icon: <Mic size={17} /> },
@@ -360,6 +361,15 @@ export default function SaasAppShell({
             </button>
 
             {/* MSME WORKSPACE MODULES NAVIGATION */}
+            <div className="px-3 pt-1 flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                Modules
+              </span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                12 ACTIVE
+              </span>
+            </div>
+
             <nav className="space-y-0.5">
               {sidebarItems.map((item) => {
                 const isActive = activeTab === item.id;
@@ -433,6 +443,15 @@ export default function SaasAppShell({
                 <Plus size={14} />
                 <span>Create new</span>
               </button>
+
+              <div className="px-2 pt-1 flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                  Modules
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                  12 Active
+                </span>
+              </div>
 
               <nav className="grid grid-cols-1 gap-1">
                 {sidebarItems.map((item) => (

@@ -3,7 +3,7 @@ import {
   FileText, Receipt, ArrowLeftRight, DollarSign, SlidersHorizontal, 
   ChevronDown, ExternalLink, ShieldCheck, AlertCircle, ArrowUpRight, 
   ArrowDownRight, Check, CheckCircle2, TrendingUp, Sun, Mic, ShoppingBag, 
-  Users, BookOpen, Layers
+  Users, BookOpen, Layers, Truck, Camera, Sparkles, ArrowRight
 } from "lucide-react";
 import { AlacioMasterState } from "../../types/alacio";
 import { LaunchpadProgress } from "./LaunchpadTab";
@@ -40,7 +40,7 @@ export default function SaasDashboardTab({
   // Dynamic time greeting
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const firstName = isDemo ? "Erica" : (userName.trim().split(" ")[0] || "Trader");
+  const firstName = isDemo ? "Musa" : (userName && userName !== "Trader" && userName !== "Alacio" ? userName.trim().split(" ")[0] : "Musa");
 
   // Calculations
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -63,9 +63,9 @@ export default function SaasDashboardTab({
     { id: 6, label: "Other / Packaging", pct: 8, amount: "KSh 12,600", color: "#94A3B8", isHatched: true, hasAlert: false }
   ];
 
-  // SVG Donut Path calculations
-  const size = 200;
-  const strokeWidth = 36;
+  // SVG Donut Path calculations (flattened for optimal fit)
+  const size = 160;
+  const strokeWidth = 28;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
@@ -87,14 +87,14 @@ export default function SaasDashboardTab({
   let cumulativeOffset = 0;
 
   return (
-    <div className="space-y-7 max-w-6xl mx-auto font-sans text-slate-900 pb-12">
+    <div className="space-y-5 max-w-6xl mx-auto font-sans text-slate-900 pb-8">
       
       {/* ========================================================================= */}
       {/* 1. ELEGANT SERIF GREETING                                                 */}
       {/* ========================================================================= */}
       <div className="pt-1">
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl sm:text-4xl font-serif font-normal text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-serif font-normal text-slate-900 tracking-tight">
             {timeGreeting}, {firstName}
           </h1>
           {isDemo && (
@@ -105,11 +105,49 @@ export default function SaasDashboardTab({
         </div>
       </div>
 
+      {/* RESTOCK IMPLIED SALES NOTIFICATION BANNER */}
+      {(() => {
+        const pendingRestockCards = (state.restockCards || []).filter(c => c.status === "PENDING_AUTHORIZATION");
+        if (pendingRestockCards.length === 0) return null;
+        const firstCard = pendingRestockCards[0];
+
+        return (
+          <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-amber-500/5 border-2 border-amber-500/40 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 font-bold flex items-center justify-center shrink-0 shadow-xs">
+                <Sparkles size={18} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold font-serif text-slate-900">
+                    {pendingRestockCards.length} Restock Implied Sales Card{pendingRestockCards.length > 1 ? "s" : ""} Ready
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-bold uppercase">
+                    Restock Velocity
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Restock arrived for <strong>{firstCard.skuName}</strong>. Bringing this in confirms yesterday&apos;s batch has moved &bull; Authorize sales without manual counter typing.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onNavigateTab("purchases")}
+              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shrink-0 shadow-xs font-mono cursor-pointer"
+            >
+              <span>Authorize Sales</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
+        );
+      })()}
+
       {/* ========================================================================= */}
       {/* 2. ROW OF 4 PASTEL ROUNDED ACTION CARDS                                   */}
       {/* Matches the exact colors, rounded pills, and icons from the screenshot    */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
         
         {/* CARD 1: MINT GREEN (CREATE ESTIMATE / QUICK SALE) */}
         <button
@@ -117,29 +155,29 @@ export default function SaasDashboardTab({
             if (onOpenQuickSale) onOpenQuickSale();
             else onNavigateTab("voice_ledger");
           }}
-          className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-[#E8F8F0] hover:bg-[#DDF4E8] border border-[#CBEEDB] text-[#1E3A2F] flex items-center justify-center gap-2.5 transition-all shadow-2xs hover:shadow-xs cursor-pointer group"
+          className="p-3 sm:p-3.5 rounded-xl bg-[#E8F8F0] hover:bg-[#DDF4E8] border border-[#CBEEDB] text-[#1E3A2F] flex items-center justify-center gap-2 transition-all shadow-2xs hover:shadow-xs cursor-pointer group"
         >
           <div className="w-5 h-5 rounded flex items-center justify-center text-[#1E3A2F] group-hover:scale-110 transition-transform">
-            <FileText size={17} />
+            <FileText size={16} />
           </div>
           <span className="text-xs sm:text-sm font-semibold tracking-tight">
             Create estimate
           </span>
         </button>
 
-        {/* CARD 2: SKY BLUE (CREATE INVOICE / RESTOCK) */}
+        {/* CARD 2: SKY BLUE (PURCHASES & CARGO / RECEIPT OCR) */}
         <button
           onClick={() => {
             if (onOpenQuickPurchase) onOpenQuickPurchase();
             else onNavigateTab("purchases");
           }}
-          className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-[#EBF5FB] hover:bg-[#DFF0FA] border border-[#D0E6F6] text-[#1B3A57] flex items-center justify-center gap-2.5 transition-all shadow-2xs hover:shadow-xs cursor-pointer group"
+          className="p-3 sm:p-3.5 rounded-xl bg-[#EBF5FB] hover:bg-[#DFF0FA] border border-[#D0E6F6] text-[#1B3A57] flex items-center justify-center gap-2 transition-all shadow-2xs hover:shadow-xs cursor-pointer group"
         >
           <div className="w-5 h-5 rounded flex items-center justify-center text-[#1B3A57] group-hover:scale-110 transition-transform">
-            <Receipt size={17} />
+            <Receipt size={16} />
           </div>
           <span className="text-xs sm:text-sm font-semibold tracking-tight">
-            Create invoice
+            Purchases &bull; OCR
           </span>
         </button>
 
@@ -149,26 +187,26 @@ export default function SaasDashboardTab({
             if (onOpenQuickDeni) onOpenQuickDeni();
             else onNavigateTab("customer_deni");
           }}
-          className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-[#F4EFFB] hover:bg-[#ECE3F8] border border-[#E1D3F5] text-[#341F54] flex items-center justify-center gap-2.5 transition-all shadow-2xs hover:shadow-xs cursor-pointer group"
+          className="p-3 sm:p-3.5 rounded-xl bg-[#F4EFFB] hover:bg-[#ECE3F8] border border-[#E1D3F5] text-[#341F54] flex items-center justify-center gap-2 transition-all shadow-2xs hover:shadow-xs cursor-pointer group"
         >
           <div className="w-5 h-5 rounded flex items-center justify-center text-[#341F54] group-hover:scale-110 transition-transform">
-            <ArrowLeftRight size={17} />
+            <ArrowLeftRight size={16} />
           </div>
           <span className="text-xs sm:text-sm font-semibold tracking-tight">
-            Add transaction
+            Customer Deni
           </span>
         </button>
 
-        {/* CARD 4: WARM PEACH / SAND (ADD BILL / DAWN LOCK) */}
+        {/* CARD 4: WARM PEACH / SAND (SUPPLIERS & VENDORS / PHONE & NATIONAL ID) */}
         <button
-          onClick={() => onNavigateTab("dawn_lock")}
-          className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-[#FDF4EB] hover:bg-[#FAECDF] border border-[#F6DFCB] text-[#4A2D16] flex items-center justify-center gap-2.5 transition-all shadow-2xs hover:shadow-xs cursor-pointer group"
+          onClick={() => onNavigateTab("suppliers")}
+          className="p-3 sm:p-3.5 rounded-xl bg-[#FDF4EB] hover:bg-[#FAECDF] border border-[#F6DFCB] text-[#4A2D16] flex items-center justify-center gap-2 transition-all shadow-2xs hover:shadow-xs cursor-pointer group"
         >
           <div className="w-5 h-5 rounded flex items-center justify-center text-[#4A2D16] group-hover:scale-110 transition-transform">
-            <DollarSign size={17} />
+            <Truck size={16} />
           </div>
           <span className="text-xs sm:text-sm font-semibold tracking-tight">
-            Add bill
+            Suppliers &amp; KYC
           </span>
         </button>
 
@@ -177,15 +215,15 @@ export default function SaasDashboardTab({
       {/* ========================================================================= */}
       {/* 3. SECTION: INSIGHTS FOR YOU                                              */}
       {/* ========================================================================= */}
-      <div className="flex items-center justify-between pt-2">
-        <h2 className="text-2xl font-serif font-normal text-slate-900 tracking-tight">
+      <div className="flex items-center justify-between pt-1">
+        <h2 className="text-xl sm:text-2xl font-serif font-normal text-slate-900 tracking-tight">
           Insights for you
         </h2>
 
         {/* CUSTOMIZE PILL BUTTON */}
         <button
           onClick={() => setIsCustomizeOpen(!isCustomizeOpen)}
-          className="px-3.5 py-1.5 rounded-full border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+          className="px-3 py-1 rounded-full border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
         >
           <SlidersHorizontal size={13} className="text-slate-600" />
           <span>Customize</span>
@@ -195,12 +233,12 @@ export default function SaasDashboardTab({
       {/* ========================================================================= */}
       {/* 4. 2-COLUMN GRID: EXPENSES BREAKDOWN + CASHFLOW                           */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
         
         {/* ----------------------------------------------------------------------- */}
         {/* CARD 1: EXPENSES BREAKDOWN                                              */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-6">
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
           
           {/* HEADER ROW */}
           <div className="flex items-center justify-between">
@@ -338,7 +376,7 @@ export default function SaasDashboardTab({
         {/* ----------------------------------------------------------------------- */}
         {/* CARD 2: CASHFLOW                                                        */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-5">
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
           
           {/* HEADER ROW */}
           <div className="flex items-center justify-between">

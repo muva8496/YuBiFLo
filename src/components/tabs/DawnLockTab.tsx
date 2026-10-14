@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { 
   Sun, Moon, Lock, Unlock, CheckCircle2, AlertTriangle, ShieldCheck, 
-  Coins, Smartphone, Scale, ArrowRight, DollarSign, Coffee, RefreshCw, HelpCircle
+  Coins, Smartphone, Scale, ArrowRight, DollarSign, Coffee, RefreshCw, HelpCircle,
+  Calendar
 } from "lucide-react";
 import { AlacioMasterState, PayoutOrDrawing } from "../../types/alacio";
 
 interface DawnLockTabProps {
   state: AlacioMasterState;
-  onUpdateFloat?: (denominations: Record<string, number>) => void;
+  onUpdateFloat?: (denominations: Record<string, number>, operatingDate?: string) => void;
   onResolveGap?: (payout: PayoutOrDrawing) => void;
 }
 
@@ -17,6 +18,12 @@ export default function DawnLockTab({
   onResolveGap
 }: DawnLockTabProps) {
   const { currency, floatDenominations, salesLedger = [], payouts = [] } = state;
+
+  // Operating date state with backdating support
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const twoDaysAgoStr = new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10);
+  const [operatingDate, setOperatingDate] = useState<string>(todayStr);
 
   // Local state for denomination counts
   const defaultDenoms: Record<string, number> = {
@@ -58,13 +65,21 @@ export default function DawnLockTab({
 
   const totalStartingLiquidity = totalDrawerCash + mpesaFloatInput;
 
-  // End of day close calculation
+  // End of day close calculation filtered by operatingDate (or all if not dated)
   const cashSalesToday = salesLedger
-    .filter(s => s.payment_channel === "CASH" || s.payment_channel === "SPLIT" || s.payment_method === "CASH" || s.payment_method === "SPLIT")
+    .filter(s => {
+      const isDateMatch = !s.date || s.date === operatingDate || (s.timestamp && s.timestamp.startsWith(operatingDate));
+      const isCash = s.payment_channel === "CASH" || s.payment_channel === "SPLIT" || s.payment_method === "CASH" || s.payment_method === "SPLIT";
+      return isDateMatch && isCash;
+    })
     .reduce((sum, s) => sum + (s.payment_channel === "SPLIT" || s.payment_method === "SPLIT" ? (s.cash_received || s.cash_paid || 0) : s.total_amount), 0);
 
   const cashPayoutsToday = payouts
-    .filter(p => p.payment_channel === "CASH" || !p.payment_channel)
+    .filter(p => {
+      const isDateMatch = !p.date || p.date === operatingDate || (p.timestamp && p.timestamp.startsWith(operatingDate));
+      const isCash = p.payment_channel === "CASH" || !p.payment_channel;
+      return isDateMatch && isCash;
+    })
     .reduce((sum, p) => sum + p.amount, 0);
 
   const expectedClosingCash = totalDrawerCash + cashSalesToday - cashPayoutsToday;
@@ -87,8 +102,8 @@ export default function DawnLockTab({
     setIsLocked(true);
     const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setLockedTime(nowTime);
-    if (onUpdateFloat) onUpdateFloat(denoms);
-    setLockFeedback(`Dawn Float verified and locked at ${nowTime}. Total Starting Liquidity: ${currency} ${totalStartingLiquidity.toLocaleString()}`);
+    if (onUpdateFloat) onUpdateFloat(denoms, operatingDate);
+    setLockFeedback(`Dawn Float verified and locked for ${operatingDate} at ${nowTime}. Total Starting Liquidity: ${currency} ${totalStartingLiquidity.toLocaleString()}`);
     setTimeout(() => setLockFeedback(null), 5000);
   };
 
@@ -97,16 +112,16 @@ export default function DawnLockTab({
     if (onResolveGap && absGap > 0) {
       const type = reason === "UNLOGGED_SALE" ? "BUSINESS_EXPENSE" : "OWNER_DRAWING";
       const notes = 
-        reason === "OWNER_CHAI" ? "Owner Morning Chai / Milk Drawing" :
-        reason === "PERSONAL_LUNCH" ? "Owner Personal Lunch & Family Drawing" :
-        reason === "SUPPLIER_DROP" ? "Unlogged Bread / Milk Van Cash Payout" : "Cash Drawer Variance Adjustment";
+        reason === "OWNER_CHAI" ? `Owner Morning Chai / Milk Drawing [Date: ${operatingDate}]` :
+        reason === "PERSONAL_LUNCH" ? `Owner Personal Lunch & Family Drawing [Date: ${operatingDate}]` :
+        reason === "SUPPLIER_DROP" ? `Unlogged Bread / Milk Van Cash Payout [Date: ${operatingDate}]` : `Cash Drawer Variance Adjustment [Date: ${operatingDate}]`;
 
       onResolveGap({
         id: `payout_gap_${Date.now()}`,
         amount: absGap,
         type,
         timestamp: new Date().toISOString(),
-        date: new Date().toISOString().slice(0, 10),
+        date: operatingDate,
         notes
       });
     }
@@ -165,6 +180,69 @@ export default function DawnLockTab({
           <span>{lockFeedback}</span>
         </div>
       )}
+
+      {/* OPERATING DATE SELECTOR BAR (BACKDATING SUPPORT) */}
+      <div className="bg-[#101c2a] border border-[#1d3148] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+        <div>
+          <div className="flex items-center gap-2">
+            <Calendar size={16} className="text-amber-400" />
+            <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+              Dawn Operating Date:
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+              {operatingDate === todayStr ? "Today" : operatingDate === yesterdayStr ? "Yesterday" : "Backdated"}
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Record dawn float, compare sales, or close ledger for today, yesterday, or past trading weeks.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setOperatingDate(todayStr)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold border transition cursor-pointer ${
+              operatingDate === todayStr 
+                ? "bg-amber-500 text-slate-950 border-amber-400 shadow" 
+                : "bg-[#16273b] text-slate-300 border-slate-700 hover:border-slate-600"
+            }`}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            onClick={() => setOperatingDate(yesterdayStr)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold border transition cursor-pointer ${
+              operatingDate === yesterdayStr 
+                ? "bg-amber-500 text-slate-950 border-amber-400 shadow" 
+                : "bg-[#16273b] text-slate-300 border-slate-700 hover:border-slate-600"
+            }`}
+          >
+            Yesterday
+          </button>
+          <button
+            type="button"
+            onClick={() => setOperatingDate(twoDaysAgoStr)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold border transition cursor-pointer ${
+              operatingDate === twoDaysAgoStr 
+                ? "bg-amber-500 text-slate-950 border-amber-400 shadow" 
+                : "bg-[#16273b] text-slate-300 border-slate-700 hover:border-slate-600"
+            }`}
+          >
+            2 Days Ago
+          </button>
+          <div className="flex items-center gap-1 bg-[#091018] border border-slate-700 rounded-xl px-2 py-0.5">
+            <input
+              type="date"
+              value={operatingDate}
+              onChange={(e) => setOperatingDate(e.target.value)}
+              className="bg-transparent text-xs text-white font-mono focus:outline-none"
+              title="Select custom date"
+            />
+          </div>
+        </div>
+      </div>
 
       {/* PART 1: MORNING OPENING FLOAT SECTION */}
       <div className="bg-[#0E1A29] border border-[#182C40] rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">

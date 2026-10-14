@@ -4,7 +4,8 @@ import {
   Package, DollarSign, Coffee, RefreshCw, Sparkles, 
   TrendingUp, Calendar, AlertTriangle, Layers, Info
 } from "lucide-react";
-import { AlacioMasterState, InventoryItem, SalesLedgerItem, PayoutOrDrawing } from "../../types/alacio";
+import { AlacioMasterState, InventoryItem, SalesLedgerItem, PayoutOrDrawing, RestockReconciliationCard } from "../../types/alacio";
+import RestockSalesReconciliationCardView from "../RestockSalesReconciliationCard";
 
 interface SupplyDrivenSalesTabProps {
   state: AlacioMasterState;
@@ -25,8 +26,11 @@ interface SupplyDrivenSalesTabProps {
     paymentMode: "CASH" | "MPESA" | "SPLIT";
     supplyInvoiceCost: number;
     supplyPaymentMode: "CASH" | "MPESA" | "SUPPLIER_CREDIT";
+    salesDate?: string;
     notes?: string;
   }) => void;
+  onAuthorizeRestockSale?: (payload: any) => void;
+  onDismissRestockCard?: (cardId: string) => void;
 }
 
 interface SkuCapacityRule {
@@ -41,8 +45,14 @@ interface SkuCapacityRule {
   typicalOwnerConsumption: number;
 }
 
-export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }: SupplyDrivenSalesTabProps) {
-  const { currency, inventory, salesLedger, payouts, cash_register_balance, mpesa_float_balance } = state;
+export default function SupplyDrivenSalesTab({ 
+  state, 
+  onCommitSupplyDrivenSale,
+  onAuthorizeRestockSale,
+  onDismissRestockCard
+}: SupplyDrivenSalesTabProps) {
+  const { currency, inventory, salesLedger, payouts, cash_register_balance, mpesa_float_balance, restockCards = [] } = state;
+  const [showAllRestockCards, setShowAllRestockCards] = useState<boolean>(false);
 
   // Preset fast-moving capacity-based SKUs
   const capacityPresets: SkuCapacityRule[] = [
@@ -134,6 +144,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
   const [supplyPaymentMode, setSupplyPaymentMode] = useState<"CASH" | "MPESA" | "SUPPLIER_CREDIT">("MPESA");
   const [notes, setNotes] = useState<string>("Supply restock confirmed; implied sales crystallized at box arrival.");
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [salesDate, setSalesDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
 
   // When preset changes, update form defaults
   const handleSelectPreset = (preset: SkuCapacityRule) => {
@@ -176,6 +187,7 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
       paymentMode: salesPaymentMode,
       supplyInvoiceCost,
       supplyPaymentMode,
+      salesDate,
       notes
     });
 
@@ -212,6 +224,52 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
         <div className="p-4 bg-emerald-500/15 border-2 border-emerald-500/40 text-emerald-200 rounded-2xl text-xs flex items-center gap-2.5 animate-in fade-in font-mono shadow-xl">
           <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
           <span>{successToast}</span>
+        </div>
+      )}
+
+      {/* RESTOCK IMPLIED SALES RECONCILIATION CARDS */}
+      {restockCards.length > 0 && (
+        <div className="space-y-4">
+          <div className="bg-[#0e1724] border-2 border-amber-500/40 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center border border-amber-500/40 shrink-0 font-bold">
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white font-serif">
+                    Restock-Implied Sales Cards ({restockCards.filter(c => c.status === "PENDING_AUTHORIZATION").length} Pending)
+                  </h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                    TRIGGERED BY RESTOCK
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Recording a new restock batch (e.g. today&apos;s bread or milk crate) proves yesterday&apos;s batch was sold. Reconcile closing remains, owner consumption, and rejects to authorize cash/sales into your registers.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowAllRestockCards(!showAllRestockCards)}
+              className="px-3 py-1.5 rounded-xl bg-[#142334] hover:bg-[#1a2f45] text-slate-300 border border-slate-700 text-xs font-mono cursor-pointer shrink-0 self-start sm:self-auto"
+            >
+              {showAllRestockCards ? "Show Pending Only" : `Show All (${restockCards.length})`}
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {(showAllRestockCards ? restockCards : restockCards.filter(c => c.status === "PENDING_AUTHORIZATION")).map((card) => (
+              <RestockSalesReconciliationCardView
+                key={card.id}
+                card={card}
+                currency={currency}
+                onAuthorize={onAuthorizeRestockSale || (() => {})}
+                onDismiss={onDismissRestockCard}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -473,6 +531,60 @@ export default function SupplyDrivenSalesTab({ state, onCommitSupplyDrivenSale }
               onChange={(e) => setNotes(e.target.value)}
               className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2 text-white font-mono text-xs focus:border-emerald-500 focus:outline-none"
             />
+          </div>
+
+          {/* OPERATING DATE (BACKDATING SUPPORT) */}
+          <div className="p-3 bg-[#09090b] rounded-xl border border-slate-800 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] text-slate-300 uppercase font-mono font-bold flex items-center gap-1.5">
+                <Calendar size={13} className="text-emerald-400" />
+                Date of Realized Sales
+              </label>
+              <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                Backdating Enabled
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSalesDate(new Date().toISOString().slice(0, 10))}
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition cursor-pointer ${
+                  salesDate === new Date().toISOString().slice(0, 10)
+                    ? "bg-emerald-500 text-slate-950 border-emerald-400"
+                    : "bg-[#121214] text-slate-300 border-slate-700 hover:border-slate-600"
+                }`}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => setSalesDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10))}
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition cursor-pointer ${
+                  salesDate === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+                    ? "bg-emerald-500 text-slate-950 border-emerald-400"
+                    : "bg-[#121214] text-slate-300 border-slate-700 hover:border-slate-600"
+                }`}
+              >
+                Yesterday
+              </button>
+              <button
+                type="button"
+                onClick={() => setSalesDate(new Date(Date.now() - 86400000 * 7).toISOString().slice(0, 10))}
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition cursor-pointer ${
+                  salesDate === new Date(Date.now() - 86400000 * 7).toISOString().slice(0, 10)
+                    ? "bg-emerald-500 text-slate-950 border-emerald-400"
+                    : "bg-[#121214] text-slate-300 border-slate-700 hover:border-slate-600"
+                }`}
+              >
+                Last Week
+              </button>
+              <input
+                type="date"
+                value={salesDate}
+                onChange={(e) => setSalesDate(e.target.value)}
+                className="bg-[#121214] border border-slate-700 rounded-lg px-2 py-0.5 text-xs text-white font-mono focus:outline-none focus:border-emerald-400"
+              />
+            </div>
           </div>
 
           <div className="pt-2">

@@ -9,7 +9,8 @@ import {
   PayoutOrDrawing,
   MpesaStatementRecord,
   SupplierProfile,
-  MorningBookendRecord
+  MorningBookendRecord,
+  RestockReconciliationCard
 } from "../types/alacio";
 import { deduplicateMorningBookends } from "../utils/morningBookendHelper";
 import { deduplicateSuppliers } from "../utils/supplierHelper";
@@ -521,6 +522,69 @@ export const INITIAL_MORNING_BOOKENDS: MorningBookendRecord[] = [
   }
 ];
 
+export const INITIAL_RESTOCK_CARDS: RestockReconciliationCard[] = [
+  {
+    id: "restock_bread_01",
+    skuName: "Broadways White Bread 400g",
+    category: "Bakery",
+    unitType: "Crate (20 loaves)",
+    piecesPerPack: 20,
+    previousBatchQty: 1,
+    previousBatchTotalUnits: 20,
+    previousBatchDate: "Yesterday (Delivery Note DN-4192)",
+    previousBatchCost: 1100,
+    newBatchQty: 1,
+    newBatchDate: "Today Morning (Restock Batch)",
+    supplierName: "Broadways Bakery Logistics",
+    deliveryNoteNumber: "DN-4288",
+    remainsOnShelf: 2,
+    ownerConsumedQty: 1,
+    spoilageRejectsQty: 0,
+    giveawaysQty: 0,
+    unitRetailPrice: 65,
+    unitCost: 55,
+    calculatedSoldQty: 17,
+    calculatedRevenue: 1105,
+    calculatedCogs: 935,
+    calculatedGrossProfit: 170,
+    calculatedOwnerDrawing: 55,
+    calculatedSpoilageLoss: 0,
+    status: "PENDING_AUTHORIZATION",
+    paymentMethod: "CASH",
+    notes: "New morning bread crate delivery arrived. Reconcile yesterday's bread crate and authorize sales into drawer."
+  },
+  {
+    id: "restock_milk_02",
+    skuName: "Brookside Fresh Milk 500ml",
+    category: "Dairy & Chilled",
+    unitType: "Packets",
+    piecesPerPack: 1,
+    previousBatchQty: 24,
+    previousBatchTotalUnits: 24,
+    previousBatchDate: "Yesterday Morning",
+    previousBatchCost: 1248,
+    newBatchQty: 24,
+    newBatchDate: "Today Morning",
+    supplierName: "Brookside Dairy Logistics",
+    deliveryNoteNumber: "DN-4301",
+    remainsOnShelf: 4,
+    ownerConsumedQty: 2,
+    spoilageRejectsQty: 1,
+    giveawaysQty: 0,
+    unitRetailPrice: 65,
+    unitCost: 52,
+    calculatedSoldQty: 17,
+    calculatedRevenue: 1105,
+    calculatedCogs: 884,
+    calculatedGrossProfit: 221,
+    calculatedOwnerDrawing: 104,
+    calculatedSpoilageLoss: 52,
+    status: "PENDING_AUTHORIZATION",
+    paymentMethod: "CASH",
+    notes: "Crate restock arrived at dawn. Implied turnover ready for authorization."
+  }
+];
+
 export const INITIAL_ALACIO_STATE: AlacioMasterState = {
   inventory: INITIAL_INVENTORY_43,
   warehouse: INITIAL_WAREHOUSE_BATCHES,
@@ -528,6 +592,7 @@ export const INITIAL_ALACIO_STATE: AlacioMasterState = {
   suppliers: INITIAL_SUPPLIERS,
   morning_bookends: INITIAL_MORNING_BOOKENDS,
   floatDenominations: INITIAL_FLOAT_DENOMINATIONS,
+  restockCards: INITIAL_RESTOCK_CARDS,
   salesLedger: [
     {
       id: "sale_001",
@@ -710,6 +775,7 @@ export function loadAlacioState(): AlacioMasterState {
         payouts: effectivePayouts,
         mpesaStatements: Array.isArray(parsed.mpesaStatements) ? parsed.mpesaStatements : [],
         reconciliations: normalizedReconciliations,
+        restockCards: Array.isArray(parsed.restockCards) && parsed.restockCards.length > 0 ? parsed.restockCards : INITIAL_RESTOCK_CARDS,
         mpesa_float_balance: effectiveMpesaFloat,
         cash_register_balance: effectiveDrawerCash,
         equitel_account_balance: effectiveEquitel,

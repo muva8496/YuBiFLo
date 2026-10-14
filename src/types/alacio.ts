@@ -198,6 +198,52 @@ export interface ProjectCaseStudy {
   consented_by: string;
 }
 
+export interface RestockReconciliationCard {
+  id: string;
+  skuName: string;
+  category: string;
+  unitType: string;
+  piecesPerPack?: number; // e.g. 6 pieces per packet
+  
+  // Previous Batch delivered / stocked
+  previousBatchQty: number; // e.g. 7 packets
+  previousBatchTotalUnits?: number; // e.g. 42 pieces
+  previousBatchDate: string; // e.g. "Yesterday" or YYYY-MM-DD
+  previousBatchCost: number; // e.g. KES 350
+  
+  // Incoming Restock Delivery
+  newBatchQty: number; // e.g. 7 packets
+  newBatchDate: string; // e.g. "Today morning" or YYYY-MM-DD
+  supplierName: string;
+  deliveryNoteNumber?: string;
+  
+  // Business Term Input Fields for Authorizing Turnover
+  remainsOnShelf: number; // Unsold Closing Stock / Shelf Remains
+  ownerConsumedQty: number; // Proprietor & Staff Internal Drawings / Tea
+  spoilageRejectsQty: number; // Expired, Damaged & Spoilage Write-Off
+  giveawaysQty: number; // Promotional Samples & Customer Goodwill
+  
+  unitRetailPrice: number; // Selling price per unit (KES)
+  unitCost: number; // Wholesale cost per unit (KES)
+  
+  // Realized calculations
+  calculatedSoldQty: number; // previousBatchQty - (remains + owner + spoilage + giveaways)
+  calculatedRevenue: number;
+  calculatedCogs: number;
+  calculatedGrossProfit: number;
+  calculatedOwnerDrawing: number;
+  calculatedSpoilageLoss: number;
+  
+  // Status and authorization
+  status: "PENDING_AUTHORIZATION" | "AUTHORIZED_AND_RECONCILED";
+  authorizedAt?: string;
+  authorizedDate?: string;
+  paymentMethod: "CASH" | "MPESA" | "SPLIT";
+  cashPaid?: number;
+  mpesaPaid?: number;
+  notes?: string;
+}
+
 export interface AlacioMasterState {
   merchant_name?: string;
   client_type?: string;
@@ -211,6 +257,7 @@ export interface AlacioMasterState {
   payouts: PayoutOrDrawing[];
   mpesaStatements: MpesaStatementRecord[];
   reconciliations: ReconciliationAudit[];
+  restockCards?: RestockReconciliationCard[];
   kpis: AlacioKpis;
   cash_register_balance: number;
   mpesa_float_balance: number;
@@ -222,3 +269,4 @@ export interface AlacioMasterState {
   vcr_customer_consent: boolean;
   clean_trading_days: number; // e.g. 18 of 30 clean trading days logged before Tier 3 AI
 }
+
