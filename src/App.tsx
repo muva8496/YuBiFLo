@@ -694,6 +694,9 @@ export default function App() {
         }}
         onStartRealWorkspace={handleStartRealFromDemo}
         onExitDemo={handleExitDukaSpace}
+        onOpenQuickSale={() => setActiveTab("voice_ledger")}
+        onOpenQuickPurchase={() => setActiveTab("purchases")}
+        onOpenQuickDeni={() => setActiveTab("customer_deni")}
         onOpenSettings={() => {}}
         onSignOut={() => {
           signOut();

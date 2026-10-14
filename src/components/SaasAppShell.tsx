@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { 
-  Compass, LayoutDashboard, TrendingUp, ShoppingBag, Layers, 
+  Rocket, LayoutDashboard, TrendingUp, ShoppingBag, Layers, 
   Sun, Mic, Users, BookOpen, BarChart2, ChevronDown, HelpCircle, 
   LogOut, Settings, Building2, Menu, X, ArrowRight, Shield, 
-  CheckCircle2, AlertCircle, Phone, Lock, Globe, Check, Sparkles
+  CheckCircle2, AlertCircle, Phone, Lock, Globe, Check, Sparkles,
+  Plus, Play, FileText, Bookmark
 } from "lucide-react";
 import { UserProfile, signOut, signOutAllDevices } from "../services/authSessionService";
+import VideoFactorModal from "./VideoFactorModal";
+import QuickCreateModal from "./QuickCreateModal";
 
 export interface SaasNavItem {
   id: string;
@@ -25,6 +28,9 @@ interface SaasAppShellProps {
   isDemo?: boolean;
   onStartRealWorkspace?: () => void;
   onExitDemo?: () => void;
+  onOpenQuickSale?: () => void;
+  onOpenQuickPurchase?: () => void;
+  onOpenQuickDeni?: () => void;
   children: React.ReactNode;
 }
 
@@ -39,11 +45,17 @@ export default function SaasAppShell({
   isDemo = false,
   onStartRealWorkspace,
   onExitDemo,
+  onOpenQuickSale,
+  onOpenQuickPurchase,
+  onOpenQuickDeni,
   children
 }: SaasAppShellProps) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [videoIsDocked, setVideoIsDocked] = useState(false);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
 
   // Sync browser tab title
   useEffect(() => {
@@ -54,27 +66,25 @@ export default function SaasAppShell({
     }
   }, [isDemo]);
 
-  // Exact 11 sidebar items in the exact order requested by user:
-  // 1 Launchpad, 2 Dashboard, 3 Supply-Driven Sales, 4 Purchases, 5 Stock Vault & Suppliers,
-  // 6 Dawn Lock, 7 The Voice Ledger, 8 Customers, 9 Customer Deni, 10 3-Fold Ledgers, 11 Business Analytics
+  // Exact 11 MSME modules from the workspace, rendered with Wave-style clean iconography:
   const sidebarItems: SaasNavItem[] = [
-    { id: "launchpad", name: "Launchpad", icon: <Compass size={17} />, badge: "Setup" },
+    { id: "launchpad", name: "Launchpad", icon: <Rocket size={17} /> },
     { id: "dashboard", name: "Dashboard", icon: <LayoutDashboard size={17} /> },
-    { id: "supply_sales", name: "Supply-Driven Sales", icon: <TrendingUp size={17} />, badge: "Engine" },
+    { id: "supply_sales", name: "Sales & Payments", icon: <TrendingUp size={17} /> },
     { id: "purchases", name: "Purchases", icon: <ShoppingBag size={17} /> },
-    { id: "stock_vault", name: "Stock Vault & Suppliers", icon: <Layers size={17} /> },
-    { id: "dawn_lock", name: "Dawn Lock", icon: <Sun size={17} />, badge: "05:57 AM" },
-    { id: "voice_ledger", name: "The Voice Ledger", icon: <Mic size={17} />, badge: "VCR" },
+    { id: "stock_vault", name: "Stock Vault", icon: <Layers size={17} /> },
+    { id: "dawn_lock", name: "Dawn Lock", icon: <Sun size={17} /> },
+    { id: "voice_ledger", name: "Voice Ledger", icon: <Mic size={17} /> },
     { id: "customers", name: "Customers", icon: <Users size={17} /> },
-    { id: "customer_deni", name: "Customer Deni", icon: <BookOpen size={17} />, badge: "Khata" },
-    { id: "three_fold_ledgers", name: "3-Fold Ledgers", icon: <BookOpen size={17} />, badge: "P / R / N" },
-    { id: "analytics", name: "Business Analytics", icon: <BarChart2 size={17} />, badge: "36 Tools" }
+    { id: "customer_deni", name: "Customer Deni", icon: <BookOpen size={17} /> },
+    { id: "three_fold_ledgers", name: "3-Fold Ledgers", icon: <Bookmark size={17} /> },
+    { id: "analytics", name: "Business Analytics", icon: <BarChart2 size={17} /> }
   ];
 
-  const currentWorkspaceName = isDemo ? "Duka Space" : (user?.businessName || "My Business");
+  const currentWorkspaceName = isDemo ? "Duka Space" : (user?.businessName || "Goodwood Designs");
 
   return (
-    <div className="min-h-screen bg-[#0B1420] text-[#E2ECF3] font-sans flex flex-col selection:bg-[#2D5577] selection:text-white relative">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans flex flex-col selection:bg-blue-100 selection:text-blue-900 relative">
       
       {/* FAINT REPEATING "SAMPLE" WATERMARK ON PRINT & EXPORT */}
       {isDemo && (
@@ -83,7 +93,7 @@ export default function SaasAppShell({
           aria-hidden="true"
         >
           {Array.from({ length: 36 }).map((_, idx) => (
-            <span key={idx} className="text-6xl font-black text-amber-400 -rotate-45 font-mono tracking-widest">
+            <span key={idx} className="text-6xl font-black text-amber-500 -rotate-45 font-mono tracking-widest">
               SAMPLE
             </span>
           ))}
@@ -91,15 +101,15 @@ export default function SaasAppShell({
       )}
 
       {/* ========================================================================= */}
-      {/* 1. TOP BAR                                                                */}
+      {/* 1. TOP BAR (WHITE, SLATE BORDER, BUSINESS NAME AT TOP RIGHT CORNER)        */}
       {/* ========================================================================= */}
-      <header className="h-14 bg-[#0E1A29]/95 border-b border-[#182C40] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 backdrop-blur-md">
+      <header className="h-14 bg-white border-b border-[#E5E9EE] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40">
         
-        {/* LEFT: YUBIFLO LOGO & MOBILE HAMBURGER */}
+        {/* LEFT: LOGO & MOBILE HAMBURGER */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg"
+            className="md:hidden text-slate-600 hover:text-slate-900 p-1 rounded-lg hover:bg-slate-100 transition"
             aria-label="Toggle Navigation"
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -107,89 +117,95 @@ export default function SaasAppShell({
 
           <button
             onClick={() => onNavigateTab("dashboard")}
-            className="flex items-center gap-2.5 text-white font-black tracking-wide cursor-pointer group"
+            className="flex items-center gap-2.5 text-slate-900 font-bold tracking-tight cursor-pointer group"
           >
-            <div className="w-8 h-8 rounded-xl bg-black border border-zinc-700 flex items-center justify-center font-bold font-mono text-sm shadow-md group-hover:scale-105 transition-transform">
-              Y
+            {/* WAVE-STYLE ICON MARK */}
+            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 14C5.5 9 8.5 9 10 14C11.5 19 14.5 19 16 14C17.5 9 20.5 9 22 14" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </div>
-            <div className="text-left">
-              <span className="font-serif tracking-tight text-base font-bold text-white block leading-none">
-                YuBiFLo
-              </span>
-              <span className="text-[9px] font-mono text-slate-400 block leading-tight">
-                Kenyan MSME Ecosystem
-              </span>
-            </div>
+            <span className="font-serif text-lg font-bold text-slate-900 tracking-tight">
+              YuBiFLo
+            </span>
           </button>
         </div>
 
-        {/* RIGHT: BUSINESS NAME + PLAN BADGE / AMBER DEMO BADGE AS DROPDOWN + HELP ICON */}
-        <div className="flex items-center gap-3 relative">
+        {/* RIGHT: DOCUMENT ICON + HELP (?) + BUSINESS NAME IN PILL AT TOP RIGHT */}
+        <div className="flex items-center gap-2 sm:gap-3">
           
-          {/* HELP ICON */}
+          {/* DOCUMENT / LEDGER ICON BUTTON */}
           <button
-            onClick={() => setHelpModalOpen(true)}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-[#132337] transition cursor-pointer"
-            title="YuBiFLo Guide & Support"
+            onClick={() => onNavigateTab("three_fold_ledgers")}
+            className="w-8 h-8 rounded-lg bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition cursor-pointer"
+            title="3-Fold Ledgers &amp; Accounts"
           >
-            <HelpCircle size={18} />
+            <FileText size={16} />
           </button>
 
-          {/* BUSINESS / WORKSPACE DROPDOWN */}
+          {/* HELP ICON BUTTON */}
+          <button
+            onClick={() => setHelpModalOpen(true)}
+            className="w-8 h-8 rounded-lg bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition cursor-pointer"
+            title="Help &amp; Documentation"
+          >
+            <HelpCircle size={16} />
+          </button>
+
+          {/* BUSINESS NAME PILL DROPDOWN AT TOP RIGHT (EXACT SHAPE FROM SCREENSHOT) */}
           <div className="relative">
             <button
               onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              className="px-3 py-1.5 rounded-xl border border-[#182C40] bg-[#09121D] hover:bg-[#132337] flex items-center gap-2 cursor-pointer transition text-xs font-mono shadow-xs text-white"
+              className="bg-[#EBF3FC] hover:bg-[#E2EDFA] border border-[#CBD5E1] rounded-lg px-3 py-1.5 flex items-center gap-2 cursor-pointer transition text-xs font-semibold text-slate-900 shadow-2xs"
             >
-              <Building2 size={14} className="text-cyan-400 shrink-0" />
-              <span className="font-bold text-white max-w-[130px] sm:max-w-[180px] truncate">
+              <span className="max-w-[120px] sm:max-w-[160px] truncate">
                 {currentWorkspaceName}
               </span>
               
-              {/* PLAN BADGE OR AMBER DEMO BADGE */}
+              {/* PRO BADGE / AMBER DEMO BADGE (AS IN SCREENSHOT) */}
               {isDemo ? (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-md font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                <span className="text-[10px] px-1.5 py-0.2 rounded font-bold uppercase bg-amber-500 text-white">
                   DEMO
                 </span>
               ) : (
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-bold uppercase ${
-                  user?.plan === "Pro" 
-                    ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" 
-                    : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold uppercase ${
+                  user?.plan === "Pro" || !user?.plan
+                    ? "bg-[#1A56DB] text-white" 
+                    : "bg-[#10B981] text-white"
                 }`}>
-                  {user?.plan || "Free"}
+                  {user?.plan || "PRO"}
                 </span>
               )}
 
-              <ChevronDown size={13} className={`text-slate-400 transition-transform ${userDropdownOpen ? "rotate-180" : ""}`} />
+              <ChevronDown size={14} className={`text-slate-600 transition-transform ${userDropdownOpen ? "rotate-180" : ""}`} />
             </button>
 
             {/* DROPDOWN MENU */}
             {userDropdownOpen && (
               <div 
-                className="absolute right-0 top-full mt-2 w-64 bg-[#0E1A29] border border-[#182C40] rounded-2xl shadow-2xl p-2 space-y-1.5 z-50 text-xs font-mono animate-in fade-in zoom-in-95"
+                className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 space-y-1.5 z-50 text-xs font-sans animate-in fade-in zoom-in-95"
                 onMouseLeave={() => setUserDropdownOpen(false)}
               >
                 {/* STATUS HEADER */}
-                <div className="px-3 py-2 border-b border-[#182C40]/80">
+                <div className="px-3 py-2 border-b border-slate-100">
                   {isDemo ? (
                     <div>
-                      <span className="text-[10px] text-amber-400 uppercase font-bold block">Active Workspace:</span>
-                      <strong className="text-white text-xs block truncate">Duka Space (Demo)</strong>
-                      <span className="text-[10px] text-slate-400 block">Sample data only &bull; 24h reset</span>
+                      <span className="text-[10px] text-amber-600 uppercase font-bold block">Active Workspace:</span>
+                      <strong className="text-slate-900 text-xs block truncate">Duka Space (Demo)</strong>
+                      <span className="text-[10px] text-slate-500 block">Sample data only &bull; 24h reset</span>
                     </div>
                   ) : (
                     <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Signed In As:</span>
-                      <strong className="text-white text-xs block truncate">{user?.name || "Business Owner"}</strong>
-                      <span className="text-[10px] text-cyan-400 block truncate">{user?.phone || "Private Workspace"}</span>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Signed In As:</span>
+                      <strong className="text-slate-900 text-xs block truncate">{user?.name || "Business Owner"}</strong>
+                      <span className="text-[10px] text-blue-600 block truncate">{user?.phone || "Private Workspace"}</span>
                     </div>
                   )}
                 </div>
 
                 {/* WORKSPACE SWITCHER SECTION (My business / Duka Space, demo) */}
                 <div className="py-1 space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase px-3 block">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase px-3 block">
                     Switch Workspace:
                   </span>
 
@@ -202,14 +218,14 @@ export default function SaasAppShell({
                       }
                     }}
                     className={`w-full px-3 py-2 text-left rounded-xl flex items-center justify-between transition cursor-pointer text-xs ${
-                      !isDemo ? "bg-[#132337] text-white font-bold" : "text-slate-300 hover:bg-[#132337] hover:text-white"
+                      !isDemo ? "bg-blue-50 text-blue-700 font-bold" : "text-slate-700 hover:bg-slate-100"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <Building2 size={13} className="text-cyan-400 shrink-0" />
+                      <Building2 size={13} className="text-blue-600 shrink-0" />
                       <span className="truncate">{user?.businessName ? `${user.businessName} (My business)` : "My business"}</span>
                     </div>
-                    {!isDemo && <Check size={13} className="text-emerald-400 shrink-0" />}
+                    {!isDemo && <Check size={13} className="text-blue-600 shrink-0" />}
                   </button>
 
                   {/* OPTION 2: DUKA SPACE DEMO */}
@@ -221,28 +237,28 @@ export default function SaasAppShell({
                       }
                     }}
                     className={`w-full px-3 py-2 text-left rounded-xl flex items-center justify-between transition cursor-pointer text-xs ${
-                      isDemo ? "bg-amber-500/15 text-amber-200 font-bold border border-amber-500/25" : "text-slate-300 hover:bg-[#132337] hover:text-white"
+                      isDemo ? "bg-amber-50 text-amber-800 font-bold" : "text-slate-700 hover:bg-slate-100"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <Sparkles size={13} className="text-amber-400 shrink-0" />
+                      <Sparkles size={13} className="text-amber-500 shrink-0" />
                       <span className="truncate">Duka Space (demo)</span>
                     </div>
-                    {isDemo && <Check size={13} className="text-amber-400 shrink-0" />}
+                    {isDemo && <Check size={13} className="text-amber-600 shrink-0" />}
                   </button>
                 </div>
 
                 {/* ADDITIONAL ACTIONS */}
-                <div className="border-t border-[#182C40]/80 pt-1 space-y-0.5">
+                <div className="border-t border-slate-100 pt-1 space-y-0.5">
                   {!isDemo && (
                     <button
                       onClick={() => {
                         setUserDropdownOpen(false);
                         onOpenSettings();
                       }}
-                      className="w-full px-3 py-2 text-left rounded-xl hover:bg-[#132337] text-slate-300 hover:text-white flex items-center gap-2 transition cursor-pointer"
+                      className="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 text-slate-700 flex items-center gap-2 transition cursor-pointer"
                     >
-                      <Settings size={14} className="text-slate-400" />
+                      <Settings size={14} className="text-slate-500" />
                       <span>Settings &amp; Profile</span>
                     </button>
                   )}
@@ -253,9 +269,9 @@ export default function SaasAppShell({
                         setUserDropdownOpen(false);
                         if (onExitDemo) onExitDemo();
                       }}
-                      className="w-full px-3 py-2 text-left rounded-xl hover:bg-amber-500/10 text-amber-300 flex items-center gap-2 transition cursor-pointer font-bold"
+                      className="w-full px-3 py-2 text-left rounded-xl hover:bg-amber-50 text-amber-700 flex items-center gap-2 transition cursor-pointer font-bold"
                     >
-                      <LogOut size={14} className="text-amber-400" />
+                      <LogOut size={14} className="text-amber-600" />
                       <span>Exit demo</span>
                     </button>
                   ) : (
@@ -265,9 +281,9 @@ export default function SaasAppShell({
                           setUserDropdownOpen(false);
                           onSignOut();
                         }}
-                        className="w-full px-3 py-2 text-left rounded-xl hover:bg-amber-500/10 text-amber-300 flex items-center gap-2 transition cursor-pointer"
+                        className="w-full px-3 py-2 text-left rounded-xl hover:bg-red-50 text-red-600 flex items-center gap-2 transition cursor-pointer"
                       >
-                        <LogOut size={14} className="text-amber-400" />
+                        <LogOut size={14} className="text-red-500" />
                         <span>Sign out</span>
                       </button>
 
@@ -276,9 +292,9 @@ export default function SaasAppShell({
                           setUserDropdownOpen(false);
                           onSignOutAllDevices();
                         }}
-                        className="w-full px-3 py-2 text-left rounded-xl hover:bg-red-500/10 text-red-300 flex items-center gap-2 transition cursor-pointer text-[11px]"
+                        className="w-full px-3 py-2 text-left rounded-xl hover:bg-red-50 text-red-600 flex items-center gap-2 transition cursor-pointer text-[11px]"
                       >
-                        <Shield size={14} className="text-red-400" />
+                        <Shield size={14} className="text-red-500" />
                         <span>Sign out of all devices</span>
                       </button>
                     </>
@@ -295,9 +311,9 @@ export default function SaasAppShell({
       {/* SLIM BANNER UNDER TOP BAR ON EVERY PAGE WHEN IN DEMO                      */}
       {/* ========================================================================= */}
       {isDemo && (
-        <div className="bg-[#0D1926] border-b border-amber-500/40 px-4 py-2 text-xs flex flex-col sm:flex-row items-center justify-between gap-2.5 z-30 shadow-inner">
-          <div className="flex items-center gap-2 text-amber-200 text-[11px] sm:text-xs">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs flex flex-col sm:flex-row items-center justify-between gap-2.5 z-30 shadow-2xs">
+          <div className="flex items-center gap-2 text-amber-900 text-[11px] sm:text-xs">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
             <span className="font-medium">
               You're exploring a demo duka. All numbers are sample data, not real. Start your own to see your real numbers.
             </span>
@@ -307,7 +323,7 @@ export default function SaasAppShell({
               onClick={() => {
                 if (onStartRealWorkspace) onStartRealWorkspace();
               }}
-              className="px-3.5 py-1 bg-amber-400 hover:bg-amber-300 text-black font-bold text-xs rounded-lg transition shadow-xs cursor-pointer font-mono"
+              className="px-3.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg transition shadow-2xs cursor-pointer font-sans"
             >
               {user ? "Open my dashboard" : "Start my real workspace"}
             </button>
@@ -315,7 +331,7 @@ export default function SaasAppShell({
               onClick={() => {
                 if (onExitDemo) onExitDemo();
               }}
-              className="text-xs text-amber-300 hover:text-white underline cursor-pointer font-mono"
+              className="text-xs text-amber-800 hover:text-amber-950 underline cursor-pointer font-sans"
             >
               Exit demo
             </button>
@@ -328,90 +344,95 @@ export default function SaasAppShell({
       {/* ========================================================================= */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* LEFT SIDEBAR (DESKTOP) */}
-        <aside className="w-64 bg-[#0E1A29]/80 border-r border-[#182C40] p-4 hidden md:flex flex-col justify-between shrink-0 overflow-y-auto">
-          <nav className="space-y-1">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold px-3 block mb-2">
-              MSME Workspace
-            </span>
+        {/* LEFT SIDEBAR (WHITE, WAVE-STYLE, EXACT SAME MSME MODULES) */}
+        <aside className="w-60 bg-white border-r border-[#E5E9EE] p-3 sm:p-4 hidden md:flex flex-col justify-between shrink-0 overflow-y-auto">
+          <div className="space-y-3">
+            
+            {/* "+ Create new" BLUE PILL BUTTON (EXACT SHAPE FROM SCREENSHOT) */}
+            <button
+              onClick={() => setQuickCreateOpen(true)}
+              className="w-full bg-[#1A56DB] hover:bg-[#1545B3] text-white text-xs font-semibold px-4 py-2.5 rounded-full flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+            >
+              <div className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center font-bold">
+                <Plus size={13} />
+              </div>
+              <span>Create new</span>
+            </button>
 
-            {sidebarItems.map((item) => {
-              const isActive = activeTab === item.id;
+            {/* MSME WORKSPACE MODULES NAVIGATION */}
+            <nav className="space-y-0.5">
+              {sidebarItems.map((item) => {
+                const isActive = activeTab === item.id;
 
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigateTab(item.id)}
-                  className={`w-full px-3 py-2.5 rounded-xl font-medium text-xs transition flex items-center justify-between group cursor-pointer ${
-                    isActive
-                      ? "bg-[#2563EB] text-white font-bold shadow-md shadow-blue-900/30"
-                      : "text-slate-300 hover:text-white hover:bg-[#132337]"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className={isActive ? "text-white" : "text-slate-400 group-hover:text-cyan-400"}>
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onNavigateTab(item.id)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-3 cursor-pointer ${
+                      isActive
+                        ? "bg-[#EBF3FC] text-[#1A56DB] font-semibold"
+                        : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+                    }`}
+                  >
+                    <span className={isActive ? "text-[#1A56DB]" : "text-slate-500"}>
                       {item.icon}
                     </span>
-                    <span>{item.name}</span>
-                  </div>
+                    <span className="truncate">{item.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
 
-                  {item.badge && (
-                    <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase ${
-                      isActive 
-                        ? "bg-white/20 text-white" 
-                        : "bg-[#182C40] text-slate-400"
-                    }`}>
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+          {/* BOTTOM-LEFT VIDEO FACTOR: CIRCULAR DARK PLAY BUTTON (AS IN SCREENSHOT) */}
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setVideoModalOpen(true)}
+                className="w-10 h-10 rounded-full bg-[#374151] hover:bg-[#1F2937] text-white flex items-center justify-center shadow-md hover:scale-105 transition-all cursor-pointer group"
+                title="Watch workspace video walkthrough (Video Factor)"
+                aria-label="Play workspace walkthrough video"
+              >
+                <Play size={14} className="fill-white ml-0.5 group-hover:scale-110 transition-transform" />
+              </button>
+              <div className="text-[11px] leading-tight">
+                <span className="font-semibold text-slate-800 block">Guide Tour</span>
+                <span className="text-[10px] text-slate-400">Video Walkthrough</span>
+              </div>
+            </div>
 
-          {/* SIDEBAR FOOTER CARD */}
-          <div className="p-3 bg-[#09121D] rounded-2xl border border-[#182C40] text-[11px] font-mono space-y-1 mt-4">
-            {isDemo ? (
-              <>
-                <span className="text-amber-400 block text-[10px] uppercase font-bold">Demo Sandbox:</span>
-                <div className="text-amber-300 flex items-center gap-1 font-bold text-[11px]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  Isolated 24h Session
-                </div>
-                <span className="text-[10px] text-slate-500 block">
-                  Resets on exit &bull; Zero data mix
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Sliding Session:</span>
-                <div className="text-emerald-400 flex items-center gap-1 font-bold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  Active (~90 days)
-                </div>
-                <span className="text-[10px] text-slate-500 block truncate">
-                  {user?.businessType || "Retail"} &bull; {user?.phone}
-                </span>
-              </>
+            {isDemo && (
+              <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                DEMO
+              </span>
             )}
           </div>
         </aside>
 
         {/* MOBILE SIDEBAR OVERLAY */}
         {mobileMenuOpen && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 md:hidden flex flex-col justify-end">
-            <div className="bg-[#0E1A29] border-t-2 border-[#182C40] rounded-t-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom">
-              <div className="flex items-center justify-between pb-2 border-b border-[#182C40]">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-black text-white flex items-center justify-center font-bold text-xs">Y</div>
-                  <span className="font-serif font-bold text-white text-sm">
-                    Workspace Modules
-                  </span>
-                </div>
-                <button onClick={() => setMobileMenuOpen(false)} className="text-slate-400 hover:text-white p-1">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 md:hidden flex flex-col justify-end">
+            <div className="bg-white border-t border-slate-200 rounded-t-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <span className="font-serif font-bold text-slate-900 text-sm">
+                  Workspace Modules
+                </span>
+                <button onClick={() => setMobileMenuOpen(false)} className="text-slate-500 hover:text-slate-800 p-1">
                   <X size={18} />
                 </button>
               </div>
+
+              {/* MOBILE "+ Create new" BUTTON */}
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setQuickCreateOpen(true);
+                }}
+                className="w-full bg-[#1A56DB] text-white text-xs font-semibold py-2.5 rounded-full flex items-center justify-center gap-2 shadow-xs"
+              >
+                <Plus size={14} />
+                <span>Create new</span>
+              </button>
 
               <nav className="grid grid-cols-1 gap-1">
                 {sidebarItems.map((item) => (
@@ -421,102 +442,72 @@ export default function SaasAppShell({
                       onNavigateTab(item.id);
                       setMobileMenuOpen(false);
                     }}
-                    className={`p-3 rounded-xl text-left text-xs font-mono font-medium flex items-center justify-between ${
-                      activeTab === item.id ? "bg-[#2563EB] text-white font-bold" : "text-slate-300 hover:bg-[#132337]"
+                    className={`p-2.5 rounded-xl text-left text-xs font-medium flex items-center gap-3 ${
+                      activeTab === item.id ? "bg-[#EBF3FC] text-[#1A56DB] font-semibold" : "text-slate-700 hover:bg-slate-100"
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
+                    <span className={activeTab === item.id ? "text-[#1A56DB]" : "text-slate-500"}>
                       {item.icon}
-                      <span>{item.name}</span>
-                    </div>
-                    {item.badge && (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#182C40] text-slate-300">
-                        {item.badge}
-                      </span>
-                    )}
+                    </span>
+                    <span>{item.name}</span>
                   </button>
                 ))}
               </nav>
 
-              <div className="pt-2 border-t border-[#182C40] flex items-center justify-between text-xs font-mono">
-                {isDemo ? (
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setVideoModalOpen(true);
+                  }}
+                  className="flex items-center gap-2 text-xs font-semibold text-slate-700"
+                >
+                  <div className="w-8 h-8 rounded-full bg-[#374151] text-white flex items-center justify-center">
+                    <Play size={11} className="fill-white ml-0.5" />
+                  </div>
+                  <span>Watch Video Tour</span>
+                </button>
+
+                {isDemo && (
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false);
                       if (onExitDemo) onExitDemo();
                     }}
-                    className="text-amber-400 hover:underline flex items-center gap-1 font-bold"
+                    className="text-xs text-amber-700 font-bold"
                   >
-                    <LogOut size={13} /> Exit demo
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onSignOut();
-                    }}
-                    className="text-amber-400 hover:underline flex items-center gap-1"
-                  >
-                    <LogOut size={13} /> Sign out
+                    Exit demo
                   </button>
                 )}
-                <span className="text-slate-500 text-[10px]">
-                  {isDemo ? "Sample data" : "~90-day session"}
-                </span>
               </div>
             </div>
           </div>
         )}
 
-        {/* MAIN CONTENT WORKSPACE */}
+        {/* MAIN CONTENT CANVAS */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}
         </main>
 
       </div>
 
-      {/* ========================================================================= */}
-      {/* 3. HELP & SUPPORT MODAL                                                   */}
-      {/* ========================================================================= */}
-      {helpModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-60 flex items-center justify-center p-4">
-          <div className="bg-[#0E1A29] border-2 border-[#1E3A5F] rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-xs font-sans">
-            <div className="flex items-center justify-between border-b border-[#182C40] pb-3">
-              <div className="flex items-center gap-2">
-                <HelpCircle size={18} className="text-cyan-400" />
-                <h3 className="font-serif font-bold text-white text-base">YuBiFLo Help &amp; Architecture</h3>
-              </div>
-              <button onClick={() => setHelpModalOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
-                <X size={18} />
-              </button>
-            </div>
+      {/* QUICK CREATE MODAL */}
+      <QuickCreateModal
+        isOpen={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
+        onNavigateTab={onNavigateTab}
+        onOpenQuickSale={onOpenQuickSale}
+        onOpenQuickPurchase={onOpenQuickPurchase}
+        onOpenQuickDeni={onOpenQuickDeni}
+      />
 
-            <div className="space-y-3 text-slate-300 leading-relaxed text-[11px]">
-              <div className="p-3 bg-[#09121D] rounded-xl border border-[#182C40] space-y-1">
-                <strong className="text-white block font-mono uppercase text-[10px]">1. Almost Zero Data Entry:</strong>
-                <p>You only give two numbers at the start of each day: till cash and M-Pesa float. Counter VCR and delivery notes do the rest.</p>
-              </div>
-
-              <div className="p-3 bg-[#09121D] rounded-xl border border-[#182C40] space-y-1">
-                <strong className="text-white block font-mono uppercase text-[10px]">2. Deterministic AI Rules:</strong>
-                <p>AI models only parse messy input and explain what happened. All ledgers and financial figures are calculated by strict deterministic code.</p>
-              </div>
-
-              <div className="p-3 bg-[#09121D] rounded-xl border border-[#182C40] space-y-1">
-                <strong className="text-white block font-mono uppercase text-[10px]">3. Isolated Duka Space Demo:</strong>
-                <p>Duka Space is a risk-free sample sandbox. Sales, purchases, and Deni logged here stay in the sandbox and reset after 24 hours.</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setHelpModalOpen(false)}
-              className="w-full py-2.5 bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-bold rounded-xl text-xs font-mono cursor-pointer"
-            >
-              Back to Workspace
-            </button>
-          </div>
-        </div>
-      )}
+      {/* VIDEO FACTOR MODAL & DOCKED MINI PLAYER */}
+      <VideoFactorModal
+        isOpen={videoModalOpen}
+        onClose={() => setVideoModalOpen(false)}
+        isDocked={videoIsDocked}
+        onToggleDock={() => setVideoIsDocked(!videoIsDocked)}
+      />
 
     </div>
   );
