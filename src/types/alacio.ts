@@ -247,6 +247,7 @@ export interface RestockReconciliationCard {
 export interface AlacioMasterState {
   merchant_name?: string;
   client_type?: string;
+  is_skeleton?: boolean;
   inventory: InventoryItem[];
   warehouse: WarehouseBatch[];
   customers: CustomerDebtor[];

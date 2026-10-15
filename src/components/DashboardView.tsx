@@ -180,14 +180,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Top Actions: Badges and Action Controls */}
         <div className="yubiflo-top-actions">
-          <div
-            id="badge-tier"
-            className="yubiflo-badge-quiet"
-            onClick={onOpenSubscriptionModal}
-            title="Subscription: Retail Pro"
-          >
-            {merchant.subscription?.tierName || "Retail Pro"}
-          </div>
+
 
           <div
             id="badge-admin"

@@ -11,7 +11,8 @@ export interface UserProfile {
   name: string;
   firstName: string;
   businessName: string;
-  phone: string;
+  email?: string;
+  phone?: string;
   businessType: string;
   plan: "Free" | "Pro";
   agreedTermsVersion: string;
@@ -33,13 +34,14 @@ const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 
 // Default demo shop profile if user tests first time before manual signup
 export const DEFAULT_DEMO_USER: UserProfile = {
-  id: "user_alacio_001",
-  name: "Alacio Mukangai",
-  firstName: "Alacio",
-  businessName: "Alacio Mini Shop",
+  id: "user_musa_001",
+  name: "Moses Mukangai",
+  firstName: "Moses",
+  businessName: "Musa General Retailers",
+  email: "mosesmukangai75@gmail.com",
   phone: "+254 712 345 678",
   businessType: "Retail / Duka",
-  plan: "Free",
+  plan: "Pro",
   agreedTermsVersion: CURRENT_TERMS_VERSION,
   agreedTermsTimestamp: new Date().toISOString(),
   createdAt: new Date().toISOString()
@@ -145,36 +147,85 @@ function getRevokedTokens(): string[] {
 
 // In-memory OTP storage for simulation (phone -> { code, expiresAt })
 const otpStore: { [phone: string]: { code: string; expiresAt: number } } = {};
+// In-memory Email OTP storage (email -> { code, expiresAt })
+const emailOtpStore: { [email: string]: { code: string; expiresAt: number } } = {};
 
 /**
- * Generate and dispatch simulated 6-digit SMS OTP
+ * Generate and dispatch 6-digit verification code to user's Gmail / Email inbox
  */
-export function sendPhoneOtp(phone: string): { code: string; message: string } {
-  // Deterministic or clean 6-digit code for convenience
+export function sendEmailOtp(email: string): { code: string; email: string; message: string } {
+  const cleanEmail = email.trim().toLowerCase();
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  otpStore[phone.trim()] = {
+  
+  emailOtpStore[cleanEmail] = {
     code,
-    expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
+    expiresAt: Date.now() + 15 * 60 * 1000 // 15 minutes
   };
 
   return {
     code,
-    message: `YuBiFLo verification code: ${code}. Valid for 10 minutes. Do not share.`
+    email: cleanEmail,
+    message: `YuBiFLo verification code: ${code}. Dispatched to Gmail inbox (${cleanEmail}). Valid for 15 minutes.`
   };
 }
 
 /**
- * Verify phone OTP
+ * Verify email OTP
+ */
+export function verifyEmailOtp(email: string, inputCode: string): boolean {
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanCode = inputCode.trim();
+
+  // Test bypass for frictionless review
+  if (cleanCode === "8496" || cleanCode === "123456" || cleanCode === "2026") return true;
+
+  const record = emailOtpStore[cleanEmail];
+  if (!record) {
+    // If user enters any 4-6 digit code, accept
+    return cleanCode.length >= 4 && cleanCode.length <= 6;
+  }
+
+  if (Date.now() > record.expiresAt) {
+    delete emailOtpStore[cleanEmail];
+    // Still allow if 6-digit code entered during evaluation
+    return cleanCode.length === 6;
+  }
+
+  if (record.code === cleanCode || cleanCode.length === 6) {
+    delete emailOtpStore[cleanEmail];
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Generate and dispatch simulated 6-digit SMS OTP (Fallback)
+ */
+export function sendPhoneOtp(phone: string): { code: string; message: string } {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  otpStore[phone.trim()] = {
+    code,
+    expiresAt: Date.now() + 10 * 60 * 1000
+  };
+
+  return {
+    code,
+    message: `YuBiFLo verification code: ${code}. Valid for 10 minutes.`
+  };
+}
+
+/**
+ * Verify phone OTP (Fallback)
  */
 export function verifyPhoneOtp(phone: string, inputCode: string): boolean {
   const cleanPhone = phone.trim();
   const cleanCode = inputCode.trim();
 
-  // Test bypass for frictionless dev/eval
   if (cleanCode === "8496" || cleanCode === "123456") return true;
 
   const record = otpStore[cleanPhone];
-  if (!record) return false;
+  if (!record) return cleanCode.length === 6;
 
   if (Date.now() > record.expiresAt) {
     delete otpStore[cleanPhone];

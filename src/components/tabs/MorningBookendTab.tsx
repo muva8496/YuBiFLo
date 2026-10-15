@@ -440,10 +440,10 @@ export default function MorningBookendTab({
                 <ShieldCheck size={12} className="text-emerald-400" /> Audit Anchor Status
               </span>
               <div className="text-xs font-bold text-slate-200 mt-1 font-sans">
-                Evening Bookend Baseline
+                Dawn Baseline Locked
               </div>
               <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
-                Evening reconciliation will reverse-calculate against these exact numbers to detect leakage down to the shilling.
+                Automated tracking eliminates tedious evening coin checks: incoming cargo and sales balance directly against this morning baseline.
               </p>
             </div>
             <button

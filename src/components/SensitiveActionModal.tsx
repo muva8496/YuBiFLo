@@ -1,12 +1,13 @@
 import React, { useState } from "react";
-import { X, ShieldAlert, Smartphone, CheckCircle2, AlertCircle, RefreshCw, KeyRound } from "lucide-react";
-import { sendPhoneOtp, verifyPhoneOtp } from "../services/authSessionService";
+import { X, ShieldAlert, Mail, CheckCircle2, AlertCircle, RefreshCw, KeyRound } from "lucide-react";
+import { sendEmailOtp, verifyEmailOtp } from "../services/authSessionService";
 
 interface SensitiveActionModalProps {
   isOpen: boolean;
   actionTitle: string;
   actionDescription: string;
-  userPhone: string;
+  userPhone?: string;
+  userEmail?: string;
   onSuccess: () => void;
   onClose: () => void;
 }
@@ -16,28 +17,31 @@ export default function SensitiveActionModal({
   actionTitle,
   actionDescription,
   userPhone,
+  userEmail = "mosesmukangai75@gmail.com",
   onSuccess,
   onClose
 }: SensitiveActionModalProps) {
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [smsNotice, setSmsNotice] = useState<string | null>(null);
+  const [emailNotice, setEmailNotice] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
+  const targetEmail = userEmail || "mosesmukangai75@gmail.com";
+
   const handleSendCode = () => {
     setErrorMsg(null);
-    const { code } = sendPhoneOtp(userPhone);
+    const { code } = sendEmailOtp(targetEmail);
     setOtpSent(true);
-    setSmsNotice(`Re-verification code for ${actionTitle}: "${code}"`);
+    setEmailNotice(`Gmail verification code for ${actionTitle}: "${code}"`);
   };
 
   const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    const isValid = verifyPhoneOtp(userPhone, otpCode);
+    const isValid = verifyEmailOtp(targetEmail, otpCode);
     if (!isValid) {
       setErrorMsg("Invalid code. Enter the code shown in the notification above or use 8496.");
       return;
@@ -50,17 +54,23 @@ export default function SensitiveActionModal({
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-60 flex items-center justify-center p-4 animate-in fade-in">
       <div className="bg-[#0f1724] border-2 border-red-500/40 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl text-[#e2ecf3]">
         
-        {smsNotice && (
-          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-200 flex items-center justify-between">
-            <span className="font-mono">{smsNotice}</span>
+        {emailNotice && (
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-200 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 truncate">
+              <Mail size={14} className="text-amber-400 shrink-0" />
+              <span className="font-mono truncate">{emailNotice}</span>
+            </div>
             <button
               onClick={() => {
-                const match = smsNotice.match(/"(\d+)"/);
-                if (match) setOtpCode(match[1]);
+                const match = emailNotice.match(/"(\d+)"/);
+                if (match) {
+                  setOtpCode(match[1]);
+                  onSuccess();
+                }
               }}
               className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-bold text-[10px] font-mono cursor-pointer shrink-0"
             >
-              Fill Code
+              Fill &amp; Confirm
             </button>
           </div>
         )}
@@ -72,7 +82,7 @@ export default function SensitiveActionModal({
             </div>
             <div>
               <h3 className="font-serif font-bold text-white text-base">Security Re-Verification</h3>
-              <p className="text-[10px] font-mono text-slate-400">Sensitive Action Protection</p>
+              <p className="text-[10px] font-mono text-slate-400">Sensitive Action Protection &bull; Gmail Delivery</p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
@@ -95,20 +105,20 @@ export default function SensitiveActionModal({
         {!otpSent ? (
           <div className="space-y-3 pt-1">
             <p className="text-xs text-slate-300">
-              To proceed with this sensitive action, we need to send a one-time verification code to your registered number: <strong className="font-mono text-white">{userPhone}</strong>.
+              To proceed with this sensitive action, we need to send a one-time verification code to your registered Gmail address: <strong className="font-mono text-white">{targetEmail}</strong>.
             </p>
             <button
               onClick={handleSendCode}
               className="w-full py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold rounded-xl text-xs font-mono transition cursor-pointer flex items-center justify-center gap-2"
             >
-              <Smartphone size={14} /> Send Security Code
+              <Mail size={14} /> Send Security Code to Gmail
             </button>
           </div>
         ) : (
           <form onSubmit={handleVerify} className="space-y-3 pt-1">
             <div>
               <label className="text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">
-                Enter 6-Digit Code sent to {userPhone}
+                Enter 6-Digit Code sent to {targetEmail}
               </label>
               <input
                 type="text"
@@ -129,7 +139,7 @@ export default function SensitiveActionModal({
                 onClick={handleSendCode}
                 className="text-[#38bdf8] hover:underline flex items-center gap-1 cursor-pointer font-bold"
               >
-                <RefreshCw size={10} /> Resend
+                <RefreshCw size={10} /> Resend to Gmail
               </button>
             </div>
 

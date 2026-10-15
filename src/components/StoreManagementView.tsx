@@ -877,24 +877,16 @@ export const StoreManagementView: React.FC<StoreManagementViewProps> = ({
         <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-6">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
-              <h3 className="text-base font-bold text-white">License Key & Active Tier</h3>
-              <p className="text-xs text-slate-400">View your active SaaS subscription and payment invoice history.</p>
+              <h3 className="text-base font-bold text-white">License Key & System Status</h3>
+              <p className="text-xs text-slate-400">View your active workspace hardware ID and system authentication.</p>
             </div>
-            <button
-              type="button"
-              onClick={triggerOpenUpgrade}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors"
-            >
-              <Zap className="w-4 h-4" />
-              <span>Change Subscription Tier</span>
-            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Active Tier</span>
-              <p className="text-base font-black text-amber-400">{sub.tierName}</p>
-              <p className="text-[11px] text-slate-400">Billing: {sub.billingCycle}</p>
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">System Status</span>
+              <p className="text-base font-black text-emerald-400">Active &amp; Verified</p>
+              <p className="text-[11px] text-slate-400">Full Access Enabled</p>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1">

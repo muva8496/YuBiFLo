@@ -187,17 +187,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* Subscription Tier Quick Badge */}
-          {onOpenSubscriptionModal && (
-            <button
-              onClick={onOpenSubscriptionModal}
-              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#111827] hover:bg-slate-800 border border-amber-500/30 text-amber-300 text-xs font-bold transition-all shadow-sm"
-              title="Click to upgrade subscription tier or view pricing"
-            >
-              <Crown className="w-3.5 h-3.5 text-amber-400" />
-              <span>{sub.tierName}</span>
-            </button>
-          )}
+
 
           {/* Admin Mode Status Badge */}
           <button

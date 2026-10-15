@@ -25,6 +25,7 @@ import {
   loadAlacioState, 
   saveAlacioState, 
   calculateKpis,
+  createSkeletonBusinessState,
   PLATFORM_BLUEPRINTS,
   PROJECT_ALACIO_CASE_STUDY
 } from "./services/alacioStorage";
@@ -194,46 +195,29 @@ export default function App() {
   const handleAuthSuccess = (user: UserProfile) => {
     setCurrentUser(user);
     setIsAuthModalOpen(false);
+    setIsDemoMode(false);
+    resetDemoSandbox();
 
-    if (isDemoMode) {
-      // Signing up from inside demo creates a new, empty real workspace and opens its Launchpad
-      setIsDemoMode(false);
-      resetDemoSandbox();
+    // As requested: "when a customer has already signed up it is his or her goods that come in...
+    // once a client signs in, say a person chooses a retail shop, the thing he gets should be a skeleton, not again the values in the demo"
+    const skeletonState = createSkeletonBusinessState(user.businessName, user.businessType);
+    setAlacioState(skeletonState);
+    saveAlacioState(skeletonState);
 
-      const newEmptyState: AlacioMasterState = {
-        ...loadAlacioState(),
-        merchant_name: user.businessName,
-        client_type: user.businessType,
-        tier: user.plan === "Pro" ? "PAID_BLUEPRINT" : "FREE_STARTER",
-        salesLedger: [],
-        payouts: [],
-        customers: [],
-        cash_register_balance: 0,
-        mpesa_float_balance: 0,
-        clean_trading_days: 0,
-        vcr_daily_count: 0
-      };
-      setAlacioState(newEmptyState);
-      saveAlacioState(newEmptyState);
+    const freshLaunchpad: LaunchpadProgress = {
+      step1_dawnLock: false,
+      step2_addStock: false,
+      step3_firstSale: false,
+      step4_addSuppliers: false,
+      step5_customersDeni: false,
+      step6_vcrNotice: false,
+      step7_closeDay: false
+    };
+    setRealLaunchpadProgress(freshLaunchpad);
+    localStorage.setItem("yubiflo_real_launchpad_progress", JSON.stringify(freshLaunchpad));
 
-      const freshLaunchpad: LaunchpadProgress = {
-        step1_dawnLock: false,
-        step2_addStock: false,
-        step3_firstSale: false,
-        step4_addSuppliers: false,
-        step5_customersDeni: false,
-        step6_vcrNotice: false,
-        step7_closeDay: false
-      };
-      setRealLaunchpadProgress(freshLaunchpad);
-      localStorage.setItem("yubiflo_real_launchpad_progress", JSON.stringify(freshLaunchpad));
-
-      setCurrentView("workspace");
-      setActiveTab("launchpad");
-    } else {
-      setCurrentView("workspace");
-      setActiveTab("dashboard");
-    }
+    setCurrentView("workspace");
+    setActiveTab("launchpad");
   };
 
   // State updater router (mutates demoState in sandbox, or alacioState in real)
@@ -545,16 +529,48 @@ export default function App() {
     }));
   };
 
-  const handleUpdateFloat = (denoms: Record<string, number>) => {
+  const handleUpdateFloat = (payload: any) => {
     setMasterState((prev) => {
-      const updatedDenoms = prev.floatDenominations.map((d) => {
+      if (payload && typeof payload === "object" && "cashBalance" in payload) {
+        const cash = Number(payload.cashBalance) || 0;
+        const mpesa = Number(payload.mpesaFloat) || 0;
+        const bank = Number(payload.bankPaybillBalance) || 0;
+        const total = cash + mpesa + bank;
+
+        const newBookend = {
+          id: `mb_dawn_${Date.now()}`,
+          date: payload.operatingDate || new Date().toISOString().slice(0, 10),
+          timestamp: new Date().toISOString(),
+          iso_date: payload.operatingDate || new Date().toISOString().slice(0, 10),
+          cash_float: cash,
+          mpesa_float: mpesa,
+          equitel_balance: bank,
+          total_liquidity: total,
+          debtors_count: (prev.customers || []).length,
+          total_customer_debt: (prev.customers || []).reduce((acc, c) => acc + (c.debt_balance || 0), 0),
+          opening_shelf_units: (prev.inventory || []).reduce((acc, i) => acc + (i.current_stock || 0), 0),
+          opening_shelf_value: (prev.inventory || []).reduce((acc, i) => acc + (i.total_shelf_value || 0), 0),
+          status: "LOCKED_DAWN" as const
+        };
+
+        return {
+          ...prev,
+          cash_register_balance: cash,
+          mpesa_float_balance: mpesa,
+          equitel_account_balance: bank,
+          morning_bookends: [newBookend, ...(prev.morning_bookends || [])],
+          last_updated: new Date().toISOString()
+        };
+      }
+
+      // Fallback for legacy denomination mapping
+      const updatedDenoms = (prev.floatDenominations || []).map((d) => {
         const key = `kes_${d.value}`;
         return {
           ...d,
-          count: denoms[key] !== undefined ? denoms[key] : d.count
+          count: payload[key] !== undefined ? payload[key] : d.count
         };
       });
-
       const totalCashDrawer = updatedDenoms.reduce((acc, d) => acc + d.value * d.count, 0);
 
       return {
@@ -753,16 +769,37 @@ export default function App() {
         });
       }
 
-      const updatedSuppliers = (prev.suppliers || []).map((s) => {
-        if (s.name.toLowerCase() === purchase.supplier.toLowerCase()) {
-          return {
-            ...s,
-            total_orders_cost: (s.total_orders_cost || 0) + purchase.amount,
-            last_delivery_date: purchase.date
-          };
-        }
-        return s;
-      });
+      const supplierExists = (prev.suppliers || []).some(
+        (s) => s.name.toLowerCase().trim() === purchase.supplier.toLowerCase().trim()
+      );
+
+      let updatedSuppliers: SupplierProfile[] = [];
+      if (supplierExists) {
+        updatedSuppliers = (prev.suppliers || []).map((s) => {
+          if (s.name.toLowerCase().trim() === purchase.supplier.toLowerCase().trim()) {
+            return {
+              ...s,
+              total_orders_cost: (s.total_orders_cost || 0) + purchase.amount,
+              last_delivery_date: purchase.date || "Today"
+            };
+          }
+          return s;
+        });
+      } else {
+        // Auto-create new supplier (e.g. Jahdithma Wholesalers) and total their cargo goods
+        const newSupplier: SupplierProfile = {
+          id: `supp_${Date.now()}`,
+          name: purchase.supplier,
+          company: `${purchase.supplier}`,
+          phone: purchase.supplierPhone || "0722 000 111",
+          national_id: purchase.supplierNationalId || "24891044",
+          category: "General Wholesaler",
+          total_orders_cost: purchase.amount,
+          last_delivery_date: purchase.date || "Today",
+          payment_preference: purchase.payment_channel === "MPESA" ? "MPESA_TILL" : "NATIONAL_ID_DEPOSIT"
+        };
+        updatedSuppliers = [newSupplier, ...(prev.suppliers || [])];
+      }
 
       return {
         ...prev,
@@ -770,6 +807,7 @@ export default function App() {
         payouts: [newPayout, ...(prev.payouts || [])],
         suppliers: updatedSuppliers,
         restockCards: [...newlyGeneratedRestockCards, ...(prev.restockCards || [])],
+        kpis: calculateKpis(updatedInventory, prev.warehouse),
         last_updated: new Date().toISOString()
       };
     });
@@ -989,6 +1027,15 @@ export default function App() {
     );
   }
 
+  const handleResetToSkeleton = () => {
+    const bizName = currentUser?.businessName || "Musa General Retailers";
+    const bizType = currentUser?.businessType || "Retail / Duka";
+    const skeleton = createSkeletonBusinessState(bizName, bizType);
+    setAlacioState(skeleton);
+    saveAlacioState(skeleton);
+    setActiveTab("launchpad");
+  };
+
   // -------------------------------------------------------------
   // VIEW 4: UNIFIED SAAS WORKSPACE SHELL (DUKA SPACE DEMO & REAL)
   // Both share the exact same top bar, sidebar, typography, theme, and spacing.
@@ -1016,6 +1063,7 @@ export default function App() {
         onOpenQuickSale={() => setActiveTab("voice_ledger")}
         onOpenQuickPurchase={() => setActiveTab("purchases")}
         onOpenQuickDeni={() => setActiveTab("customer_deni")}
+        onResetToSkeleton={handleResetToSkeleton}
         onOpenSettings={() => {}}
         onSignOut={() => {
           signOut();
@@ -1121,15 +1169,8 @@ export default function App() {
         {activeTab === "dawn_lock" && (
           <DawnLockTab
             state={currentMasterState}
-            onUpdateFloat={(denoms) => handleUpdateFloat(denoms)}
-            onResolveGap={(payout) => {
-              const updater = isDemoMode ? setDemoState : setAlacioState;
-              updater((prev) => ({
-                ...prev,
-                payouts: [payout, ...(prev.payouts || [])],
-                last_updated: new Date().toISOString()
-              }));
-            }}
+            onUpdateFloat={(floatData) => handleUpdateFloat(floatData)}
+            onNavigateTab={setActiveTab}
           />
         )}
 

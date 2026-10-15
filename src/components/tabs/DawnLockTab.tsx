@@ -1,200 +1,150 @@
 import React, { useState } from "react";
 import { 
-  Sun, Moon, Lock, Unlock, CheckCircle2, AlertTriangle, ShieldCheck, 
-  Coins, Smartphone, Scale, ArrowRight, DollarSign, Coffee, RefreshCw, HelpCircle,
-  Calendar
+  Sun, Lock, Unlock, CheckCircle2, ShieldCheck, 
+  Coins, Smartphone, Building2, Calendar, CreditCard,
+  Plus, RefreshCw, ArrowRight, Wallet
 } from "lucide-react";
-import { AlacioMasterState, PayoutOrDrawing } from "../../types/alacio";
+import { AlacioMasterState } from "../../types/alacio";
 
 interface DawnLockTabProps {
   state: AlacioMasterState;
-  onUpdateFloat?: (denominations: Record<string, number>, operatingDate?: string) => void;
-  onResolveGap?: (payout: PayoutOrDrawing) => void;
+  onUpdateFloat?: (data: {
+    cashBalance: number;
+    mpesaFloat: number;
+    bankPaybillBalance: number;
+    operatingDate: string;
+    bankName?: string;
+  }) => void;
+  onNavigateTab?: (tabId: string) => void;
 }
 
 export default function DawnLockTab({
   state,
   onUpdateFloat,
-  onResolveGap
+  onNavigateTab
 }: DawnLockTabProps) {
-  const { currency, floatDenominations, salesLedger = [], payouts = [] } = state;
+  const { currency = "KSh", cash_register_balance = 8450, mpesa_float_balance = 28300, equitel_account_balance = 14200, morning_bookends = [] } = state;
 
-  // Operating date state with backdating support
+  // Operating date state with quick selectors
   const todayStr = new Date().toISOString().slice(0, 10);
   const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const twoDaysAgoStr = new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10);
   const [operatingDate, setOperatingDate] = useState<string>(todayStr);
 
-  // Local state for denomination counts
-  const defaultDenoms: Record<string, number> = {
-    kes_1000: 5,
-    kes_500: 8,
-    kes_200: 12,
-    kes_100: 18,
-    kes_50: 20,
-    kes_20: 30,
-    kes_10: 25,
-    kes_5: 20,
-    kes_1: 10
-  };
+  // 3 Core Liquidity Channels
+  const [cashBalanceInput, setCashBalanceInput] = useState<number>(cash_register_balance || 8450);
+  const [mpesaFloatInput, setMpesaFloatInput] = useState<number>(mpesa_float_balance || 28300);
+  const [bankPaybillInput, setBankPaybillInput] = useState<number>(equitel_account_balance || 14200);
+  const [selectedBankChannel, setSelectedBankChannel] = useState<string>("Equity Bank Paybill / Account");
 
-  const initialDenoms = React.useMemo(() => {
-    if (Array.isArray(floatDenominations)) {
-      const rec: Record<string, number> = {};
-      floatDenominations.forEach((d) => {
-        rec[`kes_${d.value}`] = d.count;
-      });
-      return rec;
-    }
-    return defaultDenoms;
-  }, [floatDenominations]);
-
-  const [denoms, setDenoms] = useState<Record<string, number>>(initialDenoms);
-
-  const [mpesaFloatInput, setMpesaFloatInput] = useState<number>(28300);
+  // Lock State
   const [isLocked, setIsLocked] = useState<boolean>(true);
   const [lockedTime, setLockedTime] = useState<string>("05:57 AM");
   const [lockFeedback, setLockFeedback] = useState<string | null>(null);
 
-  // Compute drawer cash total
-  const totalDrawerCash = Object.entries(denoms).reduce((sum, [denom, count]) => {
-    const val = parseInt(denom.replace("kes_", ""), 10);
-    const countNum = Number(count) || 0;
-    return sum + (isNaN(val) ? 0 : val * countNum);
-  }, 0);
-
-  const totalStartingLiquidity = totalDrawerCash + mpesaFloatInput;
-
-  // End of day close calculation filtered by operatingDate (or all if not dated)
-  const cashSalesToday = salesLedger
-    .filter(s => {
-      const isDateMatch = !s.date || s.date === operatingDate || (s.timestamp && s.timestamp.startsWith(operatingDate));
-      const isCash = s.payment_channel === "CASH" || s.payment_channel === "SPLIT" || s.payment_method === "CASH" || s.payment_method === "SPLIT";
-      return isDateMatch && isCash;
-    })
-    .reduce((sum, s) => sum + (s.payment_channel === "SPLIT" || s.payment_method === "SPLIT" ? (s.cash_received || s.cash_paid || 0) : s.total_amount), 0);
-
-  const cashPayoutsToday = payouts
-    .filter(p => {
-      const isDateMatch = !p.date || p.date === operatingDate || (p.timestamp && p.timestamp.startsWith(operatingDate));
-      const isCash = p.payment_channel === "CASH" || !p.payment_channel;
-      return isDateMatch && isCash;
-    })
-    .reduce((sum, p) => sum + p.amount, 0);
-
-  const expectedClosingCash = totalDrawerCash + cashSalesToday - cashPayoutsToday;
-  const [actualClosingCash, setActualClosingCash] = useState<string>("");
-  const [gapResolved, setGapResolved] = useState<boolean>(false);
-  const [resolvedReason, setResolvedReason] = useState<string | null>(null);
-
-  const parsedActualClosing = actualClosingCash !== "" ? parseFloat(actualClosingCash) : expectedClosingCash;
-  const cashGap = parsedActualClosing - expectedClosingCash;
-
-  const handleDenomChange = (denomKey: string, val: number) => {
-    if (isLocked) return;
-    setDenoms(prev => ({
-      ...prev,
-      [denomKey]: Math.max(0, val)
-    }));
-  };
+  // Total Starting Liquidity across all 3 channels
+  const totalStartingLiquidity = (Number(cashBalanceInput) || 0) + 
+                                (Number(mpesaFloatInput) || 0) + 
+                                (Number(bankPaybillInput) || 0);
 
   const handleConfirmAndLock = () => {
     setIsLocked(true);
     const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setLockedTime(nowTime);
-    if (onUpdateFloat) onUpdateFloat(denoms, operatingDate);
-    setLockFeedback(`Dawn Float verified and locked for ${operatingDate} at ${nowTime}. Total Starting Liquidity: ${currency} ${totalStartingLiquidity.toLocaleString()}`);
-    setTimeout(() => setLockFeedback(null), 5000);
-  };
 
-  const handleOneTapResolve = (reason: "OWNER_CHAI" | "PERSONAL_LUNCH" | "UNLOGGED_SALE" | "SUPPLIER_DROP") => {
-    const absGap = Math.abs(cashGap);
-    if (onResolveGap && absGap > 0) {
-      const type = reason === "UNLOGGED_SALE" ? "BUSINESS_EXPENSE" : "OWNER_DRAWING";
-      const notes = 
-        reason === "OWNER_CHAI" ? `Owner Morning Chai / Milk Drawing [Date: ${operatingDate}]` :
-        reason === "PERSONAL_LUNCH" ? `Owner Personal Lunch & Family Drawing [Date: ${operatingDate}]` :
-        reason === "SUPPLIER_DROP" ? `Unlogged Bread / Milk Van Cash Payout [Date: ${operatingDate}]` : `Cash Drawer Variance Adjustment [Date: ${operatingDate}]`;
-
-      onResolveGap({
-        id: `payout_gap_${Date.now()}`,
-        amount: absGap,
-        type,
-        timestamp: new Date().toISOString(),
-        date: operatingDate,
-        notes
+    if (onUpdateFloat) {
+      onUpdateFloat({
+        cashBalance: cashBalanceInput,
+        mpesaFloat: mpesaFloatInput,
+        bankPaybillBalance: bankPaybillInput,
+        operatingDate,
+        bankName: selectedBankChannel
       });
     }
 
-    setGapResolved(true);
-    setResolvedReason(
-      reason === "OWNER_CHAI" ? "Resolved as Owner Chai / Tea (Personal Drawing)" :
-      reason === "PERSONAL_LUNCH" ? "Resolved as Owner Lunch / Family Drawing" :
-      reason === "SUPPLIER_DROP" ? "Resolved as Supplier Delivery Outflow" : "Resolved as Unlogged Counter Sale"
+    setLockFeedback(
+      `✓ Dawn Float successfully locked for ${operatingDate} at ${nowTime}. Total Starting Liquidity across Cash, M-Pesa & Bank: ${currency} ${totalStartingLiquidity.toLocaleString()}`
     );
+    setTimeout(() => setLockFeedback(null), 5000);
+  };
+
+  const handleQuickAdd = (channel: "cash" | "mpesa" | "bank", amount: number) => {
+    if (isLocked) return;
+    if (channel === "cash") setCashBalanceInput((prev) => Math.max(0, (Number(prev) || 0) + amount));
+    if (channel === "mpesa") setMpesaFloatInput((prev) => Math.max(0, (Number(prev) || 0) + amount));
+    if (channel === "bank") setBankPaybillInput((prev) => Math.max(0, (Number(prev) || 0) + amount));
   };
 
   return (
-    <div className="space-y-6 max-w-5xl font-sans text-[#E2ECF3]">
+    <div className="space-y-6 max-w-5xl font-sans text-slate-900 pb-12">
       
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#182C40] pb-4">
+      {/* ========================================================================= */}
+      {/* 1. TOP HEADER                                                             */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-serif font-bold text-white flex items-center gap-2">
-              <Sun className="text-amber-400" size={22} /> Dawn Lock &amp; Daily Close
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-serif font-bold text-slate-900 flex items-center gap-2">
+              <Sun className="text-amber-500" size={24} /> Dawn Lock &bull; Morning Liquidity
             </h1>
-            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border ${
+            <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full font-bold border ${
               isLocked 
-                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" 
-                : "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                ? "bg-emerald-50 text-emerald-800 border-emerald-300" 
+                : "bg-amber-50 text-amber-800 border-amber-300"
             }`}>
-              {isLocked ? `Locked at ${lockedTime}` : "Unlocked: Editing Counts"}
+              {isLocked ? `Locked at ${lockedTime}` : "Unlocked: Setting Baseline"}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Count drawer cash and M-Pesa float at dawn before trading. At close, compare actual cash with expected and resolve gaps in 1 tap.
+          <p className="text-xs text-slate-500 mt-1">
+            Different MSMEs have different payment channels where customer money goes. For an MSME doing shop trade and mobile money, there are 3 channels: <strong>M-Pesa Float</strong> (agent/merchant), <strong>Bank Paybill Account Balance</strong> (e.g. Equity Bank), and <strong>Cash Balance</strong>. Lock in these 3 baselines once at morning dawn. Fast total entry — no counting every denomination to the last coin, and <strong>no tedious evening checks</strong>.
           </p>
         </div>
 
-        {isLocked ? (
-          <button
-            onClick={() => setIsLocked(false)}
-            className="px-3.5 py-2 bg-[#182C40] hover:bg-[#203952] text-slate-200 font-bold rounded-xl text-xs font-mono transition flex items-center gap-1.5 self-start cursor-pointer"
-          >
-            <Unlock size={14} /> Unlock Float Counts
-          </button>
-        ) : (
-          <button
-            onClick={handleConfirmAndLock}
-            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs font-mono transition flex items-center gap-1.5 self-start cursor-pointer shadow-lg shadow-emerald-950/40"
-          >
-            <Lock size={14} /> Confirm &amp; Lock Float
-          </button>
-        )}
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          {isLocked ? (
+            <button
+              onClick={() => setIsLocked(false)}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs font-mono transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <Unlock size={14} />
+              <span>Unlock Float Channels</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleConfirmAndLock}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs font-mono transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <Lock size={14} />
+              <span>Confirm &amp; Lock Dawn Float</span>
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* FEEDBACK TOAST */}
       {lockFeedback && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 rounded-2xl text-xs flex items-center gap-2 animate-in fade-in font-mono">
-          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+        <div className="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-2xl text-xs flex items-center gap-2.5 animate-in fade-in shadow-2xs font-medium">
+          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
           <span>{lockFeedback}</span>
         </div>
       )}
 
-      {/* OPERATING DATE SELECTOR BAR (BACKDATING SUPPORT) */}
-      <div className="bg-[#101c2a] border border-[#1d3148] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+      {/* ========================================================================= */}
+      {/* 2. OPERATING DATE SELECTOR BAR (BACKDATING SUPPORT)                       */}
+      {/* ========================================================================= */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
-            <Calendar size={16} className="text-amber-400" />
-            <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+            <Calendar size={16} className="text-amber-500" />
+            <span className="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
               Dawn Operating Date:
             </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold">
               {operatingDate === todayStr ? "Today" : operatingDate === yesterdayStr ? "Yesterday" : "Backdated"}
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            Record dawn float, compare sales, or close ledger for today, yesterday, or past trading weeks.
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Lock opening baseline for today&apos;s trade or backdate past operating days.
           </p>
         </div>
 
@@ -204,8 +154,8 @@ export default function DawnLockTab({
             onClick={() => setOperatingDate(todayStr)}
             className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold border transition cursor-pointer ${
               operatingDate === todayStr 
-                ? "bg-amber-500 text-slate-950 border-amber-400 shadow" 
-                : "bg-[#16273b] text-slate-300 border-slate-700 hover:border-slate-600"
+                ? "bg-amber-500 text-slate-950 border-amber-400 shadow-2xs" 
+                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
             }`}
           >
             Today
@@ -215,8 +165,8 @@ export default function DawnLockTab({
             onClick={() => setOperatingDate(yesterdayStr)}
             className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold border transition cursor-pointer ${
               operatingDate === yesterdayStr 
-                ? "bg-amber-500 text-slate-950 border-amber-400 shadow" 
-                : "bg-[#16273b] text-slate-300 border-slate-700 hover:border-slate-600"
+                ? "bg-amber-500 text-slate-950 border-amber-400 shadow-2xs" 
+                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
             }`}
           >
             Yesterday
@@ -226,262 +176,388 @@ export default function DawnLockTab({
             onClick={() => setOperatingDate(twoDaysAgoStr)}
             className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold border transition cursor-pointer ${
               operatingDate === twoDaysAgoStr 
-                ? "bg-amber-500 text-slate-950 border-amber-400 shadow" 
-                : "bg-[#16273b] text-slate-300 border-slate-700 hover:border-slate-600"
+                ? "bg-amber-500 text-slate-950 border-amber-400 shadow-2xs" 
+                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
             }`}
           >
             2 Days Ago
           </button>
-          <div className="flex items-center gap-1 bg-[#091018] border border-slate-700 rounded-xl px-2 py-0.5">
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1">
             <input
               type="date"
               value={operatingDate}
               onChange={(e) => setOperatingDate(e.target.value)}
-              className="bg-transparent text-xs text-white font-mono focus:outline-none"
+              className="bg-transparent text-xs text-slate-800 font-mono focus:outline-none cursor-pointer"
               title="Select custom date"
             />
           </div>
         </div>
       </div>
 
-      {/* PART 1: MORNING OPENING FLOAT SECTION */}
-      <div className="bg-[#0E1A29] border border-[#182C40] rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#182C40] pb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-              <Sun size={17} />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-white font-mono uppercase">
-                1. Morning Opening Cash Drawer &amp; M-Pesa Float
-              </h2>
-              <span className="text-[10px] text-slate-400">
-                05:57 AM baseline float prevents pocket cash from co-mingling with shop earnings.
-              </span>
-            </div>
+      {/* ========================================================================= */}
+      {/* 3. TOTAL STARTING LIQUIDITY CALLOUT                                       */}
+      {/* ========================================================================= */}
+      <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-3xl p-6 sm:p-7 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-blue-200 text-xs font-mono uppercase font-bold tracking-wider">
+            <ShieldCheck size={16} className="text-emerald-400" />
+            <span>Total Morning Starting Liquidity</span>
           </div>
-
-          <div className="text-right font-mono">
-            <span className="text-[10px] text-slate-400 block uppercase">Starting Liquidity:</span>
-            <strong className="text-emerald-400 text-lg">
-              {currency} {totalStartingLiquidity.toLocaleString()}
-            </strong>
+          <div className="text-3xl sm:text-4xl font-serif font-black text-white mt-1">
+            {currency} {totalStartingLiquidity.toLocaleString()}
           </div>
+          <p className="text-xs text-blue-200/80 mt-1">
+            Opening cash, M-Pesa float, and bank paybill balances are locked at dawn. Once locked, turnover is tracked automatically throughout trade without needing evening checks.
+          </p>
         </div>
 
-        {/* SUMMARY TILES */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-          <div className="p-4 bg-[#09121D] rounded-2xl border border-[#182C40] flex items-center justify-between">
-            <div>
-              <span className="text-slate-400 block text-[10px] uppercase">Drawer Hard Cash (Notes &amp; Coins):</span>
-              <strong className="text-white text-base">{currency} {totalDrawerCash.toLocaleString()}</strong>
-            </div>
-            <Coins className="text-amber-400" size={24} />
-          </div>
-
-          <div className="p-4 bg-[#09121D] rounded-2xl border border-[#182C40] flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-slate-400 block text-[10px] uppercase">M-Pesa Merchant Float:</span>
-              {isLocked ? (
-                <strong className="text-white text-base">{currency} {mpesaFloatInput.toLocaleString()}</strong>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <span className="text-slate-400">{currency}</span>
-                  <input
-                    type="number"
-                    value={mpesaFloatInput}
-                    onChange={(e) => setMpesaFloatInput(Math.max(0, parseFloat(e.target.value) || 0))}
-                    className="w-28 bg-[#080D15] border border-[#182C40] rounded-lg px-2 py-1 text-white font-mono"
-                  />
-                </div>
-              )}
-            </div>
-            <Smartphone className="text-cyan-400" size={24} />
-          </div>
-        </div>
-
-        {/* DENOMINATIONS BREAKDOWN */}
-        <div className="space-y-2">
-          <span className="text-[11px] font-mono uppercase text-slate-400 font-bold block">
-            Physical Currency Denominations:
-          </span>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 text-xs font-mono">
-            {Object.entries(denoms).map(([denomKey, rawCount]) => {
-              const count = Number(rawCount) || 0;
-              const val = parseInt(denomKey.replace("kes_", ""), 10);
-              const subtotal = val * count;
-
-              return (
-                <div key={denomKey} className="p-2.5 bg-[#09121D] border border-[#182C40] rounded-xl space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white">KES {val}</span>
-                    <span className="text-[10px] text-slate-400">{count} pcs</span>
-                  </div>
-
-                  {!isLocked && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleDenomChange(denomKey, count - 1)}
-                        className="w-6 h-6 bg-[#132337] hover:bg-[#1C324E] rounded text-white flex items-center justify-center font-bold"
-                      >
-                        -
-                      </button>
-                      <input
-                        type="number"
-                        min={0}
-                        value={count}
-                        onChange={(e) => handleDenomChange(denomKey, parseInt(e.target.value, 10) || 0)}
-                        className="w-full text-center bg-[#080D15] border border-[#182C40] rounded text-white py-0.5 text-xs"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleDenomChange(denomKey, count + 1)}
-                        className="w-6 h-6 bg-[#132337] hover:bg-[#1C324E] rounded text-white flex items-center justify-center font-bold"
-                      >
-                        +
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="text-[10px] text-right text-emerald-400 font-bold">
-                    KES {subtotal.toLocaleString()}
-                  </div>
-                </div>
-              );
-            })}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="px-3.5 py-2 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-right">
+            <span className="text-[10px] text-blue-200 font-mono block uppercase">Status</span>
+            <span className="text-xs font-bold text-emerald-300 font-mono">
+              {isLocked ? "✓ LOCKED AT DAWN" : "EDITING BASELINES"}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* PART 2: END-OF-DAY CLOSE & UNEXPLAINED CASH RESOLUTION */}
-      <div className="bg-[#0E1A29] border border-[#182C40] rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
-        <div className="flex items-center gap-2 border-b border-[#182C40] pb-3">
-          <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
-            <Moon size={17} />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-white font-mono uppercase">
-              2. End-of-Day Close &amp; Unexplained Cash Resolution
-            </h2>
-            <span className="text-[10px] text-slate-400">
-              Expected closing = Dawn Cash + Cash Sales - Logged Cash Payouts.
-            </span>
-          </div>
+      {/* ========================================================================= */}
+      {/* 4. THE 3 CHANNELS OF MONEY (NO COIN-BY-COIN COUNTING)                     */}
+      {/* ========================================================================= */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-800 uppercase font-mono tracking-wider">
+            The 3 Inbound Payment Channels
+          </h2>
+          <span className="text-xs text-slate-500 font-mono">
+            Fast entry &bull; No denomination counting to the last coin &bull; No evening checks
+          </span>
         </div>
 
-        {/* MATH BREAKDOWN */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs font-mono">
-          <div className="p-3 bg-[#09121D] rounded-xl border border-[#182C40]">
-            <span className="text-slate-400 block text-[9px] uppercase">Opening Cash:</span>
-            <span className="text-white font-bold">{currency} {totalDrawerCash.toLocaleString()}</span>
-          </div>
-          <div className="p-3 bg-[#09121D] rounded-xl border border-[#182C40]">
-            <span className="text-slate-400 block text-[9px] uppercase">+ Today's Cash Sales:</span>
-            <span className="text-emerald-400 font-bold">+{currency} {cashSalesToday.toLocaleString()}</span>
-          </div>
-          <div className="p-3 bg-[#09121D] rounded-xl border border-[#182C40]">
-            <span className="text-slate-400 block text-[9px] uppercase">- Logged Payouts:</span>
-            <span className="text-amber-400 font-bold">-{currency} {cashPayoutsToday.toLocaleString()}</span>
-          </div>
-          <div className="p-3 bg-[#132337] rounded-xl border border-[#1E3A5F]">
-            <span className="text-cyan-300 block text-[9px] uppercase font-bold">= Expected Till Cash:</span>
-            <span className="text-white font-black text-sm">{currency} {expectedClosingCash.toLocaleString()}</span>
-          </div>
-        </div>
-
-        {/* ACTUAL CASH TALLY INPUT */}
-        <div className="p-4 bg-[#09121D] rounded-2xl border border-[#182C40] space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <label className="text-xs font-bold text-white font-mono block">
-                Actual Cash Counted in Till at Close ({currency})
-              </label>
-              <span className="text-[10px] text-slate-400">
-                Count notes and coins in the drawer right now at close of business.
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          {/* CHANNEL 1: CASH DRAWER / HARD CASH */}
+          <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-2xs space-y-4 hover:border-amber-400/60 transition">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                <Coins size={22} />
+              </div>
+              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">
+                Channel 1: Cash
               </span>
             </div>
 
-            <input
-              type="number"
-              value={actualClosingCash}
-              onChange={(e) => {
-                setActualClosingCash(e.target.value);
-                setGapResolved(false);
-              }}
-              placeholder={`e.g. ${expectedClosingCash}`}
-              className="w-full sm:w-48 bg-[#080D15] border-2 border-cyan-500/50 rounded-xl p-2.5 text-white font-mono text-base font-bold focus:outline-none"
-            />
-          </div>
+            <div>
+              <h3 className="font-serif font-bold text-slate-900 text-base">
+                Drawer Cash in Hand
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Total opening hard cash in till. No counting every coin.
+              </p>
+            </div>
 
-          {/* GAP DETECTION & ONE-TAP RESOLUTION QUESTIONS */}
-          {actualClosingCash !== "" && (
-            <div className="pt-3 border-t border-[#182C40] space-y-3">
-              {cashGap === 0 || gapResolved ? (
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/40 rounded-xl text-xs text-emerald-300 flex items-center justify-between font-mono">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                    <span>
-                      {gapResolved 
-                        ? (resolvedReason || "Gap resolved. Ledger perfectly balanced.") 
-                        : "Zero Variance: Till exactly matches expected sales!"}
-                    </span>
-                  </div>
-                  <span className="font-bold text-emerald-400">0 KES Leakage</span>
+            <div className="pt-1">
+              <label className="text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">
+                Cash Balance ({currency})
+              </label>
+              {isLocked ? (
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xl font-mono font-bold text-slate-900">
+                  {currency} {(Number(cashBalanceInput) || 0).toLocaleString()}
                 </div>
               ) : (
-                <div className="p-4 bg-amber-500/10 border-2 border-amber-500/40 rounded-2xl space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-amber-300 font-bold font-mono text-xs">
-                      <AlertTriangle size={16} className="text-amber-400" />
-                      <span>
-                        Unexplained Variance: {cashGap < 0 ? `-${currency} ${Math.abs(cashGap).toLocaleString()} missing from till` : `+${currency} ${cashGap.toLocaleString()} surplus in till`}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-200">
-                      1-Tap Question
-                    </span>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-400 font-mono text-sm">{currency}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={cashBalanceInput}
+                      onChange={(e) => setCashBalanceInput(Math.max(0, parseFloat(e.target.value) || 0))}
+                      className="w-full bg-white border-2 border-amber-500/40 focus:border-amber-500 rounded-2xl pl-12 pr-3 py-2 text-lg font-mono font-bold text-slate-900 focus:outline-none"
+                    />
                   </div>
-
-                  <p className="text-xs text-slate-300">
-                    Did money leave the till for a personal lunch or unrecorded milk delivery? Tap the matching reason below to resolve the gap into your double-entry ledger:
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => handleOneTapResolve("OWNER_CHAI")}
-                      className="p-2.5 bg-[#0A121C] hover:bg-[#121F2D] border border-amber-500/40 rounded-xl text-left transition cursor-pointer"
+                      onClick={() => handleQuickAdd("cash", 500)}
+                      className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-mono font-bold text-slate-700 cursor-pointer"
                     >
-                      <strong className="text-white block font-bold">1. Owner Chai / Milk</strong>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">Took cash for tea (Personal Drawing)</span>
+                      +500
                     </button>
-
                     <button
                       type="button"
-                      onClick={() => handleOneTapResolve("PERSONAL_LUNCH")}
-                      className="p-2.5 bg-[#0A121C] hover:bg-[#121F2D] border border-amber-500/40 rounded-xl text-left transition cursor-pointer"
+                      onClick={() => handleQuickAdd("cash", 1000)}
+                      className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-mono font-bold text-slate-700 cursor-pointer"
                     >
-                      <strong className="text-white block font-bold">2. Personal Lunch / Family</strong>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">Family food expenses (Owner Drawing)</span>
+                      +1,000
                     </button>
-
                     <button
                       type="button"
-                      onClick={() => handleOneTapResolve("SUPPLIER_DROP")}
-                      className="p-2.5 bg-[#0A121C] hover:bg-[#121F2D] border border-amber-500/40 rounded-xl text-left transition cursor-pointer"
+                      onClick={() => handleQuickAdd("cash", 5000)}
+                      className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-mono font-bold text-slate-700 cursor-pointer"
                     >
-                      <strong className="text-white block font-bold">3. Unlogged Delivery</strong>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">Paid bread/milk van directly from till</span>
+                      +5,000
                     </button>
                   </div>
                 </div>
               )}
             </div>
-          )}
+
+            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+              <span>Counter Change &amp; Float</span>
+              <span className="font-mono text-amber-700 font-semibold">Ready for Trade</span>
+            </div>
+          </div>
+
+          {/* CHANNEL 2: M-PESA FLOAT */}
+          <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-2xs space-y-4 hover:border-emerald-400/60 transition">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                <Smartphone size={22} />
+              </div>
+              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                Channel 2: M-Pesa
+              </span>
+            </div>
+
+            <div>
+              <h3 className="font-serif font-bold text-slate-900 text-base">
+                M-Pesa Merchant / Agent Float
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Deposit float on M-Pesa Agent SIM or Till Buy Goods balance.
+              </p>
+            </div>
+
+            <div className="pt-1">
+              <label className="text-[10px] font-mono uppercase text-slate-400 font-bold block mb-1">
+                M-Pesa Float Balance ({currency})
+              </label>
+              {isLocked ? (
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xl font-mono font-bold text-slate-900">
+                  {currency} {(Number(mpesaFloatInput) || 0).toLocaleString()}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-400 font-mono text-sm">{currency}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={mpesaFloatInput}
+                      onChange={(e) => setMpesaFloatInput(Math.max(0, parseFloat(e.target.value) || 0))}
+                      className="w-full bg-white border-2 border-emerald-500/40 focus:border-emerald-500 rounded-2xl pl-12 pr-3 py-2 text-lg font-mono font-bold text-slate-900 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdd("mpesa", 1000)}
+                      className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-mono font-bold text-slate-700 cursor-pointer"
+                    >
+                      +1,000
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdd("mpesa", 5000)}
+                      className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-mono font-bold text-slate-700 cursor-pointer"
+                    >
+                      +5,000
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdd("mpesa", 10000)}
+                      className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-mono font-bold text-slate-700 cursor-pointer"
+                    >
+                      +10,000
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+              <span>Safaricom Line Balance</span>
+              <span className="font-mono text-emerald-700 font-semibold">Verified SIM</span>
+            </div>
+          </div>
+
+          {/* CHANNEL 3: BANK / PAYBILL ACCOUNT (EQUITY, KCB, CO-OP) */}
+          <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-2xs space-y-4 hover:border-blue-400/60 transition">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                <Building2 size={22} />
+              </div>
+              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold">
+                Channel 3: Bank / Paybill
+              </span>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between">
+                <h3 className="font-serif font-bold text-slate-900 text-base">
+                  Bank / Paybill Balance
+                </h3>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Equity Bank, KCB, or Bank Paybill settlement account.
+              </p>
+            </div>
+
+            <div className="pt-1">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[10px] font-mono uppercase text-slate-400 font-bold">
+                  Account Balance ({currency})
+                </label>
+                {!isLocked && (
+                  <select
+                    value={selectedBankChannel}
+                    onChange={(e) => setSelectedBankChannel(e.target.value)}
+                    className="text-[10px] font-mono bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700"
+                  >
+                    <option value="Equity Bank Paybill / Account">Equity Bank</option>
+                    <option value="KCB Bank Paybill">KCB Bank</option>
+                    <option value="Co-operative Bank">Co-op Bank</option>
+                    <option value="Stanbic Bank Paybill">Stanbic Bank</option>
+                    <option value="Other Bank Paybill">Other Bank Paybill</option>
+                  </select>
+                )}
+              </div>
+
+              {isLocked ? (
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xl font-mono font-bold text-slate-900">
+                  {currency} {(Number(bankPaybillInput) || 0).toLocaleString()}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-400 font-mono text-sm">{currency}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={bankPaybillInput}
+                      onChange={(e) => setBankPaybillInput(Math.max(0, parseFloat(e.target.value) || 0))}
+                      className="w-full bg-white border-2 border-blue-500/40 focus:border-blue-500 rounded-2xl pl-12 pr-3 py-2 text-lg font-mono font-bold text-slate-900 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdd("bank", 1000)}
+                      className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-mono font-bold text-slate-700 cursor-pointer"
+                    >
+                      +1,000
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdd("bank", 5000)}
+                      className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-mono font-bold text-slate-700 cursor-pointer"
+                    >
+                      +5,000
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdd("bank", 10000)}
+                      className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-mono font-bold text-slate-700 cursor-pointer"
+                    >
+                      +10,000
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+              <span className="truncate max-w-[150px]">{selectedBankChannel}</span>
+              <span className="font-mono text-blue-700 font-semibold shrink-0">Opening Balance</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 5. SUMMARY AUDIT TRAIL: RECENT MORNING DAWN LOCKS                         */}
+      {/* ========================================================================= */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-2xs space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <ShieldCheck size={16} className="text-emerald-600" />
+              <span>Dawn Float Audit Trail</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Verified opening float records across Cash, M-Pesa, and Bank accounts.
+            </p>
+          </div>
+          <span className="text-[10px] font-mono uppercase bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-bold">
+            {morning_bookends.length > 0 ? `${morning_bookends.length} Days Logged` : "1 Day Active"}
+          </span>
         </div>
 
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs font-sans">
+            <thead>
+              <tr className="border-b border-slate-200 text-[10px] font-bold uppercase text-slate-400">
+                <th className="py-2 px-3">Date</th>
+                <th className="py-2 px-3">Cash Drawer</th>
+                <th className="py-2 px-3">M-Pesa Float</th>
+                <th className="py-2 px-3">Bank / Paybill</th>
+                <th className="py-2 px-3 text-right">Total Dawn Liquidity</th>
+                <th className="py-2 px-3 text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700 font-mono text-xs">
+              <tr className="bg-emerald-50/40">
+                <td className="py-2.5 px-3 font-sans font-bold text-slate-900">
+                  {operatingDate} (Active Day)
+                </td>
+                <td className="py-2.5 px-3">
+                  {currency} {cashBalanceInput.toLocaleString()}
+                </td>
+                <td className="py-2.5 px-3">
+                  {currency} {mpesaFloatInput.toLocaleString()}
+                </td>
+                <td className="py-2.5 px-3">
+                  {currency} {bankPaybillInput.toLocaleString()}
+                </td>
+                <td className="py-2.5 px-3 text-right font-bold text-emerald-700">
+                  {currency} {totalStartingLiquidity.toLocaleString()}
+                </td>
+                <td className="py-2.5 px-3 text-center font-sans">
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                    {isLocked ? "LOCKED AT DAWN" : "PENDING LOCK"}
+                  </span>
+                </td>
+              </tr>
+
+              {morning_bookends.map((mb, idx) => (
+                <tr key={mb.id || idx} className="hover:bg-slate-50">
+                  <td className="py-2.5 px-3 font-sans text-slate-800">
+                    {mb.date || mb.iso_date}
+                  </td>
+                  <td className="py-2.5 px-3">
+                    {currency} {(mb.cash_float || 8450).toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-3">
+                    {currency} {(mb.mpesa_float || 28300).toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-3">
+                    {currency} {(mb.equitel_balance || 14200).toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-3 text-right font-bold text-slate-900">
+                    {currency} {(mb.total_liquidity || ((mb.cash_float || 8450) + (mb.mpesa_float || 28300) + (mb.equitel_balance || 14200))).toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-3 text-center font-sans">
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold">
+                      VERIFIED
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
     </div>

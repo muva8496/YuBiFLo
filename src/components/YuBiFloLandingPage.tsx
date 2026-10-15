@@ -406,21 +406,7 @@ export default function YuBiFloLandingPage({
                 Projects
               </button>
 
-              {/* 4. Pricing */}
-              <button 
-                onClick={() => {
-                  setSolutionsMenuOpen(false);
-                  setBusinessTypesMenuOpen(false);
-                  setResourcesMenuOpen(false);
-                  const el = document.getElementById("pricing-section");
-                  el?.scrollIntoView({ behavior: "smooth" });
-                }}
-                className="hover:text-[#000000] transition cursor-pointer"
-              >
-                Pricing
-              </button>
-
-              {/* 5. Resources Dropdown */}
+              {/* 4. Resources Dropdown */}
               <div className="relative">
                 <button 
                   onClick={() => {
@@ -455,11 +441,19 @@ export default function YuBiFloLandingPage({
             ) : (
               <>
                 <button
+                  onClick={() => onOpenAuth ? onOpenAuth("signin") : handleLaunchWorkspace()}
+                  className="px-3.5 py-2 rounded-full text-[#222222] hover:text-[#000000] hover:bg-zinc-200/60 font-semibold text-xs transition cursor-pointer"
+                  title="Sign in with your Gmail address"
+                >
+                  Log in
+                </button>
+
+                <button
                   onClick={() => onLaunchDukaDemo ? onLaunchDukaDemo() : handleLaunchWorkspace()}
                   className="px-4 py-2 rounded-full border border-zinc-300 hover:border-black text-[#222222] hover:text-[#000000] font-semibold text-xs transition cursor-pointer"
-                  title="Explore live demo duka"
+                  title="Explore live workspace"
                 >
-                  Meet the Demo
+                  Explore Live
                 </button>
 
                 <button
@@ -486,10 +480,16 @@ export default function YuBiFloLandingPage({
             ) : (
               <div className="flex items-center gap-1.5">
                 <button
+                  onClick={() => onOpenAuth ? onOpenAuth("signin") : handleLaunchWorkspace()}
+                  className="px-2 py-1.5 rounded-full text-zinc-800 text-[11px] font-semibold hover:bg-zinc-100"
+                >
+                  Log in
+                </button>
+                <button
                   onClick={() => onLaunchDukaDemo ? onLaunchDukaDemo() : handleLaunchWorkspace()}
                   className="px-2.5 py-1.5 rounded-full border border-zinc-300 text-zinc-800 text-[11px] font-semibold"
                 >
-                  Demo
+                  Live
                 </button>
                 <button
                   onClick={() => onOpenAuth ? onOpenAuth("signup") : handleLaunchWorkspace()}
@@ -1287,92 +1287,7 @@ export default function YuBiFloLandingPage({
         </div>
       </section>
 
-      {/* ========================================================================= */}
-      {/* 8. PRICING SECTION                                                        */}
-      {/* ========================================================================= */}
-      <section id="pricing-section" className="py-20 bg-[#DDE7F0]/40 border-t border-[#C8D7E3]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
-            <div className="text-xs font-bold uppercase tracking-widest text-[#B8860B]">
-              Transparent Plans
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-serif font-black text-[#000000] tracking-tight">
-              Simple pricing for working shops
-            </h2>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto gap-8">
-            
-            {/* Starter Plan */}
-            <div className="p-8 rounded-3xl bg-white border border-[#e4e4e7] space-y-6 shadow-sm">
-              <div>
-                <span className="text-xs font-bold text-[#000000] uppercase tracking-wider font-mono">Starter</span>
-                <h3 className="text-3xl font-serif font-black text-[#000000] mt-1">Free</h3>
-                <p className="text-xs text-[#666666] mt-1">Everything you need to stop losing cash</p>
-              </div>
-
-              <ul className="space-y-3 text-xs text-[#333333]">
-                <li className="flex items-center gap-2">
-                  <Check size={15} className="text-[#000000]" /> Morning till cash &amp; M-Pesa float lock
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={15} className="text-[#000000]" /> Daily sales &amp; customer credit (Deni) ledger
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={15} className="text-[#000000]" /> 100% offline device storage (never loses data)
-                </li>
-              </ul>
-
-              <button
-                onClick={handleLaunchWorkspace}
-                className="w-full py-3 rounded-full bg-[#f4f4f5] hover:bg-[#DDE7F0] text-[#000000] font-bold text-xs transition"
-              >
-                Start free with VCR
-              </button>
-            </div>
-
-            {/* Pro Plan */}
-            <div className="p-8 rounded-3xl bg-white border-2 border-[#000000] space-y-6 shadow-lg relative">
-              <div className="absolute -top-3 right-8 bg-[#000000] text-white text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-0.5 rounded-full shadow">
-                Popular
-              </div>
-
-              <div>
-                <span className="text-xs font-bold text-[#B8860B] uppercase tracking-wider font-mono">Pro Shop</span>
-                <h3 className="text-3xl font-serif font-black text-[#000000] mt-1">
-                  KSh 1,200 <span className="text-xs font-sans text-[#666666] font-normal">/ month</span>
-                </h3>
-                <p className="text-xs text-[#666666] mt-1">For shops ready to expand and secure working float</p>
-              </div>
-
-              <ul className="space-y-3 text-xs text-[#333333]">
-                <li className="flex items-center gap-2">
-                  <Check size={15} className="text-[#000000]" /> Everything in Free Starter
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={15} className="text-[#000000]" /> Real-time Voice Ledger (VCR hands-free listening)
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={15} className="text-[#000000]" /> Automated supplier restock &amp; delivery audits
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={15} className="text-[#000000]" /> WhatsApp debt reminders sent directly to customers
-                </li>
-              </ul>
-
-              <button
-                onClick={handleLaunchWorkspace}
-                className="w-full py-3 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs transition shadow-sm"
-              >
-                Start free trial with VCR
-              </button>
-            </div>
-
-          </div>
-
-        </div>
-      </section>
 
       {/* ========================================================================= */}
       {/* 9. FAQ SECTION (ANSWERS: WHAT VCR RECORDS, WHAT IS DELETED, WHO CAN SEE)  */}
@@ -1470,7 +1385,7 @@ export default function YuBiFloLandingPage({
                 <li><button onClick={() => setIsVoiceRecordingModalOpen(true)} className="hover:text-white transition">Voice Simulator</button></li>
                 <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition">Dawn Till Float Lock</button></li>
                 <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition">Customer Credit &amp; Deni</button></li>
-                <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition">Evening Profit Audit</button></li>
+                <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition">Live Profit &amp; Sales Audit</button></li>
               </ul>
             </div>
 
@@ -1735,7 +1650,7 @@ export default function YuBiFloLandingPage({
                 }}
                 className="flex-1 py-3 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs transition cursor-pointer shadow-sm text-center"
               >
-                Start free with VCR in Store &rarr;
+                Launch VCR in Store &rarr;
               </button>
               <button
                 onClick={() => setIsVoiceRecordingModalOpen(false)}

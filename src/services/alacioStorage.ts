@@ -210,7 +210,7 @@ export function getBlueprintCardConfig(status: BlueprintStatus) {
       return {
         badgeText: "Available now",
         badgeClass: "bg-black text-white border-zinc-700",
-        buttonText: "Start free with VCR",
+        buttonText: "Launch with VCR",
         buttonClass: "bg-black hover:bg-zinc-800 text-white font-bold border border-zinc-700 shadow-md",
         isLive: true
       };
@@ -680,21 +680,96 @@ export function resetAlacioToZeroSlate(): AlacioMasterState {
   return INITIAL_ALACIO_STATE;
 }
 
-export function calculateKpis(inventory: InventoryItem[], warehouse: WarehouseBatch[] = []) {
-  const totalRetail = inventory.reduce((acc, curr) => acc + (curr.current_stock * curr.unit_retail), 0);
-  const totalCost = inventory.reduce((acc, curr) => acc + (curr.current_stock * curr.unit_cost), 0);
+/**
+ * Creates a clean skeleton workspace for a newly signed-up or signed-in client.
+ * As requested: "when a customer has already signed up it is his or her goods that come in...
+ * the thing he gets should be a skeleton, not again the values in the demo"
+ */
+export function createSkeletonBusinessState(
+  businessName: string = "Musa General Retailers",
+  businessType: string = "Retail / Duka"
+): AlacioMasterState {
+  return {
+    merchant_name: businessName,
+    client_type: businessType,
+    tier: "PAID_BLUEPRINT",
+    is_skeleton: true,
+    inventory: [], // Clean skeleton: goods come in via inbound deliveries / purchases
+    warehouse: [],
+    salesLedger: [],
+    payouts: [],
+    customers: [],
+    suppliers: [
+      {
+        id: "supp_001",
+        name: "Jahdithma Wholesalers",
+        company: "Jahdithma Wholesalers & Distributors",
+        phone: "0722 000 111",
+        national_id: "24891044",
+        category: "General Wholesaler",
+        total_orders_cost: 0,
+        last_delivery_date: "Active Wholesaler",
+        payment_preference: "NATIONAL_ID_DEPOSIT"
+      }
+    ],
+    floatDenominations: [],
+    morning_bookends: [
+      {
+        id: `mb_dawn_${Date.now()}`,
+        date: new Date().toISOString().slice(0, 10),
+        timestamp: new Date().toISOString(),
+        iso_date: new Date().toISOString().slice(0, 10),
+        cash_float: 8450,
+        mpesa_float: 28300,
+        equitel_balance: 14200,
+        total_liquidity: 50950,
+        debtors_count: 0,
+        total_customer_debt: 0,
+        opening_shelf_units: 0,
+        opening_shelf_value: 0,
+        status: "LOCKED_DAWN"
+      }
+    ],
+    restockCards: [],
+    mpesaStatements: [],
+    reconciliations: [],
+    kpis: {
+      total_active_shelf_retail_value: 0,
+      total_capital_invested: 0,
+      locked_in_potential_gross_profit: 0,
+      avg_markup_percentage: 0,
+      total_active_items: 0,
+      warehouse_bulk_value: 0,
+      warehouse_total_units: 0
+    },
+    cash_register_balance: 8450,
+    mpesa_float_balance: 28300,
+    equitel_account_balance: 14200,
+    currency: "KSh",
+    last_updated: new Date().toISOString(),
+    vcr_daily_count: 0,
+    vcr_customer_consent: true,
+    clean_trading_days: 0
+  };
+}
+
+export function calculateKpis(inventory: InventoryItem[] = [], warehouse: WarehouseBatch[] = []) {
+  const safeInventory = Array.isArray(inventory) ? inventory : [];
+  const safeWarehouse = Array.isArray(warehouse) ? warehouse : [];
+  const totalRetail = safeInventory.reduce((acc, curr) => acc + (curr.current_stock * curr.unit_retail), 0);
+  const totalCost = safeInventory.reduce((acc, curr) => acc + (curr.current_stock * curr.unit_cost), 0);
   const profit = totalRetail - totalCost;
   const markup = totalCost > 0 ? parseFloat(((profit / totalCost) * 100).toFixed(1)) : 0;
   
-  const whValue = warehouse.reduce((acc, b) => acc + (b.bulk_quantity * b.bulk_cost_per_unit), 0);
-  const whUnits = warehouse.reduce((acc, b) => acc + b.bulk_quantity, 0);
+  const whValue = safeWarehouse.reduce((acc, b) => acc + (b.bulk_quantity * b.bulk_cost_per_unit), 0);
+  const whUnits = safeWarehouse.reduce((acc, b) => acc + b.bulk_quantity, 0);
 
   return {
     total_active_shelf_retail_value: totalRetail,
     total_capital_invested: totalCost,
     locked_in_potential_gross_profit: profit,
     avg_markup_percentage: markup,
-    total_active_items: inventory.length,
+    total_active_items: safeInventory.length,
     warehouse_bulk_value: whValue,
     warehouse_total_units: whUnits
   };
@@ -709,13 +784,23 @@ export function loadAlacioState(): AlacioMasterState {
     if (!raw) return INITIAL_ALACIO_STATE;
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object") {
-      const inv = Array.isArray(parsed.inventory) && parsed.inventory.length > 0 
-        ? parsed.inventory 
-        : INITIAL_INVENTORY_43;
-      const wh = Array.isArray(parsed.warehouse) ? parsed.warehouse : INITIAL_WAREHOUSE_BATCHES;
-      const cust = Array.isArray(parsed.customers) ? parsed.customers : INITIAL_CUSTOMERS;
-      const rawSupp = Array.isArray(parsed.suppliers) ? parsed.suppliers : INITIAL_SUPPLIERS;
+      const isSkeleton = parsed.is_skeleton === true || (parsed.tier === "PAID_BLUEPRINT" && parsed.merchant_name !== "Duka Space");
+
+      const inv = Array.isArray(parsed.inventory)
+        ? (isSkeleton ? parsed.inventory : (parsed.inventory.length > 0 ? parsed.inventory : INITIAL_INVENTORY_43))
+        : (isSkeleton ? [] : INITIAL_INVENTORY_43);
+
+      const wh = Array.isArray(parsed.warehouse) 
+        ? parsed.warehouse 
+        : (isSkeleton ? [] : INITIAL_WAREHOUSE_BATCHES);
+
+      const cust = Array.isArray(parsed.customers) 
+        ? parsed.customers 
+        : (isSkeleton ? [] : INITIAL_CUSTOMERS);
+
+      const rawSupp = Array.isArray(parsed.suppliers) ? parsed.suppliers : (isSkeleton ? [] : INITIAL_SUPPLIERS);
       const supp = deduplicateSuppliers(rawSupp);
+
       const rawMb = Array.isArray(parsed.morning_bookends) ? parsed.morning_bookends : INITIAL_MORNING_BOOKENDS;
       const mb = deduplicateMorningBookends(rawMb);
       const fd = Array.isArray(parsed.floatDenominations) ? parsed.floatDenominations : INITIAL_FLOAT_DENOMINATIONS;
@@ -730,7 +815,6 @@ export function loadAlacioState(): AlacioMasterState {
         date: p.date || (p.timestamp && p.timestamp.match(/^\d{4}-\d{2}-\d{2}/) ? p.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0] : todayStr)
       }));
 
-      // Evening Reconciliations: If entered twice for the same date, later overwrites former
       const rawRecons = Array.isArray(parsed.reconciliations) ? parsed.reconciliations : [];
       const reconsMap = new Map<string, any>();
       rawRecons.forEach((r: any) => {
@@ -741,48 +825,52 @@ export function loadAlacioState(): AlacioMasterState {
       });
       const normalizedReconciliations = Array.from(reconsMap.values());
 
-      // Zero-Data-Loss Protection: if previous state had zeroed stocks/floats, restore verified active baseline
-      const isAllZeroStock = inv.length === 0 || inv.every((item: any) => (item.current_stock || 0) === 0);
-      const effectiveInv = isAllZeroStock ? INITIAL_INVENTORY_43 : inv;
-      const effectiveWh = (!wh || wh.length === 0) ? INITIAL_WAREHOUSE_BATCHES : wh;
+      const effectiveInv = isSkeleton ? (Array.isArray(parsed.inventory) ? parsed.inventory : []) : (inv.length === 0 ? INITIAL_INVENTORY_43 : inv);
+      const effectiveWh = isSkeleton ? (Array.isArray(parsed.warehouse) ? parsed.warehouse : []) : ((!wh || wh.length === 0) ? INITIAL_WAREHOUSE_BATCHES : wh);
 
-      const isZeroFloat = !fd || fd.length === 0 || fd.every((d: any) => (d.count || 0) === 0);
-      const effectiveFd = isZeroFloat ? INITIAL_FLOAT_DENOMINATIONS : fd;
+      const effectiveDrawerCash = parsed.cash_register_balance ?? 8450;
+      const effectiveMpesaFloat = parsed.mpesa_float_balance ?? 28300;
+      const effectiveEquitel = parsed.equitel_account_balance ?? 14200;
 
-      const isZeroCash = (parsed.cash_register_balance === 0 || parsed.cash_register_balance === undefined) && 
-                         (parsed.mpesa_float_balance === 0 || parsed.mpesa_float_balance === undefined);
-      const effectiveDrawerCash = isZeroCash ? 8450 : (parsed.cash_register_balance ?? 8450);
-      const effectiveMpesaFloat = isZeroCash ? 6500 : (parsed.mpesa_float_balance ?? 6500);
-      const effectiveEquitel = isZeroCash ? 14200 : (parsed.equitel_account_balance ?? 14200);
-
-      const isZeroCust = !cust || cust.length === 0 || cust.every((c: any) => (c.debt_balance || 0) === 0);
-      const effectiveCust = isZeroCust ? INITIAL_CUSTOMERS : cust;
-
-      const effectiveSales = (normalizedSales && normalizedSales.length > 0) ? normalizedSales : INITIAL_ALACIO_STATE.salesLedger;
-      const effectivePayouts = (normalizedPayouts && normalizedPayouts.length > 0) ? normalizedPayouts : INITIAL_ALACIO_STATE.payouts;
+      const effectiveCust = isSkeleton ? (Array.isArray(parsed.customers) ? parsed.customers : []) : (cust.length === 0 ? INITIAL_CUSTOMERS : cust);
+      const effectiveSales = isSkeleton ? (Array.isArray(parsed.salesLedger) ? normalizedSales : []) : ((normalizedSales && normalizedSales.length > 0) ? normalizedSales : INITIAL_ALACIO_STATE.salesLedger);
+      const effectivePayouts = isSkeleton ? (Array.isArray(parsed.payouts) ? normalizedPayouts : []) : ((normalizedPayouts && normalizedPayouts.length > 0) ? normalizedPayouts : INITIAL_ALACIO_STATE.payouts);
       const effectiveMb = (mb && mb.length > 0) ? mb : INITIAL_MORNING_BOOKENDS;
+      const effectiveRestockCards = isSkeleton ? (Array.isArray(parsed.restockCards) ? parsed.restockCards : []) : (Array.isArray(parsed.restockCards) && parsed.restockCards.length > 0 ? parsed.restockCards : INITIAL_RESTOCK_CARDS);
 
       return {
         ...INITIAL_ALACIO_STATE,
         ...parsed,
+        is_skeleton: isSkeleton,
         inventory: effectiveInv,
         warehouse: effectiveWh,
         customers: effectiveCust,
-        suppliers: supp,
+        suppliers: supp.length > 0 ? supp : [
+          {
+            id: "supp_001",
+            name: "Jahdithma Wholesalers",
+            company: "Jahdithma Wholesalers & Distributors",
+            phone: "0722 000 111",
+            national_id: "24891044",
+            category: "General Wholesaler",
+            total_orders_cost: 0,
+            last_delivery_date: "Active Wholesaler",
+            payment_preference: "NATIONAL_ID_DEPOSIT"
+          }
+        ],
         morning_bookends: effectiveMb,
-        floatDenominations: effectiveFd,
+        floatDenominations: fd,
         salesLedger: effectiveSales,
         payouts: effectivePayouts,
         mpesaStatements: Array.isArray(parsed.mpesaStatements) ? parsed.mpesaStatements : [],
         reconciliations: normalizedReconciliations,
-        restockCards: Array.isArray(parsed.restockCards) && parsed.restockCards.length > 0 ? parsed.restockCards : INITIAL_RESTOCK_CARDS,
+        restockCards: effectiveRestockCards,
         mpesa_float_balance: effectiveMpesaFloat,
         cash_register_balance: effectiveDrawerCash,
         equitel_account_balance: effectiveEquitel,
         tier: parsed.tier ?? "PAID_BLUEPRINT",
-        vcr_daily_count: parsed.vcr_daily_count || 8,
+        vcr_daily_count: parsed.vcr_daily_count || 0,
         vcr_customer_consent: parsed.vcr_customer_consent ?? true,
-        clean_trading_days: parsed.clean_trading_days || 14,
         kpis: calculateKpis(effectiveInv, effectiveWh)
       };
     }

@@ -46,11 +46,11 @@ export default function LaunchpadTab({
     {
       id: 1,
       key: "step1_dawnLock",
-      title: "Count opening cash and float (Dawn Lock)",
-      description: "Count physical cash notes in your drawer and M-Pesa float before morning commuters arrive.",
+      title: "Lock morning float (Dawn Lock)",
+      description: "Lock your morning baseline across Cash, M-Pesa float, and Bank/Paybill before morning trade.",
       unlocksCard: "Unlocks: Cash and float now",
       tabId: "dawn_lock",
-      buttonLabel: "Count Dawn Float",
+      buttonLabel: "Lock Dawn Float",
       icon: <Sun size={18} className="text-amber-400" />
     },
     {
@@ -76,11 +76,11 @@ export default function LaunchpadTab({
     {
       id: 4,
       key: "step4_addSuppliers",
-      title: "Add suppliers",
-      description: "Add dairy, bakery, or flour distributors so new deliveries automatically update inventory.",
+      title: "Add suppliers & wholesalers",
+      description: "Add distributors like Jahdithma Wholesalers so new deliveries automatically update inventory and totals.",
       unlocksCard: "Unlocks: Supplier performance",
-      tabId: "stock_vault",
-      buttonLabel: "Add Supplier",
+      tabId: "purchases",
+      buttonLabel: "Add Supplier / Cargo",
       icon: <Truck size={18} className="text-purple-400" />
     },
     {
@@ -106,11 +106,11 @@ export default function LaunchpadTab({
     {
       id: 7,
       key: "step7_closeDay",
-      title: "Close your first day",
-      description: "At shop close, verify drawer cash vs expected sales and resolve any gap in one tap.",
-      unlocksCard: "Unlocks: Unexplained cash",
-      tabId: "dawn_lock",
-      buttonLabel: "Run End-of-Day Close",
+      title: "View your 3-Fold master ledgers",
+      description: "Review your unified 3-fold ledgers tracking your daily sales, purchases, and debtor collections.",
+      unlocksCard: "Unlocks: Master reconciliation",
+      tabId: "three_fold_ledgers",
+      buttonLabel: "View 3-Fold Ledgers",
       icon: <Scale size={18} className="text-emerald-300" />
     }
   ];

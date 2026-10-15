@@ -237,7 +237,7 @@ export default function OnboardingModal({
                 </div>
                 <div>
                   <span className="text-[10px] font-mono uppercase tracking-wider text-[#FFD54F] font-bold block mb-1">
-                    Path A &bull; Free Starter
+                    Path A &bull; Fresh Setup
                   </span>
                   <h5 className="font-serif font-black text-base text-white">
                     Starting from scratch?

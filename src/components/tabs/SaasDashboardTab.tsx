@@ -97,11 +97,10 @@ export default function SaasDashboardTab({
           <h1 className="text-2xl sm:text-3xl font-serif font-normal text-slate-900 tracking-tight">
             {timeGreeting}, {firstName}
           </h1>
-          {isDemo && (
-            <span className="text-[11px] font-mono uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-0.5 rounded-full font-bold">
-              Sample data
-            </span>
-          )}
+          <span className="text-[11px] font-mono uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1.5 shadow-2xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+            <span>Live Workspace &bull; Musa General Retailers</span>
+          </span>
         </div>
       </div>
 

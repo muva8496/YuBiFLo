@@ -149,7 +149,7 @@ export default function LoopingDashboardDemo({
     <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-xl overflow-hidden font-sans text-slate-900 relative">
       
       {/* 1. BROWSER WINDOW TOP BAR */}
-      <div className="h-9 bg-[#F8FAFC] border-b border-slate-200 px-3 flex items-center justify-between text-xs select-none">
+      <div className="h-10 bg-[#F8FAFC] border-b border-slate-200 px-3 flex items-center justify-between text-xs select-none">
         <div className="flex items-center gap-2">
           {/* Traffic light dots */}
           <div className="flex items-center gap-1.5">
@@ -160,47 +160,47 @@ export default function LoopingDashboardDemo({
           <span className="text-[10px] font-mono text-slate-500 ml-1 hidden sm:inline">
             yubiflo.app/workspace
           </span>
-        </div>
-
-        {/* FAR END TOP RIGHT CORNER: CONTROLS & BUSINESS NAME */}
-        <div className="flex items-center gap-2">
-          {/* Subtle loop controls */}
-          <div className="flex items-center gap-1 bg-white border border-slate-200/90 rounded-md px-1.5 py-0.5 shadow-2xs">
+          <div className="hidden sm:flex items-center gap-1 bg-white border border-slate-200 rounded-md px-1.5 py-0.5 ml-1.5 shadow-2xs">
             <button
               onClick={() => setIsPlaying(!isPlaying)}
-              className="text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center gap-1 text-[9.5px] font-medium"
-              title={isPlaying ? "Pause timeline preview" : "Resume timeline preview"}
+              className="text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center gap-1 text-[9px] font-medium"
+              title={isPlaying ? "Pause live timeline" : "Resume live timeline"}
             >
               {isPlaying ? (
                 <>
-                  <Pause size={10} className="text-amber-600" />
-                  <span className="hidden md:inline text-[9px]">Live</span>
+                  <Pause size={9} className="text-emerald-600" />
+                  <span className="text-[9px] text-emerald-700 font-bold">Live</span>
                 </>
               ) : (
                 <>
-                  <Play size={10} className="text-slate-800" />
-                  <span className="hidden md:inline text-[9px]">Play</span>
+                  <Play size={9} className="text-slate-800" />
+                  <span className="text-[9px]">Play</span>
                 </>
               )}
             </button>
-            
             <button
               onClick={() => {
                 setElapsedTime(0);
                 setIsRestockAuthorized(false);
               }}
               className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
-              title="Restart Timeline"
+              title="Reset"
             >
-              <RotateCcw size={9} />
+              <RotateCcw size={8} />
             </button>
           </div>
+        </div>
 
-          {/* BUSINESS NAME ON THE FAR RIGHT TOP CORNER */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-slate-200 shadow-2xs text-slate-800 text-[10.5px] font-semibold">
-            <Building2 size={12} className="text-blue-600 shrink-0" />
-            <span className="truncate max-w-[130px] sm:max-w-none">{businessName}</span>
-            <ChevronDown size={11} className="text-slate-400 shrink-0" />
+        {/* FAR END TOP RIGHT CORNER: REAL BUSINESS NAME PILL (WHAT REAL BUSINESSES RECEIVE) */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[#EBF3FC] border border-[#CBD5E1] shadow-2xs text-slate-900 text-xs font-semibold">
+            <div className="w-5 h-5 rounded-md bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 font-serif">
+              {businessName.charAt(0)}
+            </div>
+            <span className="truncate max-w-[130px] sm:max-w-[180px] font-bold text-slate-900 text-[11px] sm:text-xs">
+              {businessName}
+            </span>
+            <ChevronDown size={12} className="text-slate-500 shrink-0" />
           </div>
         </div>
       </div>

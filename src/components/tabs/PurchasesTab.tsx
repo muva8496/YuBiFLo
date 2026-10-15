@@ -83,7 +83,7 @@ export default function PurchasesTab({
   // Purchase Builder State (Lot of Goods)
   const [isAddingPurchase, setIsAddingPurchase] = useState(false);
   const [selectedSupplierName, setSelectedSupplierName] = useState(
-    initialSupplier || (suppliers[0]?.name || "Brookside Dairy Logistics")
+    initialSupplier || (suppliers[0]?.name || "Jahdithma Wholesalers")
   );
   const [deliveryNoteNumber, setDeliveryNoteNumber] = useState(`DN-${Math.floor(1000 + Math.random() * 9000)}`);
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -745,27 +745,33 @@ export default function PurchasesTab({
             {/* SUPPLIER & SETTLEMENT HEADER */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs bg-slate-50/70 border border-slate-200 rounded-2xl p-4">
               
-              {/* SUPPLIER PICKER */}
+              {/* SUPPLIER PICKER / DIRECT INPUT */}
               <div>
                 <label className="text-slate-700 font-semibold block mb-1">
                   Supplier / Wholesale Distributor *
                 </label>
-                <select
+                <input
+                  type="text"
+                  required
+                  list="suppliers-datalist"
                   value={selectedSupplierName}
                   onChange={(e) => setSelectedSupplierName(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-medium"
-                >
+                  placeholder="e.g. Jahdithma Wholesalers"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-medium focus:outline-none focus:border-blue-500 text-xs"
+                />
+                <datalist id="suppliers-datalist">
+                  <option value="Jahdithma Wholesalers" />
                   {suppliers.map((s) => (
                     <option key={s.id} value={s.name}>
                       {s.name} ({s.category})
                     </option>
                   ))}
-                  <option value="Broadway Bakeries Ltd">Broadway Bakeries Ltd</option>
-                  <option value="Brookside Dairy Kenya Ltd">Brookside Dairy Kenya Ltd</option>
-                  <option value="Unga Millers Eldoret">Unga Millers Eldoret</option>
-                  <option value="Bidco Africa Ltd">Bidco Africa Ltd</option>
-                  <option value="General Wholesaler Van">General Wholesaler Van</option>
-                </select>
+                  <option value="Broadway Bakeries Ltd" />
+                  <option value="Brookside Dairy Kenya Ltd" />
+                  <option value="Unga Millers Eldoret" />
+                  <option value="Bidco Africa Ltd" />
+                  <option value="General Wholesaler Van" />
+                </datalist>
               </div>
 
               {/* DELIVERY NOTE / INVOICE NO */}
@@ -873,14 +879,83 @@ export default function PurchasesTab({
                   </span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleAddLineRow}
-                  className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                >
-                  <Plus size={14} />
-                  <span>+ Add Another Good</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedSupplierName("Jahdithma Wholesalers");
+                      setItemLines([
+                        {
+                          id: `line_j1_${Date.now()}`,
+                          itemName: "Pembe Maize Meal 2kg",
+                          category: "Flour & Cereals",
+                          quantity: 12,
+                          unit: "Bale (12pkts)",
+                          unitCost: 1850,
+                          retailPrice: 190,
+                          totalCost: 22200
+                        },
+                        {
+                          id: `line_j2_${Date.now()}`,
+                          itemName: "Kabras Sugar 1kg",
+                          category: "General Wholesaler",
+                          quantity: 20,
+                          unit: "Bale (20pkts)",
+                          unitCost: 2500,
+                          retailPrice: 150,
+                          totalCost: 50000
+                        },
+                        {
+                          id: `line_j3_${Date.now()}`,
+                          itemName: "Rina Cooking Oil 1L",
+                          category: "Cooking Oils & Soaps",
+                          quantity: 12,
+                          unit: "Carton (12btls)",
+                          unitCost: 2800,
+                          retailPrice: 270,
+                          totalCost: 33600
+                        }
+                      ]);
+                      setSuccessNote("Loaded Jahdithma Wholesalers wholesale cargo lot (Total: KSh 105,800).");
+                      setTimeout(() => setSuccessNote(null), 3000);
+                    }}
+                    className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-xs rounded-xl transition border border-amber-200 cursor-pointer"
+                  >
+                    Load Jahdithma Cargo
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setItemLines([
+                        {
+                          id: `line_${Date.now()}`,
+                          itemName: "",
+                          category: "General Wholesaler",
+                          quantity: 1,
+                          unit: "Bale (12pkts)",
+                          unitCost: 0,
+                          retailPrice: 0,
+                          totalCost: 0
+                        }
+                      ]);
+                      setSuccessNote("Reset cargo to empty skeleton for your manual delivery.");
+                      setTimeout(() => setSuccessNote(null), 3000);
+                    }}
+                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-xl transition cursor-pointer"
+                  >
+                    Clear to Empty
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAddLineRow}
+                    className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <Plus size={14} />
+                    <span>+ Add Another Good</span>
+                  </button>
+                </div>
               </div>
 
               {/* GOODS TABLE */}
@@ -980,18 +1055,28 @@ export default function PurchasesTab({
                 ))}
               </datalist>
 
-              {/* LOT SUMMARY BAR */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-4 text-slate-600 font-mono">
-                  <span>Total Goods in Lot: <strong className="text-slate-900">{itemLines.length} items</strong></span>
-                  <span>Total Physical Units: <strong className="text-slate-900">{totalLotUnits} units</strong></span>
+              {/* LOT SUMMARY BAR - GOODS TOTALED FOR SUPPLIER */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-blue-950 text-sm">
+                      Total Cargo for {selectedSupplierName}:
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold font-mono">
+                      {itemLines.length} Goods Totaled
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-slate-600 font-mono text-[11px]">
+                    <span>Total Physical Units: <strong className="text-slate-900">{totalLotUnits} units</strong></span>
+                    <span>Average Unit Cost: <strong className="text-slate-900">{currency} {totalLotUnits > 0 ? Math.round(totalLotCost / totalLotUnits).toLocaleString() : 0}</strong></span>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="text-xs uppercase font-bold text-slate-500 font-mono">
-                    Total Inbound Cargo Cost:
+                  <span className="text-xs uppercase font-bold text-blue-800 font-mono">
+                    Total Cargo Cost:
                   </span>
-                  <span className="text-xl font-serif font-bold text-slate-900">
+                  <span className="text-2xl font-serif font-black text-slate-950 bg-white px-3.5 py-1.5 rounded-xl border border-blue-300 shadow-2xs font-mono">
                     {currency} {totalLotCost.toLocaleString()}
                   </span>
                 </div>

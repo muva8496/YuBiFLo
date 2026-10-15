@@ -31,6 +31,7 @@ interface SaasAppShellProps {
   onOpenQuickSale?: () => void;
   onOpenQuickPurchase?: () => void;
   onOpenQuickDeni?: () => void;
+  onResetToSkeleton?: () => void;
   children: React.ReactNode;
 }
 
@@ -48,6 +49,7 @@ export default function SaasAppShell({
   onOpenQuickSale,
   onOpenQuickPurchase,
   onOpenQuickDeni,
+  onResetToSkeleton,
   children
 }: SaasAppShellProps) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -82,25 +84,11 @@ export default function SaasAppShell({
     { id: "analytics", name: "Business Analytics", icon: <BarChart2 size={17} /> }
   ];
 
-  const currentWorkspaceName = isDemo ? "Duka Space" : (user?.businessName || "Goodwood Designs");
+  const currentWorkspaceName = user?.businessName || "Musa General Retailers";
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans flex flex-col selection:bg-blue-100 selection:text-blue-900 relative">
       
-      {/* FAINT REPEATING "SAMPLE" WATERMARK ON PRINT & EXPORT */}
-      {isDemo && (
-        <div 
-          className="demo-sample-watermark pointer-events-none fixed inset-0 z-50 overflow-hidden opacity-[0.035] select-none flex flex-wrap gap-24 items-center justify-center p-8 print:opacity-[0.14] print:flex"
-          aria-hidden="true"
-        >
-          {Array.from({ length: 36 }).map((_, idx) => (
-            <span key={idx} className="text-6xl font-black text-amber-500 -rotate-45 font-mono tracking-widest">
-              SAMPLE
-            </span>
-          ))}
-        </div>
-      )}
-
       {/* ========================================================================= */}
       {/* 1. TOP BAR (WHITE, SLATE BORDER, BUSINESS NAME AT TOP RIGHT CORNER)        */}
       {/* ========================================================================= */}
@@ -153,30 +141,16 @@ export default function SaasAppShell({
             <HelpCircle size={16} />
           </button>
 
-          {/* BUSINESS NAME PILL DROPDOWN AT TOP RIGHT (EXACT SHAPE FROM SCREENSHOT) */}
+          {/* BUSINESS NAME PILL DROPDOWN AT FAR RIGHT TOP CORNER */}
           <div className="relative">
             <button
               onClick={() => setUserDropdownOpen(!userDropdownOpen)}
               className="bg-[#EBF3FC] hover:bg-[#E2EDFA] border border-[#CBD5E1] rounded-lg px-3 py-1.5 flex items-center gap-2 cursor-pointer transition text-xs font-semibold text-slate-900 shadow-2xs"
             >
-              <span className="max-w-[120px] sm:max-w-[160px] truncate">
+              <Building2 size={13} className="text-blue-600 shrink-0" />
+              <span className="max-w-[130px] sm:max-w-[180px] truncate font-bold text-slate-900">
                 {currentWorkspaceName}
               </span>
-              
-              {/* PRO BADGE / AMBER DEMO BADGE (AS IN SCREENSHOT) */}
-              {isDemo ? (
-                <span className="text-[10px] px-1.5 py-0.2 rounded font-bold uppercase bg-amber-500 text-white">
-                  DEMO
-                </span>
-              ) : (
-                <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold uppercase ${
-                  user?.plan === "Pro" || !user?.plan
-                    ? "bg-[#1A56DB] text-white" 
-                    : "bg-[#10B981] text-white"
-                }`}>
-                  {user?.plan || "PRO"}
-                </span>
-              )}
 
               <ChevronDown size={14} className={`text-slate-600 transition-transform ${userDropdownOpen ? "rotate-180" : ""}`} />
             </button>
@@ -277,6 +251,22 @@ export default function SaasAppShell({
                     </button>
                   ) : (
                     <>
+                      {onResetToSkeleton && (
+                        <button
+                          onClick={() => {
+                            setUserDropdownOpen(false);
+                            if (window.confirm("Reset workspace to a clean skeleton ready for your own goods?")) {
+                              onResetToSkeleton();
+                            }
+                          }}
+                          className="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 text-slate-700 flex items-center gap-2 transition cursor-pointer text-xs"
+                          title="Clear sample items and start with an empty skeleton for your goods"
+                        >
+                          <Layers size={14} className="text-blue-600" />
+                          <span>Reset to Clean Skeleton</span>
+                        </button>
+                      )}
+
                       <button
                         onClick={() => {
                           setUserDropdownOpen(false);
@@ -311,34 +301,6 @@ export default function SaasAppShell({
       {/* ========================================================================= */}
       {/* SLIM BANNER UNDER TOP BAR ON EVERY PAGE WHEN IN DEMO                      */}
       {/* ========================================================================= */}
-      {isDemo && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs flex flex-col sm:flex-row items-center justify-between gap-2.5 z-30 shadow-2xs">
-          <div className="flex items-center gap-2 text-amber-900 text-[11px] sm:text-xs">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
-            <span className="font-medium">
-              You're exploring a demo duka. All numbers are sample data, not real. Start your own to see your real numbers.
-            </span>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => {
-                if (onStartRealWorkspace) onStartRealWorkspace();
-              }}
-              className="px-3.5 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg transition shadow-2xs cursor-pointer font-sans"
-            >
-              {user ? "Open my dashboard" : "Start my real workspace"}
-            </button>
-            <button
-              onClick={() => {
-                if (onExitDemo) onExitDemo();
-              }}
-              className="text-xs text-amber-800 hover:text-amber-950 underline cursor-pointer font-sans"
-            >
-              Exit demo
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* 2. BODY: LEFT SIDEBAR + MAIN CONTENT AREA                                 */}

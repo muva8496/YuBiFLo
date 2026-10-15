@@ -384,15 +384,23 @@ export default function StockVaultSuppliersTab({
           </div>
 
           {filteredInventory.length === 0 ? (
-            <div className="text-center py-8 space-y-2">
-              <Package size={28} className="text-slate-600 mx-auto" />
-              <p className="text-xs text-slate-400">No stock items found.</p>
-              <button
-                onClick={() => setIsAddingStock(true)}
-                className="text-xs text-[#38BDF8] hover:underline font-mono"
-              >
-                Add your first stock item &rarr;
-              </button>
+            <div className="text-center py-10 space-y-3 bg-[#09121D]/60 rounded-2xl border border-dashed border-[#182C40]">
+              <Package size={32} className="text-slate-500 mx-auto" />
+              <div>
+                <h4 className="text-sm font-bold text-white">Your Stock Shelf is Ready</h4>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
+                  Clean skeleton initialized for your retail shop. Your goods come in directly when you log inbound deliveries from wholesalers (like Jahdithma Wholesalers).
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingStock(true)}
+                  className="px-3.5 py-1.5 bg-[#38BDF8] hover:bg-[#0284c7] text-slate-950 font-bold rounded-xl text-xs font-mono transition cursor-pointer"
+                >
+                  + Add Direct Good
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">

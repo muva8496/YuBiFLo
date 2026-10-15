@@ -164,9 +164,9 @@ export default function VoiceLedgerTab({
           </p>
         </div>
 
-        {/* FREE STARTER CAP BADGE */}
+        {/* VCR ACTIVITY BADGE */}
         <div className="px-3 py-1.5 rounded-xl bg-[#0a1410] border border-emerald-500/30 font-mono text-[11px] text-emerald-400 shrink-0">
-          VCR Daily Count: <strong className="text-white">{vcrCount}</strong>/20 Free Starter Sales
+          VCR Daily Count: <strong className="text-white">{vcrCount}</strong> Sales Captured
         </div>
       </div>
 

@@ -342,11 +342,11 @@ export function SolutionsMegaMenu({
           <div className="space-y-3">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#f4f4f5] text-[#000000] text-[10px] font-bold">
               <Sparkles size={11} className="text-[#B8860B]" />
-              <span>Free Starter Tool</span>
+              <span>Essential Retail Tool</span>
             </div>
 
             <h4 className="font-serif font-black text-lg text-[#000000] leading-snug">
-              Start free with VCR
+              Launch with Voice VCR
             </h4>
 
             <p className="text-xs text-[#555555] leading-relaxed">
@@ -377,7 +377,7 @@ export function SolutionsMegaMenu({
               }}
               className="w-full py-2.5 px-4 rounded-xl bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
             >
-              <span>Start free with VCR</span>
+              <span>Launch VCR Workspace</span>
               <ArrowRight size={13} />
             </button>
 
@@ -654,7 +654,7 @@ export function ResourcesDropdown({
       >
         <div>
           <div className="font-bold text-[#222222]">How It Works Guide</div>
-          <div className="text-[11px] text-[#666666]">1 Dawn float, 2 Midday VCR, 3 Evening audit</div>
+          <div className="text-[11px] text-[#666666]">1 Dawn float, 2 Cargo goods receipts, 3 Zero evening checks</div>
         </div>
       </button>
 

@@ -369,30 +369,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Admin Protection & Role Status Banner */}
         <div className="mt-auto pt-2 space-y-2">
-          {/* Subscription Tier Banner */}
-          {sub && (
-            <div
-              onClick={onOpenSubscriptionModal}
-              className="p-2.5 rounded-xl bg-[#111827] border border-slate-800 hover:border-emerald-500/30 cursor-pointer transition-all flex items-center justify-between shadow-sm"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
-                  <Crown className="w-3.5 h-3.5" />
-                </div>
-                <div className="truncate">
-                  <div className="font-bold text-[11px] text-white truncate flex items-center gap-1">
-                    <span>{sub.tierName}</span>
-                  </div>
-                  <div className="text-[9px] text-emerald-400 font-mono">
-                    {sub.billingCycle} • Active
-                  </div>
-                </div>
-              </div>
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shrink-0">
-                Upgrade
-              </span>
-            </div>
-          )}
+
 
           <div
             onClick={onOpenAdminAuth}

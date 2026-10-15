@@ -320,7 +320,7 @@ export default function AdminDemandRadarModal({
                       </select>
                     </td>
                     <td className="p-2.5 text-right text-slate-400 text-[11px]">
-                      {bp.status === "live" && "Start free with VCR"}
+                      {bp.status === "live" && "Launch with VCR"}
                       {bp.status === "next" && "Join the waitlist"}
                       {bp.status === "soon" && "Join the waitlist"}
                       {bp.status === "request" && "Request this app"}
