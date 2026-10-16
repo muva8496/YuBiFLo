@@ -15,6 +15,7 @@ export interface ProcessedReceiptItem {
   lineCost: number;
   retailPrice: number;
   expectedMargin: number;
+  approved?: boolean;
 }
 
 export interface ProcessedReceipt {
@@ -225,7 +226,59 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
           unitCostAtDelivery: 250,
           lineCost: 6000,
           retailPrice: 285,
-          expectedMargin: 35
+          expectedMargin: 35,
+          approved: true
+        }
+      ]
+    }
+  },
+  {
+    id: "sample_combo_420",
+    label: "Delivery Chit (140 Sugar + 280 Oil = 420 Total)",
+    supplier: "Khetias Wholesalers Eldoret & Nairobi",
+    date: "Today, 09:10 AM",
+    previewUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='550' viewBox='0 0 400 550'><rect width='400' height='550' fill='%23fafaf9' stroke='%2378716c' stroke-width='1.5'/><text x='200' y='45' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='16' fill='%231c1917'>KHETIAS WHOLESALE MERCHANTS</text><text x='200' y='68' text-anchor='middle' font-family='monospace' font-size='11' fill='%2357534e'>Depot Dispatch &bull; Delivery Van 04</text><text x='200' y='88' text-anchor='middle' font-family='monospace' font-size='12' fill='%231c1917'>OFFICIAL DELIVERY INVOICE</text><line x1='25' y1='100' x2='375' y2='100' stroke='%2344403c' stroke-width='1.5' stroke-dasharray='4'/><text x='30' y='125' font-family='monospace' font-size='11' fill='%231c1917'>INV NO: KH-4201</text><text x='270' y='125' font-family='monospace' font-size='11' fill='%231c1917'>DATE: 2026-10-04</text><text x='30' y='145' font-family='monospace' font-size='11' fill='%231c1917'>CLIENT: ALACIO MINI SHOP</text><line x1='25' y1='160' x2='375' y2='160' stroke='%23d6d3d1' stroke-width='1'/><text x='30' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%231c1917'>ITEM DESCRIPTION</text><text x='240' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%231c1917'>QTY</text><text x='310' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%231c1917'>TOTAL</text><line x1='25' y1='190' x2='375' y2='190' stroke='%23d6d3d1' stroke-width='1'/><text x='30' y='215' font-family='monospace' font-size='11' fill='%231c1917'>MUMIAS SUGAR 1KG</text><text x='240' y='215' font-family='monospace' font-size='11' fill='%231c1917'>1 PKT</text><text x='310' y='215' font-family='monospace' font-size='11' fill='%231c1917'>140.00</text><text x='30' y='232' font-family='monospace' font-size='9' fill='%2378716c'>Wholesale cost: 140 &bull; Retail: 165</text><text x='30' y='265' font-family='monospace' font-size='11' fill='%231c1917'>COOKING OIL 1L</text><text x='240' y='265' font-family='monospace' font-size='11' fill='%231c1917'>1 BTL</text><text x='310' y='265' font-family='monospace' font-size='11' fill='%231c1917'>280.00</text><text x='30' y='282' font-family='monospace' font-size='9' fill='%2378716c'>Wholesale cost: 280 &bull; Retail: 330</text><line x1='25' y1='320' x2='375' y2='320' stroke='%2344403c' stroke-width='1.5' stroke-dasharray='4'/><text x='30' y='350' font-family='monospace' font-weight='bold' font-size='13' fill='%231c1917'>TOTAL (140 + 280):</text><text x='295' y='350' font-family='monospace' font-weight='bold' font-size='15' fill='%23059669'>KSH 420.00</text><text x='30' y='380' font-family='monospace' font-size='11' fill='%231c1917'>PAYMENT MODE: CASH DRAWER</text><rect x='110' y='440' width='180' height='55' rx='8' fill='%23ecfdf5' stroke='%23059669' stroke-width='1.5'/><text x='200' y='473' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='14' fill='%23047857'>VERIFIED: KSH 420</text></svg>",
+    mockData: {
+      id: "rcpt_khetias_420",
+      receiptNumber: "KH-4201",
+      supplierName: "Khetias Wholesalers",
+      receiptDate: new Date().toISOString().slice(0, 10),
+      paymentMode: "CASH",
+      totalCost: 420,
+      totalRetailShelfValue: 495,
+      totalPotentialProfit: 75,
+      markupPercentage: 17.9,
+      confidenceScore: 0.99,
+      processedAt: "Just now",
+      rawTextNotes: "Inbound supply: 1x Mumias Sugar 1kg (140) + 1x Cooking Oil 1L (280) = KSh 420 total invoice. Approved items add strictly without string concatenation.",
+      items: [
+        {
+          id: "item_k1",
+          itemName: "Mumias Sugar 1kg",
+          supplyUnitsReceived: 1,
+          supplyUnit: "Packets",
+          conversionRatio: 1,
+          retailUnitsAdded: 1,
+          retailUnit: "packets",
+          unitCostAtDelivery: 140,
+          lineCost: 140,
+          retailPrice: 165,
+          expectedMargin: 25,
+          approved: true
+        },
+        {
+          id: "item_k2",
+          itemName: "Cooking Oil 1L",
+          supplyUnitsReceived: 1,
+          supplyUnit: "Bottles",
+          conversionRatio: 1,
+          retailUnitsAdded: 1,
+          retailUnit: "bottles",
+          unitCostAtDelivery: 280,
+          lineCost: 280,
+          retailPrice: 330,
+          expectedMargin: 50,
+          approved: true
         }
       ]
     }

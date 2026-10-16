@@ -38,6 +38,7 @@ interface SupplyStockVaultTabProps {
   onDeleteBatch?: (batchId: string) => void;
   onOpenRestock: (item?: InventoryItem) => void;
   onCommitProcessedReceipt: (receipt: ProcessedReceipt) => void;
+  onSaveReceiptToDatabase?: (receipt: any) => void;
   initialSubTab?: "suppliers" | "warehouse" | "inventory" | "receipts";
 }
 
@@ -55,6 +56,7 @@ export default function SupplyStockVaultTab({
   onDeleteBatch,
   onOpenRestock,
   onCommitProcessedReceipt,
+  onSaveReceiptToDatabase,
   initialSubTab = "suppliers"
 }: SupplyStockVaultTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<SubModuleKey>(initialSubTab);
@@ -216,6 +218,7 @@ export default function SupplyStockVaultTab({
           <ReceiptUploadScannerTab
             state={state}
             onCommitProcessedReceipt={onCommitProcessedReceipt}
+            onSaveReceiptToDatabase={onSaveReceiptToDatabase}
           />
         )}
       </div>

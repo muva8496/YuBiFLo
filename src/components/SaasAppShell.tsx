@@ -4,7 +4,7 @@ import {
   Sun, Mic, Users, BookOpen, BarChart2, ChevronDown, HelpCircle, 
   LogOut, Settings, Building2, Menu, X, ArrowRight, Shield, 
   CheckCircle2, AlertCircle, Phone, Lock, Globe, Check, Sparkles,
-  Plus, Play, FileText, Bookmark, Truck
+  Plus, Play, FileText, Bookmark, Truck, ShieldCheck
 } from "lucide-react";
 import { UserProfile, signOut, signOutAllDevices } from "../services/authSessionService";
 import VideoFactorModal from "./VideoFactorModal";
@@ -32,6 +32,7 @@ interface SaasAppShellProps {
   onOpenQuickPurchase?: () => void;
   onOpenQuickDeni?: () => void;
   onResetToSkeleton?: () => void;
+  onOpenDataVault?: () => void;
   children: React.ReactNode;
 }
 
@@ -50,6 +51,7 @@ export default function SaasAppShell({
   onOpenQuickPurchase,
   onOpenQuickDeni,
   onResetToSkeleton,
+  onOpenDataVault,
   children
 }: SaasAppShellProps) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -120,9 +122,21 @@ export default function SaasAppShell({
           </button>
         </div>
 
-        {/* RIGHT: DOCUMENT ICON + HELP (?) + BUSINESS NAME IN PILL AT TOP RIGHT */}
+        {/* RIGHT: DATA VAULT + DOCUMENT ICON + HELP (?) + BUSINESS NAME IN PILL AT TOP RIGHT */}
         <div className="flex items-center gap-2 sm:gap-3">
           
+          {/* ZERO-DATA-LOSS DATA VAULT BUTTON */}
+          {onOpenDataVault && (
+            <button
+              onClick={onOpenDataVault}
+              className="h-8 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 flex items-center gap-1.5 transition cursor-pointer text-xs font-bold shadow-2xs"
+              title="Zero-Data-Loss Protection: Auto-Saved &amp; Cloud Mirrored"
+            >
+              <ShieldCheck size={14} className="text-emerald-600" />
+              <span className="hidden sm:inline">Data Safe</span>
+            </button>
+          )}
+
           {/* DOCUMENT / LEDGER ICON BUTTON */}
           <button
             onClick={() => onNavigateTab("three_fold_ledgers")}
@@ -225,6 +239,19 @@ export default function SaasAppShell({
 
                 {/* ADDITIONAL ACTIONS */}
                 <div className="border-t border-slate-100 pt-1 space-y-0.5">
+                  {onOpenDataVault && (
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        onOpenDataVault();
+                      }}
+                      className="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 text-slate-700 flex items-center gap-2 transition cursor-pointer text-xs font-semibold"
+                    >
+                      <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
+                      <span>Data Vault &amp; Backup</span>
+                    </button>
+                  )}
+
                   {!isDemo && (
                     <button
                       onClick={() => {

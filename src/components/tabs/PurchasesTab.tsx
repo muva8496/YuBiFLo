@@ -1,12 +1,19 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   ShoppingBag, Plus, Truck, Calendar, DollarSign, CheckCircle2, 
   Layers, ArrowUpRight, Search, Filter, AlertCircle, RefreshCw,
   Camera, Upload, FileText, Image as ImageIcon, Sparkles, Check,
   Trash2, Copy, ShieldCheck, ChevronDown, ChevronUp, Eye, Phone,
-  ArrowRight, Scan, Clock
+  ArrowRight, Scan, Clock, Package, XCircle, CheckSquare, Square, History, X
 } from "lucide-react";
-import { AlacioMasterState, InventoryItem, SupplierProfile, PayoutOrDrawing, RestockReconciliationCard } from "../../types/alacio";
+import { 
+  AlacioMasterState, 
+  InventoryItem, 
+  SupplierProfile, 
+  PayoutOrDrawing, 
+  RestockReconciliationCard,
+  SavedReceiptRecord
+} from "../../types/alacio";
 import RestockSalesReconciliationCardView from "../RestockSalesReconciliationCard";
 import { 
   ReceiptOcrService, 
@@ -60,6 +67,7 @@ interface PurchasesTabProps {
   initialSupplier?: string;
   onAuthorizeRestockSale?: (payload: any) => void;
   onDismissRestockCard?: (cardId: string) => void;
+  onSaveReceiptToDatabase?: (receipt: SavedReceiptRecord) => void;
 }
 
 export default function PurchasesTab({ 
@@ -68,9 +76,10 @@ export default function PurchasesTab({
   onNavigateTab,
   initialSupplier,
   onAuthorizeRestockSale,
-  onDismissRestockCard
+  onDismissRestockCard,
+  onSaveReceiptToDatabase
 }: PurchasesTabProps) {
-  const { currency, inventory = [], suppliers = [], payouts = [], restockCards = [] } = state;
+  const { currency, inventory = [], suppliers = [], payouts = [], restockCards = [], receiptsArchive = [] } = state;
   const [showAllRestockCards, setShowAllRestockCards] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -85,13 +94,33 @@ export default function PurchasesTab({
   const [selectedSupplierName, setSelectedSupplierName] = useState(
     initialSupplier || (suppliers[0]?.name || "Jahdithma Wholesalers")
   );
+  const supplierDropdownRef = useRef<HTMLDivElement>(null);
+  const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
+  const [supplierSearchQuery, setSupplierSearchQuery] = useState("");
+  const [supplierSelectMode, setSupplierSelectMode] = useState<"dropdown" | "type">("dropdown");
+  const [isReconExpanded, setIsReconExpanded] = useState<boolean>(() => restockCards.some(c => c.status === "PENDING_AUTHORIZATION"));
   const [deliveryNoteNumber, setDeliveryNoteNumber] = useState(`DN-${Math.floor(1000 + Math.random() * 9000)}`);
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [paymentChannel, setPaymentChannel] = useState<"CASH" | "MPESA" | "NATIONAL_ID_DEPOSIT" | "SUPPLIER_CREDIT">("NATIONAL_ID_DEPOSIT");
   const [notes, setNotes] = useState("");
   const [attachedReceiptUrl, setAttachedReceiptUrl] = useState<string | null>(null);
 
-  // Multiple item lines in a lot of goods
+  // Close supplier dropdown on outside click or tap
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(event.target as Node)) {
+        setIsSupplierDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
+  // Multiple item lines in a lot of goods (Suppliers supply 1 to many goods)
   const [itemLines, setItemLines] = useState<PurchaseItemLine[]>([
     {
       id: "line_1",
@@ -127,24 +156,112 @@ export default function PurchasesTab({
 
   // Selected supplier object lookup
   const currentSupplier = suppliers.find(
-    (s) => s.name.toLowerCase() === selectedSupplierName.toLowerCase() || s.company.toLowerCase() === selectedSupplierName.toLowerCase()
-  ) || suppliers[0] || {
-    id: "supp_default",
+    (s) => s.name.toLowerCase().trim() === selectedSupplierName.toLowerCase().trim() || s.company.toLowerCase().trim() === selectedSupplierName.toLowerCase().trim()
+  ) || {
+    id: `supp_${Date.now()}`,
     name: selectedSupplierName,
     company: selectedSupplierName,
     phone: "0722 849 101",
     national_id: "22940184",
-    category: "Dairy & Chilled",
+    category: "Wholesale Distributor",
     total_orders_cost: 0,
     last_delivery_date: "Today",
-    payment_preference: "NATIONAL_ID_DEPOSIT" as const
+    payment_preference: "NATIONAL_ID_DEPOSIT" as const,
+    supplied_items: []
+  };
+
+  // Known catalog of goods supplied by the selected supplier (1 to many items)
+  const suppliedGoodsList: string[] = React.useMemo(() => {
+    const sName = selectedSupplierName.trim().toLowerCase();
+    const supObj = suppliers.find(
+      (s) => s.name.toLowerCase().trim() === sName || s.company.toLowerCase().trim() === sName
+    );
+    const fromProfile = supObj?.supplied_items || [];
+    const fromInventory = inventory
+      .filter((item) => (item.supplier || "").toLowerCase().trim() === sName)
+      .map((i) => i.name);
+    return Array.from(new Set([...fromProfile, ...fromInventory])).filter(Boolean);
+  }, [suppliers, inventory, selectedSupplierName]);
+
+  // Quick 1-click addition of a supplied good into the shipment
+  const handleAddSuppliedItemToBatch = (goodName: string) => {
+    const existingInv = inventory.find((i) => i.name.toLowerCase().trim() === goodName.toLowerCase().trim());
+    const emptyIdx = itemLines.findIndex((l) => !l.itemName.trim());
+
+    const newLine: PurchaseItemLine = {
+      id: `line_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      itemName: goodName,
+      category: existingInv?.category || currentSupplier?.category || "General Wholesaler",
+      quantity: 1,
+      unit: existingInv?.unit_type === "pcs" ? "Pieces" : (existingInv?.bulk_pack_name || "Pieces"),
+      unitCost: existingInv?.unit_cost || 100,
+      retailPrice: existingInv?.unit_retail || Math.round((existingInv?.unit_cost || 100) * 1.25),
+      totalCost: existingInv?.unit_cost || 100
+    };
+
+    if (emptyIdx >= 0) {
+      const updated = [...itemLines];
+      updated[emptyIdx] = newLine;
+      setItemLines(updated);
+    } else {
+      setItemLines([...itemLines, newLine]);
+    }
+
+    setSuccessNote(`Added "${goodName}" to shipment lot.`);
+    setTimeout(() => setSuccessNote(null), 3000);
+  };
+
+  // Load all items supplied by this vendor at once
+  const handleLoadAllSuppliedGoods = () => {
+    if (suppliedGoodsList.length === 0) return;
+    const newLines: PurchaseItemLine[] = suppliedGoodsList.map((goodName, idx) => {
+      const existingInv = inventory.find((i) => i.name.toLowerCase().trim() === goodName.toLowerCase().trim());
+      return {
+        id: `line_supp_${Date.now()}_${idx}`,
+        itemName: goodName,
+        category: existingInv?.category || currentSupplier?.category || "General Wholesaler",
+        quantity: 1,
+        unit: existingInv?.unit_type === "pcs" ? "Pieces" : (existingInv?.bulk_pack_name || "Pieces"),
+        unitCost: existingInv?.unit_cost || 100,
+        retailPrice: existingInv?.unit_retail || Math.round((existingInv?.unit_cost || 100) * 1.25),
+        totalCost: existingInv?.unit_cost || 100
+      };
+    });
+    setItemLines(newLines);
+    setSuccessNote(`Loaded all ${newLines.length} goods supplied by ${selectedSupplierName}!`);
+    setTimeout(() => setSuccessNote(null), 3500);
+  };
+
+  // Quick picker for individual goods row from this supplier's catalog
+  const handleSelectSuppliedItemForRow = (lineId: string, goodName: string) => {
+    if (!goodName) return;
+    const existingInv = inventory.find((i) => i.name.toLowerCase().trim() === goodName.toLowerCase().trim());
+    handleUpdateLine(lineId, {
+      itemName: goodName,
+      category: existingInv?.category || currentSupplier?.category || "General Wholesaler",
+      unit: existingInv?.unit_type === "pcs" ? "Pieces" : (existingInv?.bulk_pack_name || "Pieces"),
+      unitCost: existingInv?.unit_cost || 100,
+      retailPrice: existingInv?.unit_retail || Math.round((existingInv?.unit_cost || 100) * 1.25)
+    });
   };
 
   // Receipt Photo OCR Scanner State
   const [isScanningReceipt, setIsScanningReceipt] = useState(false);
-  const [scannedReceipt, setScannedReceipt] = useState<ProcessedReceipt | null>(SAMPLE_SUPPLIER_RECEIPTS[0].mockData);
-  const [scannedReceiptImage, setScannedReceiptImage] = useState<string>(SAMPLE_SUPPLIER_RECEIPTS[0].previewUrl);
+  const [scannedReceipt, setScannedReceipt] = useState<ProcessedReceipt | null>(() => {
+    const defaultSample = SAMPLE_SUPPLIER_RECEIPTS[3]?.mockData || SAMPLE_SUPPLIER_RECEIPTS[0].mockData;
+    return {
+      ...defaultSample,
+      items: defaultSample.items.map((i) => ({ ...i, approved: true }))
+    };
+  });
+  const [scannedReceiptImage, setScannedReceiptImage] = useState<string>(SAMPLE_SUPPLIER_RECEIPTS[3]?.previewUrl || SAMPLE_SUPPLIER_RECEIPTS[0].previewUrl);
   const [scannerFeedback, setScannerFeedback] = useState<string | null>(null);
+
+  // Receipts Database Archive state
+  const [archiveFilter, setArchiveFilter] = useState<"all" | "approved" | "rejected">("all");
+  const [inspectingReceipt, setInspectingReceipt] = useState<SavedReceiptRecord | null>(null);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState("Incorrect pricing / unverified delivery chit");
 
   // Past purchases with expanded view tracking
   const [expandedPurchaseId, setExpandedPurchaseId] = useState<string | null>(null);
@@ -237,7 +354,12 @@ export default function PurchasesTab({
 
       try {
         const processed = await ReceiptOcrService.processReceiptImage(dataUrl, file.name);
-        setScannedReceipt(processed);
+        // Ensure every detected item has approved: true by default for review
+        const withApproval: ProcessedReceipt = {
+          ...processed,
+          items: processed.items.map((i) => ({ ...i, approved: true }))
+        };
+        setScannedReceipt(withApproval);
         setScannerFeedback(
           `Scanned "${file.name}"! Identified ${processed.items.length} goods supplied by ${processed.supplierName} (Total: ${currency} ${processed.totalCost.toLocaleString()}).`
         );
@@ -261,28 +383,344 @@ export default function PurchasesTab({
     setScannedReceiptImage(sample.previewUrl);
 
     setTimeout(() => {
-      setScannedReceipt(sample.mockData);
+      setScannedReceipt({
+        ...sample.mockData,
+        items: sample.mockData.items.map((i) => ({ ...i, approved: true }))
+      });
       setIsScanningReceipt(false);
       setScannerFeedback(
         `Multimodal OCR successfully extracted ${sample.mockData.items.length} goods from ${sample.mockData.supplierName}.`
       );
-    }, 600);
+    }, 450);
   };
 
-  // Apply OCR scanned receipt into the Multi-Item Purchase Builder
+  // Toggle individual item approval state
+  const handleToggleItemApproval = (itemId: string) => {
+    if (!scannedReceipt) return;
+
+    const updatedItems = scannedReceipt.items.map((item) => {
+      if (item.id === itemId) {
+        return { ...item, approved: item.approved === false ? true : false };
+      }
+      return item;
+    });
+
+    const approved = updatedItems.filter((i) => i.approved !== false);
+    const newTotalCost = approved.reduce((acc, i) => acc + (Number(i.lineCost) || 0), 0);
+    const newTotalRetail = approved.reduce(
+      (acc, i) => acc + ((Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 0) * (Number(i.retailPrice) || 0)), 
+      0
+    );
+    const newProfit = Math.max(0, newTotalRetail - newTotalCost);
+    const newMarkup = newTotalCost > 0 ? (newProfit / newTotalCost) * 100 : 0;
+
+    setScannedReceipt({
+      ...scannedReceipt,
+      items: updatedItems,
+      totalCost: newTotalCost,
+      totalRetailShelfValue: newTotalRetail,
+      totalPotentialProfit: newProfit,
+      markupPercentage: Math.round(newMarkup * 10) / 10
+    });
+  };
+
+  // Approve all items in scanned receipt
+  const handleApproveAllItems = () => {
+    if (!scannedReceipt) return;
+    const updatedItems = scannedReceipt.items.map((item) => ({ ...item, approved: true }));
+    const newTotalCost = updatedItems.reduce((acc, i) => acc + (Number(i.lineCost) || 0), 0);
+    const newTotalRetail = updatedItems.reduce(
+      (acc, i) => acc + ((Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 0) * (Number(i.retailPrice) || 0)), 
+      0
+    );
+    const newProfit = Math.max(0, newTotalRetail - newTotalCost);
+    const newMarkup = newTotalCost > 0 ? (newProfit / newTotalCost) * 100 : 0;
+
+    setScannedReceipt({
+      ...scannedReceipt,
+      items: updatedItems,
+      totalCost: newTotalCost,
+      totalRetailShelfValue: newTotalRetail,
+      totalPotentialProfit: newProfit,
+      markupPercentage: Math.round(newMarkup * 10) / 10
+    });
+  };
+
+  // Reject / Exclude all items
+  const handleRejectAllItems = () => {
+    if (!scannedReceipt) return;
+    const updatedItems = scannedReceipt.items.map((item) => ({ ...item, approved: false }));
+    setScannedReceipt({
+      ...scannedReceipt,
+      items: updatedItems,
+      totalCost: 0,
+      totalRetailShelfValue: 0,
+      totalPotentialProfit: 0,
+      markupPercentage: 0
+    });
+  };
+
+  // In-place edit of scanned item details with strictly numerical addition (e.g. 140 + 280 = 420)
+  const handleUpdateScannedItem = (
+    itemId: string, 
+    field: keyof ProcessedReceiptItem, 
+    value: any
+  ) => {
+    if (!scannedReceipt) return;
+
+    const updatedItems = scannedReceipt.items.map((item) => {
+      if (item.id !== itemId) return item;
+
+      const updated = { ...item };
+
+      if (field === "itemName" || field === "supplyUnit" || field === "retailUnit") {
+        (updated as any)[field] = value;
+      } else {
+        const numVal = value === "" ? 0 : Number(value) || 0;
+        (updated as any)[field] = numVal;
+
+        if (field === "supplyUnitsReceived" || field === "unitCostAtDelivery") {
+          const qty = field === "supplyUnitsReceived" ? numVal : Number(item.supplyUnitsReceived) || 1;
+          const uCost = field === "unitCostAtDelivery" ? numVal : Number(item.unitCostAtDelivery) || 0;
+          updated.lineCost = Math.round(qty * uCost * 100) / 100;
+        }
+
+        if (field === "lineCost") {
+          const qty = Number(item.supplyUnitsReceived) > 0 ? Number(item.supplyUnitsReceived) : 1;
+          updated.unitCostAtDelivery = Math.round((numVal / qty) * 100) / 100;
+        }
+
+        if (field === "retailPrice" || field === "unitCostAtDelivery" || field === "lineCost") {
+          const rPrice = field === "retailPrice" ? numVal : Number(item.retailPrice) || 0;
+          const uCost = Number(updated.unitCostAtDelivery) || 0;
+          updated.expectedMargin = Math.max(0, rPrice - uCost);
+        }
+      }
+
+      return updated;
+    });
+
+    // Strictly numeric summation across approved items
+    const approved = updatedItems.filter((i) => i.approved !== false);
+    const newTotalCost = approved.reduce((acc, i) => acc + (Number(i.lineCost) || 0), 0);
+    const newTotalRetail = approved.reduce(
+      (acc, i) => acc + ((Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 0) * (Number(i.retailPrice) || 0)), 
+      0
+    );
+    const newProfit = Math.max(0, newTotalRetail - newTotalCost);
+    const newMarkup = newTotalCost > 0 ? (newProfit / newTotalCost) * 100 : 0;
+
+    setScannedReceipt({
+      ...scannedReceipt,
+      items: updatedItems,
+      totalCost: newTotalCost,
+      totalRetailShelfValue: newTotalRetail,
+      totalPotentialProfit: newProfit,
+      markupPercentage: Math.round(newMarkup * 10) / 10
+    });
+  };
+
+  // Commit and ingest approved items to inventory & database, and clear scanner space for new uploads
+  const handleCommitApprovedReceipt = () => {
+    if (!scannedReceipt) return;
+
+    const approvedItems = scannedReceipt.items.filter((i) => i.approved !== false);
+    if (approvedItems.length === 0) {
+      setSuccessNote("Please approve at least one good before committing the delivery to inventory.");
+      setTimeout(() => setSuccessNote(null), 4000);
+      return;
+    }
+
+    const totalApprovedCost = approvedItems.reduce((acc, i) => acc + (Number(i.lineCost) || 0), 0);
+    const totalApprovedRetail = approvedItems.reduce(
+      (acc, i) => acc + ((Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 0) * (Number(i.retailPrice) || 0)), 
+      0
+    );
+    const profit = Math.max(0, totalApprovedRetail - totalApprovedCost);
+    const markup = totalApprovedCost > 0 ? Math.round((profit / totalApprovedCost) * 1000) / 10 : 0;
+
+    // Convert approved items into purchase lines
+    const purchaseLines: PurchaseItemLine[] = approvedItems.map((item, idx) => ({
+      id: `rcpt_line_${Date.now()}_${idx}`,
+      itemName: item.itemName,
+      category: "Wholesale Delivery",
+      quantity: Number(item.supplyUnitsReceived) || 1,
+      unit: item.supplyUnit || "Pieces",
+      unitCost: Number(item.unitCostAtDelivery) || 0,
+      retailPrice: Number(item.retailPrice) || 0,
+      totalCost: Number(item.lineCost) || 0
+    }));
+
+    // 1. Log purchase into inventory & master state
+    if (onLogPurchase) {
+      onLogPurchase({
+        supplier: scannedReceipt.supplierName,
+        supplierPhone: currentSupplier.phone,
+        supplierNationalId: currentSupplier.national_id,
+        items: purchaseLines.map((l) => `${l.quantity} ${l.unit} ${l.itemName}`).join(", "),
+        itemLines: purchaseLines,
+        amount: totalApprovedCost,
+        payment_channel: scannedReceipt.paymentMode === "MPESA" ? "MPESA" : "CASH",
+        date: scannedReceipt.receiptDate || new Date().toISOString().slice(0, 10),
+        notes: `Approved delivery receipt ${scannedReceipt.receiptNumber} (${approvedItems.length} goods approved)`,
+        receiptImageUrl: scannedReceiptImage || undefined
+      });
+    }
+
+    // 2. Save worked-on receipt record to database archive
+    const savedRecord: SavedReceiptRecord = {
+      id: scannedReceipt.id || `rcpt_arch_${Date.now()}`,
+      receiptNumber: scannedReceipt.receiptNumber || `DN-${Math.floor(1000 + Math.random() * 9000)}`,
+      supplierName: scannedReceipt.supplierName,
+      receiptDate: scannedReceipt.receiptDate,
+      paymentMode: scannedReceipt.paymentMode,
+      status: "approved",
+      totalCost: totalApprovedCost,
+      totalRetailShelfValue: totalApprovedRetail,
+      totalPotentialProfit: profit,
+      markupPercentage: markup,
+      itemsCount: approvedItems.length,
+      items: scannedReceipt.items.map((i) => ({
+        id: i.id,
+        itemName: i.itemName,
+        supplyUnitsReceived: Number(i.supplyUnitsReceived) || 1,
+        supplyUnit: i.supplyUnit,
+        conversionRatio: i.conversionRatio,
+        retailUnitsAdded: Number(i.retailUnitsAdded) || 1,
+        retailUnit: i.retailUnit,
+        unitCostAtDelivery: Number(i.unitCostAtDelivery) || 0,
+        lineCost: Number(i.lineCost) || 0,
+        retailPrice: Number(i.retailPrice) || 0,
+        expectedMargin: Number(i.expectedMargin) || 0,
+        approved: i.approved !== false
+      })),
+      imageUrl: scannedReceiptImage || undefined,
+      processedAt: scannedReceipt.processedAt || "Just now",
+      decidedAt: new Date().toISOString(),
+      notes: `Worked-on & approved receipt. ${approvedItems.length} items verified.`
+    };
+
+    if (onSaveReceiptToDatabase) {
+      onSaveReceiptToDatabase(savedRecord);
+    }
+
+    // 3. Clear active scanner to give space for new uploads
+    const clearedNumber = scannedReceipt.receiptNumber;
+    const clearedSupplier = scannedReceipt.supplierName;
+    setScannedReceipt(null);
+    setScannedReceiptImage("");
+
+    setSuccessNote(
+      `✓ Worked-on receipt ${clearedNumber} (${clearedSupplier}) approved! Added ${currency} ${totalApprovedCost.toLocaleString()} to database and active inventory. Scanner cleared for next upload.`
+    );
+    setTimeout(() => setSuccessNote(null), 7000);
+  };
+
+  // Reject receipt: save to database with rejection reason and clear scanner to give space for new uploads
+  const handleRejectReceipt = (reason: string = "Incorrect pricing / unverified delivery chit") => {
+    if (!scannedReceipt) return;
+
+    const savedRecord: SavedReceiptRecord = {
+      id: scannedReceipt.id || `rcpt_arch_${Date.now()}`,
+      receiptNumber: scannedReceipt.receiptNumber || `DN-${Math.floor(1000 + Math.random() * 9000)}`,
+      supplierName: scannedReceipt.supplierName,
+      receiptDate: scannedReceipt.receiptDate,
+      paymentMode: scannedReceipt.paymentMode,
+      status: "rejected",
+      rejectionReason: reason,
+      totalCost: Number(scannedReceipt.totalCost) || 0,
+      totalRetailShelfValue: Number(scannedReceipt.totalRetailShelfValue) || 0,
+      totalPotentialProfit: Number(scannedReceipt.totalPotentialProfit) || 0,
+      markupPercentage: Number(scannedReceipt.markupPercentage) || 0,
+      itemsCount: scannedReceipt.items.length,
+      items: scannedReceipt.items.map((i) => ({
+        id: i.id,
+        itemName: i.itemName,
+        supplyUnitsReceived: Number(i.supplyUnitsReceived) || 1,
+        supplyUnit: i.supplyUnit,
+        conversionRatio: i.conversionRatio,
+        retailUnitsAdded: Number(i.retailUnitsAdded) || 1,
+        retailUnit: i.retailUnit,
+        unitCostAtDelivery: Number(i.unitCostAtDelivery) || 0,
+        lineCost: Number(i.lineCost) || 0,
+        retailPrice: Number(i.retailPrice) || 0,
+        expectedMargin: Number(i.expectedMargin) || 0,
+        approved: false
+      })),
+      imageUrl: scannedReceiptImage || undefined,
+      processedAt: scannedReceipt.processedAt || "Just now",
+      decidedAt: new Date().toISOString(),
+      notes: `Rejected receipt: ${reason}`
+    };
+
+    if (onSaveReceiptToDatabase) {
+      onSaveReceiptToDatabase(savedRecord);
+    }
+
+    const clearedNumber = scannedReceipt.receiptNumber;
+    setScannedReceipt(null);
+    setScannedReceiptImage("");
+    setIsRejectModalOpen(false);
+
+    setSuccessNote(
+      `Receipt ${clearedNumber} marked as REJECTED and saved to database. Scanner cleared for new uploads.`
+    );
+    setTimeout(() => setSuccessNote(null), 6000);
+  };
+
+  // Reload an archived receipt back into the active scanner for review or re-editing
+  const handleReloadArchivedReceipt = (arch: SavedReceiptRecord) => {
+    setScannedReceipt({
+      id: arch.id,
+      receiptNumber: arch.receiptNumber,
+      supplierName: arch.supplierName,
+      receiptDate: arch.receiptDate,
+      paymentMode: arch.paymentMode === "MPESA" ? "MPESA" : "CASH",
+      totalCost: arch.totalCost,
+      totalRetailShelfValue: arch.totalRetailShelfValue,
+      totalPotentialProfit: arch.totalPotentialProfit,
+      markupPercentage: arch.markupPercentage,
+      confidenceScore: 0.99,
+      processedAt: arch.processedAt,
+      rawTextNotes: arch.notes,
+      imageUrl: arch.imageUrl,
+      items: arch.items.map((i) => ({
+        id: i.id,
+        itemName: i.itemName,
+        supplyUnitsReceived: i.supplyUnitsReceived,
+        supplyUnit: i.supplyUnit,
+        conversionRatio: i.conversionRatio || 1,
+        retailUnitsAdded: i.retailUnitsAdded,
+        retailUnit: i.retailUnit || "units",
+        unitCostAtDelivery: i.unitCostAtDelivery,
+        lineCost: i.lineCost,
+        retailPrice: i.retailPrice,
+        expectedMargin: i.expectedMargin || 0,
+        approved: i.approved !== false
+      }))
+    });
+    setScannedReceiptImage(arch.imageUrl || "");
+    setSuccessNote(`Loaded receipt ${arch.receiptNumber} (${arch.supplierName}) into scanner for inspection.`);
+    setTimeout(() => setSuccessNote(null), 4000);
+  };
+
+  // Apply OCR scanned receipt into the Multi-Item Purchase Builder below
   const handleApplyScannedReceipt = () => {
     if (!scannedReceipt) return;
 
+    const approvedItems = scannedReceipt.items.filter((i) => i.approved !== false);
+    const targetItems = approvedItems.length > 0 ? approvedItems : scannedReceipt.items;
+
     // Convert scanned items into PurchaseItemLine[]
-    const lines: PurchaseItemLine[] = scannedReceipt.items.map((item, idx) => ({
+    const lines: PurchaseItemLine[] = targetItems.map((item, idx) => ({
       id: `scanned_line_${Date.now()}_${idx}`,
       itemName: item.itemName,
       category: "Dairy & Chilled",
-      quantity: item.supplyUnitsReceived,
+      quantity: Number(item.supplyUnitsReceived) || 1,
       unit: item.supplyUnit,
-      unitCost: item.unitCostAtDelivery || (item.lineCost / (item.supplyUnitsReceived || 1)),
-      retailPrice: item.retailPrice || 0,
-      totalCost: item.lineCost
+      unitCost: Number(item.unitCostAtDelivery) || (Number(item.lineCost) / (Number(item.supplyUnitsReceived) || 1)),
+      retailPrice: Number(item.retailPrice) || 0,
+      totalCost: Number(item.lineCost) || 0
     }));
 
     // Find supplier or use scanned name
@@ -298,7 +736,7 @@ export default function PurchasesTab({
     setNotes(scannedReceipt.rawTextNotes || `Scanned receipt ${scannedReceipt.receiptNumber} with ${lines.length} goods`);
     
     setIsAddingPurchase(true);
-    setSuccessNote(`Applied ${lines.length} goods from scanned receipt to purchase form! Review and save below.`);
+    setSuccessNote(`Applied ${lines.length} approved goods from receipt to purchase form! Review and save below.`);
     setTimeout(() => setSuccessNote(null), 5000);
 
     // Scroll to form
@@ -356,15 +794,15 @@ export default function PurchasesTab({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-serif font-bold text-slate-900 flex items-center gap-2">
-              <ShoppingBag className="text-blue-600" size={24} /> Purchases &amp; Inbound Cargo
+            <h1 className="text-xl sm:text-2xl font-serif font-bold text-slate-900 flex items-center gap-2">
+              <ShoppingBag className="text-blue-600 shrink-0" size={22} /> Purchases &amp; Inbound Cargo
             </h1>
-            <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold uppercase">
-              Multi-Goods Restock &amp; Receipt OCR
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold uppercase hidden sm:inline">
+              1 to Many Goods
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Suppliers deliver lots of goods at once. Log wholesale batches with multiple item rows, or upload a photo of the receipt to auto-extract every good, quantity, and cost.
+          <p className="text-xs text-slate-500 mt-0.5">
+            Suppliers deliver from 1 to many goods at once. Record batch deliveries or photo receipts.
           </p>
         </div>
 
@@ -402,65 +840,61 @@ export default function PurchasesTab({
         </div>
       )}
 
-      {/* KPI METRICS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Restock Spend</span>
-          <div className="text-2xl font-serif font-bold text-slate-900 mt-1">
+      {/* KPI METRICS (COMPACT ON SMALL SCREENS) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="bg-white border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
+          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">Total Restock Spend</span>
+          <div className="text-lg sm:text-2xl font-serif font-bold text-slate-900 mt-0.5">
             {currency} {supplierPurchases.reduce((acc, p) => acc + p.amount, 0).toLocaleString()}
           </div>
-          <span className="text-[11px] text-slate-500 mt-0.5 block">{supplierPurchases.length} batches received</span>
+          <span className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 block">{supplierPurchases.length} batches received</span>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Active Suppliers</span>
-          <div className="text-2xl font-serif font-bold text-blue-700 mt-1">
+        <div className="bg-white border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
+          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">Active Suppliers</span>
+          <div className="text-lg sm:text-2xl font-serif font-bold text-blue-700 mt-0.5">
             {suppliers.length}
           </div>
-          <span className="text-[11px] text-slate-500 mt-0.5 block">Delivering goods &amp; stock</span>
+          <span className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 block">Delivering goods &amp; stock</span>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">National ID OTC Rails</span>
-          <div className="text-2xl font-serif font-bold text-emerald-700 mt-1">
+        <div className="bg-white border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
+          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">National ID OTC Rails</span>
+          <div className="text-lg sm:text-2xl font-serif font-bold text-emerald-700 mt-0.5">
             {suppliers.filter(s => s.payment_preference === "NATIONAL_ID_DEPOSIT").length}
           </div>
-          <span className="text-[11px] text-slate-500 mt-0.5 block">Equity/KCB Agent deposits</span>
+          <span className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 block">Equity/KCB Agent deposits</span>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Receipt OCR Reader</span>
-          <div className="text-2xl font-serif font-bold text-purple-700 mt-1">
+        <div className="bg-white border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
+          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">Receipt OCR Reader</span>
+          <div className="text-lg sm:text-2xl font-serif font-bold text-purple-700 mt-0.5">
             Active
           </div>
-          <span className="text-[11px] text-slate-500 mt-0.5 block">Instant photo auto-fill</span>
+          <span className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 block">Instant photo auto-fill</span>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 1B. RESTOCK AUTO-SALES RECONCILIATION CARDS (TRIGGERED VELOCITY MODEL)    */}
-      {/* "whenever we record a purchase... bringing in that today means we have     */}
-      {/*  dealt with all those of yesterday... automatically generate cards of     */}
-      {/*  that stuff... asking for remains, owner ate/giveaway/rejects             */}
-      {/*  so whenever we have dealt with this card, we have authorised that a sale happened"*/}
+      {/* 1B. RESTOCK AUTO-SALES RECONCILIATION CARDS (COLLAPSIBLE / COMPACT)       */}
       {/* ========================================================================= */}
-      <div className="bg-[#0b131e] border-2 border-amber-500/50 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/40">
-              <Sparkles size={20} />
+      <div className="bg-[#0b131e] border-2 border-amber-500/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-lg space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-800 pb-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/40 shrink-0">
+              <Sparkles size={16} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-serif font-bold text-white flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-sm sm:text-base font-serif font-bold text-white flex items-center gap-1.5">
                   Restock Auto-Sales Reconciliation Cards
                 </h2>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40">
-                  {restockCards.filter(c => c.status === "PENDING_AUTHORIZATION").length} Action Needed
+                <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40">
+                  {restockCards.filter(c => c.status === "PENDING_AUTHORIZATION").length} Pending
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Restocking fast-moving inventory (e.g. today&apos;s bread or milk delivery after yesterday&apos;s batch) confirms yesterday&apos;s stock was sold. Reconcile closing remains, owner drawings, and spoilage to authorize sales into your drawer.
+              <p className="text-[11px] text-slate-400 mt-0.5 hidden sm:block">
+                Inbound restock confirms earlier batches were sold. Reconcile remaining units to authorize sales into your drawer.
               </p>
             </div>
           </div>
@@ -468,16 +902,24 @@ export default function PurchasesTab({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowAllRestockCards(!showAllRestockCards)}
-              className="px-3 py-1.5 rounded-xl bg-[#142334] hover:bg-[#1a2f45] text-slate-300 border border-slate-700 text-xs font-mono cursor-pointer"
+              onClick={() => setIsReconExpanded(!isReconExpanded)}
+              className="px-2.5 py-1 rounded-lg bg-[#142334] hover:bg-[#1a2f45] text-amber-300 border border-amber-500/30 text-xs font-mono cursor-pointer"
             >
-              {showAllRestockCards ? "Show Pending Only" : `Show All (${restockCards.length})`}
+              {isReconExpanded ? "▲ Collapse" : "▼ Expand Cards"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAllRestockCards(!showAllRestockCards)}
+              className="px-2.5 py-1 rounded-lg bg-[#142334] hover:bg-[#1a2f45] text-slate-300 border border-slate-700 text-xs font-mono cursor-pointer"
+            >
+              {showAllRestockCards ? "Pending Only" : `All (${restockCards.length})`}
             </button>
           </div>
         </div>
 
-        {/* CARDS LIST */}
-        <div className="space-y-4">
+        {/* CARDS LIST (COLLAPSIBLE FOR MOBILE FIT) */}
+        {isReconExpanded && (
+          <div className="space-y-3 pt-1">
           {(showAllRestockCards ? restockCards : restockCards.filter(c => c.status === "PENDING_AUTHORIZATION")).map((card) => (
             <RestockSalesReconciliationCardView
               key={card.id}
@@ -498,14 +940,16 @@ export default function PurchasesTab({
             </div>
           )}
         </div>
+      )}
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. RECEIPT PHOTO SCANNER & OCR FEATURE (UNDER PURCHASES TAB)              */}
-      {/* "and under it again, add a feature that we upload a receipt photo,        */}
-      {/*  and it reads and put in the details"                                     */}
+      {/* 2. RECEIPT PHOTO SCANNER, ITEM APPROVAL & DATABASE ARCHIVE                 */}
+      {/* "the upload receipt feature should be working perfectly, client approves    */}
+      {/* each item, ensure correct details, 140 + 280 adds to 420, worked on &     */}
+      {/* rejected receipts go into a database to give space for new uploads"        */}
       {/* ========================================================================= */}
-      <div className="bg-white border-2 border-blue-200/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-5 relative overflow-hidden">
+      <div className="bg-white border-2 border-blue-200/80 rounded-3xl p-4 sm:p-6 shadow-sm space-y-5 relative overflow-hidden">
         
         {/* DECORATIVE SUBTLE BLUE ACCENT */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/60 rounded-full blur-3xl -z-10 pointer-events-none" />
@@ -513,23 +957,25 @@ export default function PurchasesTab({
         {/* SCANNER HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
               <Camera size={18} />
             </div>
             <div>
-              <h2 className="text-base font-serif font-bold text-slate-900 flex items-center gap-2">
-                Upload Receipt Photo &bull; AI OCR Auto-Fill
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base font-serif font-bold text-slate-900">
+                  Upload Receipt &bull; Item-by-Item Approval &amp; Database Archive
+                </h2>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold uppercase">
-                  Reads Lot of Goods
+                  Verified Ingestion
                 </span>
-              </h2>
-              <p className="text-xs text-slate-500">
-                Snap or upload a photo of your supplier delivery slip, invoice, or van manifest. It detects all goods, quantities, prices, and supplier National ID/Phone.
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Review and approve each good individually before ingesting to inventory. Worked-on and rejected receipts go to the database to give space for new uploads.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <input
               type="file"
               ref={fileInputRef}
@@ -542,29 +988,404 @@ export default function PurchasesTab({
               className="px-4 py-2 bg-[#1A56DB] hover:bg-[#1545B3] text-white text-xs font-bold rounded-xl transition flex items-center gap-2 shadow-xs cursor-pointer"
             >
               <Upload size={14} />
-              <span>Upload Receipt Photo</span>
+              <span>{scannedReceipt ? "Upload Another Receipt" : "Upload Receipt Photo"}</span>
             </button>
+
+            {scannedReceipt && (
+              <button
+                onClick={() => {
+                  setScannedReceipt(null);
+                  setScannedReceiptImage("");
+                  setSuccessNote("Scanner cleared to give space for new uploads.");
+                  setTimeout(() => setSuccessNote(null), 3000);
+                }}
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition cursor-pointer"
+                title="Clear current view to upload fresh receipt"
+              >
+                Clear / New Upload
+              </button>
+            )}
           </div>
         </div>
 
-        {/* QUICK 1-TAP SAMPLE DELIVERY RECEIPT PHOTOS */}
-        <div className="space-y-2">
+        {/* SCANNING PROGRESS INDICATOR */}
+        {isScanningReceipt && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-center gap-3 animate-pulse">
+            <RefreshCw size={18} className="text-blue-600 animate-spin shrink-0" />
+            <div className="text-xs">
+              <strong className="text-blue-900 block">Multimodal AI Reading Receipt &amp; Detecting Line Items...</strong>
+              <span className="text-blue-700 text-[11px]">
+                Extracting supplier, quantities, unit prices, crate conversions, and totals.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* STATE A: ACTIVE RECEIPT IN REVIEW (ITEM-BY-ITEM CLIENT APPROVAL)          */}
+        {/* ========================================================================= */}
+        {scannedReceipt && !isScanningReceipt && (() => {
+          const approvedItems = scannedReceipt.items.filter((i) => i.approved !== false);
+          // Strictly numerical addition: no string concatenation! E.g. 140 + 280 = 420
+          const approvedTotalCost = approvedItems.reduce((acc, i) => acc + (Number(i.lineCost) || 0), 0);
+          const approvedTotalRetail = approvedItems.reduce(
+            (acc, i) => acc + ((Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 0) * (Number(i.retailPrice) || 0)), 
+            0
+          );
+          const potentialProfit = Math.max(0, approvedTotalRetail - approvedTotalCost);
+          const overallMarkup = approvedTotalCost > 0 ? ((potentialProfit / approvedTotalCost) * 100).toFixed(1) : "0.0";
+
+          return (
+            <div className="bg-slate-50 border-2 border-blue-200/90 rounded-2xl p-3.5 sm:p-5 space-y-4">
+              
+              {/* TOP BANNER: RECEIPT METADATA & ACTIONS */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-mono uppercase font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full inline-block">
+                      Receipt Under Review &bull; {approvedItems.length} of {scannedReceipt.items.length} Goods Approved
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500">
+                      Date: {scannedReceipt.receiptDate} &bull; Inv: {scannedReceipt.receiptNumber}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 mt-1">
+                    {scannedReceipt.supplierName}
+                  </h3>
+                </div>
+
+                {/* APPROVAL TOGGLES & TOP BUTTONS */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleApproveAllItems}
+                    className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold rounded-lg transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <CheckSquare size={13} className="text-emerald-600" />
+                    <span>Approve All</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRejectAllItems}
+                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Square size={13} className="text-slate-500" />
+                    <span>Exclude All</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* TWO-COLUMN LAYOUT: PHOTO THUMBNAIL (LEFT) + INTERACTIVE GOODS APPROVAL TABLE (RIGHT) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                
+                {/* PHOTO PREVIEW (LEFT) */}
+                <div className="lg:col-span-4 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Physical Receipt Photo
+                    </span>
+                    <span className="text-[10px] text-emerald-600 font-mono font-bold">
+                      OCR Confidence: {((scannedReceipt.confidenceScore || 0.98) * 100).toFixed(0)}%
+                    </span>
+                  </div>
+
+                  <div className="max-h-64 overflow-hidden rounded-xl border border-slate-100 flex items-center justify-center bg-slate-100 relative group">
+                    {scannedReceiptImage ? (
+                      <img
+                        src={scannedReceiptImage}
+                        alt="Scanned Supplier Receipt"
+                        className="w-full h-auto object-contain max-h-64 rounded-lg"
+                      />
+                    ) : (
+                      <div className="p-8 text-center text-slate-400 text-xs">
+                        <Camera size={32} className="mx-auto mb-1 text-slate-400" />
+                        No photo attached
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-1 text-[11px] text-slate-500 flex items-center justify-between">
+                    <span>Payment: <strong className="text-slate-800">{scannedReceipt.paymentMode}</strong></span>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer underline text-[11px]"
+                    >
+                      Change Photo
+                    </button>
+                  </div>
+                </div>
+
+                {/* INTERACTIVE GOODS LIST WITH ITEM-LEVEL APPROVAL (RIGHT) */}
+                <div className="lg:col-span-8 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-100 pb-2">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Layers size={14} className="text-blue-600" />
+                      Approve &amp; Ensure Correct Details for Each Good:
+                    </span>
+                    <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      Approved Total: {currency} {approvedTotalCost.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* ITEM CARDS / ROWS */}
+                  <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+                    {scannedReceipt.items.map((item, idx) => {
+                      const isApproved = item.approved !== false;
+                      const lineTotal = Number(item.lineCost) || 0;
+                      const unitCost = Number(item.unitCostAtDelivery) || (item.supplyUnitsReceived > 0 ? lineTotal / item.supplyUnitsReceived : 0);
+                      const retailPrice = Number(item.retailPrice) || 0;
+
+                      return (
+                        <div
+                          key={item.id || idx}
+                          className={`p-3 rounded-xl border transition-all text-xs ${
+                            isApproved 
+                              ? "bg-emerald-50/40 border-emerald-300 ring-1 ring-emerald-500/10" 
+                              : "bg-slate-50/70 border-slate-200 opacity-60"
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200/60">
+                            
+                            {/* APPROVE TOGGLE BUTTON */}
+                            <div className="flex items-center gap-2 flex-1">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleItemApproval(item.id)}
+                                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                                  isApproved
+                                    ? "bg-emerald-600 text-white shadow-xs"
+                                    : "bg-slate-200 hover:bg-slate-300 text-slate-700"
+                                }`}
+                              >
+                                {isApproved ? (
+                                  <>
+                                    <Check size={13} className="text-white" />
+                                    <span>Approved ✓</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Square size={13} className="text-slate-500" />
+                                    <span>Click to Approve</span>
+                                  </>
+                                )}
+                              </button>
+
+                              {/* EDITABLE ITEM NAME */}
+                              <input
+                                type="text"
+                                value={item.itemName}
+                                onChange={(e) => handleUpdateScannedItem(item.id, "itemName", e.target.value)}
+                                className="font-bold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none flex-1 text-xs"
+                                placeholder="Good description"
+                              />
+                            </div>
+
+                            {/* LINE TOTAL DISPLAY */}
+                            <div className="flex items-center gap-2 self-end sm:self-auto font-mono">
+                              <span className="text-[10px] text-slate-400 uppercase">Line Cost:</span>
+                              <strong className={`text-xs ${isApproved ? "text-slate-900" : "text-slate-500"}`}>
+                                {currency} {lineTotal.toLocaleString()}
+                              </strong>
+                            </div>
+                          </div>
+
+                          {/* EDITABLE NUMERICAL FIELDS: QTY, UNIT, UNIT COST, LINE COST, RETAIL PRICE */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 text-[11px]">
+                            
+                            {/* WHOLESALE QUANTITY & UNIT */}
+                            <div>
+                              <label className="text-[9px] text-slate-500 uppercase font-semibold block mb-0.5">
+                                Qty &amp; Unit
+                              </label>
+                              <div className="flex items-center gap-1 font-mono">
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={item.supplyUnitsReceived}
+                                  onChange={(e) => handleUpdateScannedItem(item.id, "supplyUnitsReceived", e.target.value)}
+                                  className="w-14 bg-white border border-slate-200 rounded-md p-1 text-center font-bold text-slate-800 text-xs"
+                                />
+                                <span className="text-[10px] text-slate-500 truncate" title={item.supplyUnit}>
+                                  {item.supplyUnit}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* UNIT WHOLESALE COST */}
+                            <div>
+                              <label className="text-[9px] text-slate-500 uppercase font-semibold block mb-0.5">
+                                Unit Cost ({currency})
+                              </label>
+                              <input
+                                type="number"
+                                min={0}
+                                value={unitCost}
+                                onChange={(e) => handleUpdateScannedItem(item.id, "unitCostAtDelivery", e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-md p-1 font-mono font-bold text-slate-800 text-xs text-right"
+                              />
+                            </div>
+
+                            {/* EXACT LINE TOTAL COST (STRICT NUMERIC: E.G. 140 OR 280) */}
+                            <div>
+                              <label className="text-[9px] text-amber-800 uppercase font-bold block mb-0.5">
+                                Line Total ({currency}) *
+                              </label>
+                              <input
+                                type="number"
+                                min={0}
+                                value={lineTotal}
+                                onChange={(e) => handleUpdateScannedItem(item.id, "lineCost", e.target.value)}
+                                className="w-full bg-white border-2 border-amber-300 rounded-md p-1 font-mono font-bold text-amber-900 text-xs text-right focus:border-amber-500"
+                              />
+                            </div>
+
+                            {/* RETAIL SELLING PRICE */}
+                            <div>
+                              <label className="text-[9px] text-emerald-800 uppercase font-semibold block mb-0.5">
+                                Shelf Retail ({currency})
+                              </label>
+                              <input
+                                type="number"
+                                min={0}
+                                value={retailPrice}
+                                onChange={(e) => handleUpdateScannedItem(item.id, "retailPrice", e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-md p-1 font-mono font-bold text-emerald-700 text-xs text-right"
+                              />
+                            </div>
+
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* FINANCIAL IMPACT BANNER: STRICT ADDITION (140 + 280 = 420) */}
+                  <div className="p-3 bg-slate-100/80 rounded-xl grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono border border-slate-200">
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase block">Approved Items</span>
+                      <strong className="text-slate-900">{approvedItems.length} Products</strong>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase block">Total Approved Cost</span>
+                      <strong className="text-emerald-700 text-sm">
+                        {currency} {approvedTotalCost.toLocaleString()}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase block">Retail Shelf Value</span>
+                      <strong className="text-blue-700">
+                        {currency} {approvedTotalRetail.toLocaleString()}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase block">Batch Margin</span>
+                      <strong className="text-slate-800">
+                        +{currency} {potentialProfit.toLocaleString()} ({overallMarkup}%)
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* PRIMARY ACTION BUTTONS */}
+                  <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+                    
+                    {/* REJECT RECEIPT (GOES TO DATABASE & CLEARS SCANNER) */}
+                    <button
+                      type="button"
+                      onClick={() => setIsRejectModalOpen(true)}
+                      className="w-full sm:w-auto px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <XCircle size={15} className="text-rose-600" />
+                      <span>Reject Receipt &amp; Save to Database</span>
+                    </button>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+                      {/* APPLY TO PURCHASE FORM (OPTIONAL) */}
+                      <button
+                        type="button"
+                        onClick={handleApplyScannedReceipt}
+                        className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer"
+                        title="Copy into purchase form below for manual editing"
+                      >
+                        Populate Into Form Below &darr;
+                      </button>
+
+                      {/* COMMIT APPROVED RECEIPT TO DATABASE & ACTIVE INVENTORY */}
+                      <button
+                        type="button"
+                        onClick={handleCommitApprovedReceipt}
+                        className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                      >
+                        <Check size={16} />
+                        <span>
+                          Approve &amp; Ingest to Database ({approvedItems.length} Goods &rarr; {currency} {approvedTotalCost.toLocaleString()})
+                        </span>
+                      </button>
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+          );
+        })()}
+
+        {/* ========================================================================= */}
+        {/* STATE B: SCANNER EMPTY / READY STATE (GIVES SPACE FOR NEW UPLOADS)         */}
+        {/* ========================================================================= */}
+        {!scannedReceipt && !isScanningReceipt && (
+          <div className="border-2 border-dashed border-slate-300 hover:border-blue-400 bg-slate-50/60 rounded-2xl p-6 sm:p-8 text-center space-y-4 transition">
+            <div className="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mx-auto shadow-xs">
+              <Camera size={26} />
+            </div>
+            
+            <div className="max-w-md mx-auto space-y-1">
+              <h3 className="text-sm font-bold text-slate-900 font-serif">
+                Scanner is Ready for Next Delivery Receipt Photo
+              </h3>
+              <p className="text-xs text-slate-500">
+                Worked-on and rejected receipts have been safely archived to the database below. Snap or upload your next delivery chit to read lots of goods.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-5 py-2.5 bg-[#1A56DB] hover:bg-[#1545B3] text-white text-xs font-bold rounded-xl transition flex items-center gap-2 shadow-xs cursor-pointer"
+              >
+                <Upload size={15} />
+                <span>Take Photo / Upload Pic</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* QUICK 1-TAP SAMPLE DELIVERY RECEIPT PHOTOS (AVAILABLE AT ALL TIMES) */}
+        <div className="space-y-2 pt-1 border-t border-slate-100">
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-              <Sparkles size={14} className="text-amber-500" /> Or pick a sample Kenyan delivery receipt photo:
+              <Sparkles size={14} className="text-amber-500" /> Test with Kenyan Supplier Delivery Slips:
             </span>
-            <span className="text-[11px] text-slate-400">Click to simulate photo scan</span>
+            <span className="text-[11px] text-slate-400 hidden sm:inline">1-Click sample test</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
             {SAMPLE_SUPPLIER_RECEIPTS.map((sample) => (
               <button
                 key={sample.id}
+                type="button"
                 onClick={() => handleSelectSampleReceipt(sample.id)}
-                className="p-3 rounded-2xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-left transition flex items-center gap-3 cursor-pointer group shadow-2xs"
+                className="p-3 rounded-2xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-left transition flex items-center gap-2.5 cursor-pointer group shadow-2xs bg-white"
               >
-                <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <ImageIcon size={18} className="text-slate-600 group-hover:text-blue-600" />
+                <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <ImageIcon size={16} className="text-slate-600 group-hover:text-blue-600" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-bold text-slate-800 group-hover:text-blue-700 truncate">
@@ -579,121 +1400,393 @@ export default function PurchasesTab({
           </div>
         </div>
 
-        {/* SCANNING PROGRESS INDICATOR */}
-        {isScanningReceipt && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-center gap-3 animate-pulse">
-            <RefreshCw size={18} className="text-blue-600 animate-spin shrink-0" />
-            <div className="text-xs">
-              <strong className="text-blue-900 block">Scanning Receipt Photo via OCR...</strong>
-              <span className="text-blue-700 text-[11px]">
-                Detecting supplier name, National ID, Phone, line items, crate conversions, and totals.
-              </span>
+        {/* ========================================================================= */}
+        {/* RECEIPTS DATABASE & ARCHIVE (WORKED-ON & REJECTED RECEIPTS)               */}
+        {/* "thewn worked on receipts should go into a database,, same to rejected     */}
+        {/* receipts should go to sa database to give space for new uploads...then"    */}
+        {/* ========================================================================= */}
+        <div className="pt-4 border-t-2 border-slate-100 space-y-3">
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <History size={16} className="text-blue-600" />
+              <h3 className="text-sm font-bold text-slate-900 font-serif">
+                Receipts Database &amp; Audit Trail ({receiptsArchive.length} Archived)
+              </h3>
+            </div>
+
+            {/* FILTER PILLS */}
+            <div className="flex items-center gap-1.5 self-start sm:self-auto text-xs font-mono">
+              <button
+                type="button"
+                onClick={() => setArchiveFilter("all")}
+                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
+                  archiveFilter === "all"
+                    ? "bg-slate-900 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                All ({receiptsArchive.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setArchiveFilter("approved")}
+                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer flex items-center gap-1 ${
+                  archiveFilter === "approved"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                }`}
+              >
+                <Check size={12} />
+                <span>Worked-On ({receiptsArchive.filter((r) => r.status === "approved").length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setArchiveFilter("rejected")}
+                className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer flex items-center gap-1 ${
+                  archiveFilter === "rejected"
+                    ? "bg-rose-600 text-white"
+                    : "bg-rose-50 text-rose-800 hover:bg-rose-100"
+                }`}
+              >
+                <XCircle size={12} />
+                <span>Rejected ({receiptsArchive.filter((r) => r.status === "rejected").length})</span>
+              </button>
             </div>
           </div>
-        )}
 
-        {/* SCANNED RECEIPT RESULTS & GOODS MANIFEST DISPLAY */}
-        {scannedReceipt && !isScanningReceipt && (
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
-            
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
-              <div>
-                <span className="text-[10px] font-mono uppercase font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full inline-block mb-1">
-                  ✓ Receipt OCR Detected ({scannedReceipt.items.length} Goods)
-                </span>
-                <h3 className="text-sm font-bold text-slate-900">
-                  {scannedReceipt.supplierName} &bull; Inv: {scannedReceipt.receiptNumber}
-                </h3>
-                <span className="text-[11px] text-slate-500">
-                  Date: {scannedReceipt.receiptDate} &bull; Confidence: {(scannedReceipt.confidenceScore * 100).toFixed(0)}%
-                </span>
+          {/* ARCHIVED RECEIPTS LIST */}
+          {(() => {
+            const filteredArchive = receiptsArchive.filter((r) => {
+              if (archiveFilter === "approved") return r.status === "approved";
+              if (archiveFilter === "rejected") return r.status === "rejected";
+              return true;
+            });
+
+            if (filteredArchive.length === 0) {
+              return (
+                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
+                  <FileText size={24} className="mx-auto mb-1 text-slate-400" />
+                  No receipts found in this filter view.
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredArchive.map((arch) => {
+                  const isApproved = arch.status === "approved";
+
+                  return (
+                    <div
+                      key={arch.id}
+                      className={`p-3.5 rounded-2xl border transition flex flex-col justify-between space-y-2.5 bg-white shadow-2xs ${
+                        isApproved ? "border-slate-200 hover:border-emerald-300" : "border-rose-200 bg-rose-50/20"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded-full ${
+                                isApproved
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-rose-100 text-rose-800"
+                              }`}
+                            >
+                              {isApproved ? "Worked-On ✓" : "Rejected ✕"}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-400 truncate">
+                              {arch.receiptNumber}
+                            </span>
+                          </div>
+                          <h4 className="text-xs font-bold text-slate-900 truncate mt-1">
+                            {arch.supplierName}
+                          </h4>
+                          <span className="text-[10px] text-slate-400 block font-mono">
+                            {arch.receiptDate} &bull; {arch.paymentMode}
+                          </span>
+                        </div>
+
+                        {/* THUMBNAIL IF PRESENT */}
+                        {arch.imageUrl && (
+                          <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                            <img
+                              src={arch.imageUrl}
+                              alt="Receipt thumbnail"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* REJECTION REASON IF REJECTED */}
+                      {!isApproved && arch.rejectionReason && (
+                        <div className="p-2 rounded-xl bg-rose-100/60 border border-rose-200 text-[11px] text-rose-800">
+                          <strong>Rejection reason:</strong> {arch.rejectionReason}
+                        </div>
+                      )}
+
+                      {/* ITEMS SUMMARY */}
+                      <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100 space-y-1">
+                        <div className="flex items-center justify-between font-mono text-[10px] text-slate-400 font-semibold">
+                          <span>{arch.items?.length || arch.itemsCount || 0} Goods</span>
+                          <span className="text-slate-900 font-bold">
+                            Total: {currency} {Number(arch.totalCost || 0).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="truncate text-slate-700">
+                          {(arch.items || []).map((i) => `${i.itemName} (${i.supplyUnitsReceived} ${i.supplyUnit})`).join(", ") || "Recorded shipment"}
+                        </div>
+                      </div>
+
+                      {/* ACTIONS: INSPECT OR RELOAD */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setInspectingReceipt(arch)}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-semibold cursor-pointer flex items-center gap-1"
+                        >
+                          <Eye size={13} />
+                          <span>Inspect</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleReloadArchivedReceipt(arch)}
+                          className="text-[11px] text-slate-600 hover:text-slate-900 font-medium px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
+                          title="Load this receipt back into review scanner"
+                        >
+                          Re-open in Scanner &rarr;
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+            );
+          })()}
 
-              {/* ACTION: APPLY TO FORM */}
+        </div>
+
+      </div>
+
+      {/* ========================================================================= */}
+      {/* REJECT RECEIPT MODAL                                                      */}
+      {/* ========================================================================= */}
+      {isRejectModalOpen && scannedReceipt && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600">
+                <XCircle size={18} />
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Reject &amp; Archive Receipt to Database
+                </h3>
+              </div>
               <button
-                onClick={handleApplyScannedReceipt}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                type="button"
+                onClick={() => setIsRejectModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
               >
-                <Check size={15} />
-                <span>Auto-Fill Purchase Form with These Goods &rarr;</span>
+                ✕
               </button>
             </div>
 
-            {/* PREVIEW IMAGE + EXTRACTED GOODS TABLE */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-              
-              {/* RECEIPT PHOTO THUMBNAIL (LEFT) */}
-              <div className="md:col-span-4 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                  Scanned Receipt Photo
-                </span>
-                <div className="max-h-56 overflow-hidden rounded-xl border border-slate-100 flex items-center justify-center bg-slate-100">
-                  <img
-                    src={scannedReceiptImage}
-                    alt="Scanned Supplier Receipt"
-                    className="w-full h-auto object-contain max-h-56 hover:scale-105 transition-transform"
-                  />
-                </div>
+            <p className="text-slate-600">
+              This receipt ({scannedReceipt.receiptNumber} from {scannedReceipt.supplierName}) will be permanently marked as <strong>REJECTED</strong> and archived in your database. The active scanner will be cleared to give space for new uploads.
+            </p>
+
+            <div className="space-y-1.5">
+              <label className="text-slate-700 font-semibold block">
+                Select or Type Reason for Rejection:
+              </label>
+              <div className="space-y-1.5">
+                {[
+                  "Incorrect pricing / mismatch with wholesale order",
+                  "Damaged, missing, or spoiled goods at delivery",
+                  "Duplicate delivery chit already entered",
+                  "Blurry / unreadable handwritten chit"
+                ].map((reason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    onClick={() => setRejectionReasonInput(reason)}
+                    className={`w-full text-left p-2 rounded-xl border text-[11px] transition cursor-pointer ${
+                      rejectionReasonInput === reason
+                        ? "bg-rose-50 border-rose-300 text-rose-900 font-semibold"
+                        : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    &bull; {reason}
+                  </button>
+                ))}
               </div>
 
-              {/* DETECTED GOODS LIST (RIGHT) */}
-              <div className="md:col-span-8 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800">
-                    Extracted Goods in Delivery ({scannedReceipt.items.length} Items)
-                  </span>
-                  <span className="text-xs font-mono font-bold text-emerald-700">
-                    Invoice Total: {currency} {scannedReceipt.totalCost.toLocaleString()}
-                  </span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs font-sans">
-                    <thead>
-                      <tr className="border-b border-slate-100 text-[10px] font-bold uppercase text-slate-400">
-                        <th className="py-1.5 px-2">Good / Item Description</th>
-                        <th className="py-1.5 px-2 text-center">Qty &amp; Unit</th>
-                        <th className="py-1.5 px-2 text-right">Unit Wholesale Cost</th>
-                        <th className="py-1.5 px-2 text-right">Line Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-700 text-xs font-mono">
-                      {scannedReceipt.items.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50">
-                          <td className="py-2 px-2 font-sans font-medium text-slate-900">
-                            {item.itemName}
-                          </td>
-                          <td className="py-2 px-2 text-center text-slate-600">
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 font-bold">
-                              {item.supplyUnitsReceived} {item.supplyUnit}
-                            </span>
-                          </td>
-                          <td className="py-2 px-2 text-right text-slate-600">
-                            {currency} {(item.unitCostAtDelivery || (item.lineCost / item.supplyUnitsReceived)).toLocaleString()}
-                          </td>
-                          <td className="py-2 px-2 text-right font-bold text-slate-900">
-                            {currency} {item.lineCost.toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                  <span>Payment Mode: <strong>{scannedReceipt.paymentMode}</strong></span>
-                  <span className="text-emerald-700 font-semibold">
-                    Calculated Margin: +{scannedReceipt.markupPercentage}%
-                  </span>
-                </div>
-              </div>
-
+              <input
+                type="text"
+                value={rejectionReasonInput}
+                onChange={(e) => setRejectionReasonInput(e.target.value)}
+                placeholder="Custom rejection reason..."
+                className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 mt-2 focus:border-rose-500 focus:outline-none"
+              />
             </div>
 
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsRejectModalOpen(false)}
+                className="px-3.5 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRejectReceipt(rejectionReasonInput)}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+              >
+                <XCircle size={14} />
+                <span>Confirm Rejection &amp; Archive</span>
+              </button>
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
-      </div>
+      {/* ========================================================================= */}
+      {/* INSPECT ARCHIVED RECEIPT MODAL                                            */}
+      {/* ========================================================================= */}
+      {inspectingReceipt && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 max-w-2xl w-full space-y-4 shadow-2xl animate-in zoom-in-95 text-xs max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-[9px] font-mono uppercase font-bold px-2 py-0.5 rounded-full ${
+                      inspectingReceipt.status === "approved"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-rose-100 text-rose-800"
+                    }`}
+                  >
+                    {inspectingReceipt.status === "approved" ? "Worked-On & Approved" : "Rejected"}
+                  </span>
+                  <span className="font-mono text-slate-400 text-xs">
+                    {inspectingReceipt.receiptNumber}
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-slate-900 mt-0.5">
+                  {inspectingReceipt.supplierName}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInspectingReceipt(null)}
+                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* RECEIPT IMAGE IF AVAILABLE */}
+            {inspectingReceipt.imageUrl && (
+              <div className="p-2 bg-slate-100 rounded-2xl flex items-center justify-center max-h-56 overflow-hidden border border-slate-200">
+                <img
+                  src={inspectingReceipt.imageUrl}
+                  alt="Receipt full image"
+                  className="max-h-56 object-contain rounded-lg"
+                />
+              </div>
+            )}
+
+            {/* REJECTION REASON IF REJECTED */}
+            {inspectingReceipt.status === "rejected" && inspectingReceipt.rejectionReason && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">
+                <strong>Rejection Reason:</strong> {inspectingReceipt.rejectionReason}
+              </div>
+            )}
+
+            {/* ITEMS BREAKDOWN TABLE */}
+            <div className="space-y-2">
+              <span className="font-bold text-slate-800 text-xs block">
+                Goods Included in Delivery ({inspectingReceipt.items?.length || 0} Items):
+              </span>
+              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                <table className="w-full text-left text-xs font-sans">
+                  <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-200">
+                    <tr>
+                      <th className="py-2 px-3">Good Name</th>
+                      <th className="py-2 px-3 text-center">Quantity</th>
+                      <th className="py-2 px-3 text-right">Unit Wholesale</th>
+                      <th className="py-2 px-3 text-right">Line Total</th>
+                      <th className="py-2 px-3 text-right">Shelf Price</th>
+                      <th className="py-2 px-3 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
+                    {(inspectingReceipt.items || []).map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="py-2 px-3 font-sans font-medium text-slate-900">
+                          {item.itemName}
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          {item.supplyUnitsReceived} {item.supplyUnit}
+                        </td>
+                        <td className="py-2 px-3 text-right">
+                          {currency} {Number(item.unitCostAtDelivery || 0).toLocaleString()}
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold text-slate-900">
+                          {currency} {Number(item.lineCost || 0).toLocaleString()}
+                        </td>
+                        <td className="py-2 px-3 text-right text-emerald-700">
+                          {currency} {Number(item.retailPrice || 0).toLocaleString()}
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          {item.approved !== false ? (
+                            <span className="text-[10px] text-emerald-700 font-bold">Approved ✓</span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400">Excluded</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* TOTALS & TIMESTAMPS */}
+            <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 font-mono">
+              <span className="text-slate-500">
+                Archived: {new Date(inspectingReceipt.decidedAt).toLocaleString()}
+              </span>
+              <strong className="text-slate-900 text-sm">
+                Total Invoice: {currency} {Number(inspectingReceipt.totalCost || 0).toLocaleString()}
+              </strong>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  handleReloadArchivedReceipt(inspectingReceipt);
+                  setInspectingReceipt(null);
+                }}
+                className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl transition cursor-pointer text-xs"
+              >
+                Re-load into Active Review &rarr;
+              </button>
+              <button
+                type="button"
+                onClick={() => setInspectingReceipt(null)}
+                className="px-4 py-1.5 bg-slate-900 text-white font-semibold rounded-xl transition cursor-pointer text-xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 3. MULTI-ITEM PURCHASE BUILDER (LOT OF GOODS ENTRY)                       */}
@@ -745,33 +1838,156 @@ export default function PurchasesTab({
             {/* SUPPLIER & SETTLEMENT HEADER */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs bg-slate-50/70 border border-slate-200 rounded-2xl p-4">
               
-              {/* SUPPLIER PICKER / DIRECT INPUT */}
-              <div>
-                <label className="text-slate-700 font-semibold block mb-1">
-                  Supplier / Wholesale Distributor *
-                </label>
-                <input
-                  type="text"
-                  required
-                  list="suppliers-datalist"
-                  value={selectedSupplierName}
-                  onChange={(e) => setSelectedSupplierName(e.target.value)}
-                  placeholder="e.g. Jahdithma Wholesalers"
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-medium focus:outline-none focus:border-blue-500 text-xs"
-                />
-                <datalist id="suppliers-datalist">
-                  <option value="Jahdithma Wholesalers" />
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.name}>
-                      {s.name} ({s.category})
-                    </option>
-                  ))}
-                  <option value="Broadway Bakeries Ltd" />
-                  <option value="Brookside Dairy Kenya Ltd" />
-                  <option value="Unga Millers Eldoret" />
-                  <option value="Bidco Africa Ltd" />
-                  <option value="General Wholesaler Van" />
-                </datalist>
+              {/* SUPPLIER PICKER / DIRECT INPUT (RELIABLE DUAL-MODE: NATIVE SELECT + SEARCHABLE DROPDOWN) */}
+              <div className="relative" ref={supplierDropdownRef}>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-slate-700 font-semibold block text-xs">
+                    Supplier / Distributor *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSupplierSelectMode(supplierSelectMode === "dropdown" ? "type" : "dropdown");
+                      setIsSupplierDropdownOpen(false);
+                    }}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 font-medium underline cursor-pointer"
+                  >
+                    {supplierSelectMode === "dropdown" ? "✎ Type Custom Name" : "▾ Choose from List"}
+                  </button>
+                </div>
+
+                {supplierSelectMode === "dropdown" ? (
+                  /* 1. NATIVE SELECT (100% RELIABLE ON MOBILE TOUCH & DESKTOP) */
+                  <select
+                    value={suppliers.some(s => s.name.toLowerCase().trim() === selectedSupplierName.toLowerCase().trim()) ? selectedSupplierName : ""}
+                    onChange={(e) => {
+                      if (e.target.value === "__NEW__") {
+                        setSupplierSelectMode("type");
+                        setSelectedSupplierName("");
+                        setTimeout(() => setIsSupplierDropdownOpen(true), 100);
+                      } else if (e.target.value) {
+                        setSelectedSupplierName(e.target.value);
+                      }
+                    }}
+                    className="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 text-slate-900 font-semibold text-xs shadow-2xs focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="" disabled>-- Select Registered Supplier ({suppliers.length}) --</option>
+                    {suppliers.map(s => {
+                      const goodsCount = (s.supplied_items?.length) || inventory.filter(i => (i.supplier || "").toLowerCase() === s.name.toLowerCase()).length;
+                      return (
+                        <option key={s.id} value={s.name}>
+                          {s.name} ({goodsCount > 0 ? `${goodsCount} goods` : "1+ goods"} &bull; {s.category})
+                        </option>
+                      );
+                    })}
+                    <option value="__NEW__">+ Type / Add New Supplier Name...</option>
+                  </select>
+                ) : (
+                  /* 2. SEARCHABLE / DIRECT TEXT INPUT WITH CUSTOM FLYOUT */
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={selectedSupplierName}
+                      onFocus={() => {
+                        setSupplierSearchQuery("");
+                        setIsSupplierDropdownOpen(true);
+                      }}
+                      onChange={(e) => {
+                        setSelectedSupplierName(e.target.value);
+                        setSupplierSearchQuery(e.target.value);
+                        setIsSupplierDropdownOpen(true);
+                      }}
+                      placeholder="Type supplier name..."
+                      className="w-full bg-white border border-slate-300 rounded-xl py-2 pl-3 pr-8 text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs shadow-2xs"
+                    />
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSupplierSearchQuery("");
+                        setIsSupplierDropdownOpen(!isSupplierDropdownOpen);
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                    >
+                      <ChevronDown size={14} className={`transition-transform duration-200 ${isSupplierDropdownOpen ? "rotate-180" : ""}`} />
+                    </button>
+                  </div>
+                )}
+
+                {/* CUSTOM DROPDOWN LIST (SHOWS REGISTERED SUPPLIERS & ITEM COUNTS) */}
+                {isSupplierDropdownOpen && supplierSelectMode === "type" && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden text-xs max-h-64 overflow-y-auto animate-in fade-in zoom-in-95">
+                    <div className="p-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                      <span>Registered Suppliers ({suppliers.length})</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsSupplierDropdownOpen(false)}
+                        className="text-slate-400 hover:text-slate-700 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-slate-200 cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="p-1 space-y-0.5">
+                      {suppliers
+                        .filter((s) => {
+                          const q = supplierSearchQuery.toLowerCase().trim();
+                          if (!q) return true;
+                          return s.name.toLowerCase().includes(q) || (s.category || "").toLowerCase().includes(q) || (s.company || "").toLowerCase().includes(q);
+                        })
+                        .map((s) => {
+                          const goodsCount = (s.supplied_items?.length) || 
+                            inventory.filter(i => (i.supplier || "").toLowerCase() === s.name.toLowerCase()).length;
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setSelectedSupplierName(s.name);
+                                setSupplierSearchQuery("");
+                                setIsSupplierDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center justify-between gap-2 cursor-pointer ${
+                                selectedSupplierName.toLowerCase().trim() === s.name.toLowerCase().trim()
+                                  ? "bg-blue-50 text-blue-900 font-bold"
+                                  : "hover:bg-slate-50 text-slate-800"
+                              }`}
+                            >
+                              <div className="truncate">
+                                <div className="font-semibold text-slate-900">{s.name}</div>
+                                <div className="text-[10px] text-slate-500 truncate">{s.category} &bull; {s.phone}</div>
+                              </div>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-mono shrink-0 font-medium">
+                                {goodsCount > 0 ? `${goodsCount} goods` : "1+ goods"}
+                              </span>
+                            </button>
+                          );
+                        })}
+
+                      {/* Option to create a new supplier if not already in list */}
+                      {selectedSupplierName.trim() && !suppliers.some(s => s.name.toLowerCase().trim() === selectedSupplierName.toLowerCase().trim()) && (
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setIsSupplierDropdownOpen(false);
+                            setSuccessNote(`New supplier "${selectedSupplierName}" selected. Will be saved automatically to database!`);
+                            setTimeout(() => setSuccessNote(null), 3500);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold flex items-center gap-2 cursor-pointer border border-blue-200 mt-1"
+                        >
+                          <Plus size={14} className="text-blue-600 shrink-0" />
+                          <span className="truncate">
+                            + Add &quot;{selectedSupplierName.trim()}&quot; as New Supplier
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* DELIVERY NOTE / INVOICE NO */}
@@ -867,19 +2083,88 @@ export default function PurchasesTab({
 
             </div>
 
-            {/* THE LOT OF GOODS (MULTI-ITEM TABLE) */}
+            {/* GOODS SUPPLIED BY THIS DISTRIBUTOR (SUPPLIERS SUPPLY FROM 1 TO MANY ITEMS) */}
+            <div className="bg-blue-50/70 border border-blue-200/90 rounded-2xl p-3.5 space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Package size={16} className="text-blue-600 shrink-0" />
+                  <span className="text-xs font-bold text-blue-950">
+                    Goods Supplied by {selectedSupplierName} ({suppliedGoodsList.length} items)
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-mono font-bold">
+                    1 to Many Items
+                  </span>
+                </div>
+
+                {suppliedGoodsList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleLoadAllSuppliedGoods}
+                    className="self-start sm:self-auto px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] rounded-lg transition shadow-2xs flex items-center gap-1 cursor-pointer"
+                  >
+                    <Layers size={12} />
+                    <span>Load All {suppliedGoodsList.length} Goods into Shipment</span>
+                  </button>
+                )}
+              </div>
+
+              {suppliedGoodsList.length > 0 ? (
+                <div className="space-y-1.5">
+                  <div className="text-[11px] text-slate-600">
+                    Tap any item below to quickly add it to this cargo batch:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {suppliedGoodsList.map((goodName) => (
+                      <button
+                        key={goodName}
+                        type="button"
+                        onClick={() => handleAddSuppliedItemToBatch(goodName)}
+                        className="px-2.5 py-1 bg-white hover:bg-blue-100 text-slate-800 hover:text-blue-900 border border-slate-200 rounded-lg text-xs font-medium transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                      >
+                        <Plus size={11} className="text-blue-600" />
+                        <span>{goodName}</span>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={handleAddLineRow}
+                      className="px-2.5 py-1 bg-blue-100/70 hover:bg-blue-200 text-blue-800 border border-blue-300 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus size={12} />
+                      <span>+ Add Another Good</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[11px] text-slate-600 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span>
+                    New supplier: <strong>{selectedSupplierName}</strong> supplies from 1 to many goods. Enter the items below, and they will be automatically saved to your inventory and remembered under this supplier.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAddLineRow}
+                    className="self-start sm:self-auto px-2.5 py-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
+                  >
+                    <Plus size={12} />
+                    <span>+ Add Good to Batch</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* THE LOT OF GOODS (MULTI-ITEM LIST: RESPONSIVE CARDS ON MOBILE & TABLE ON DESKTOP) */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                     Goods Included in this Cargo Batch ({itemLines.length})
                   </h3>
                   <span className="text-xs text-slate-500">
-                    Add all goods supplied by this distributor. Each item is tracked with bulk packs and costs.
+                    Each item updates shelf stock and locks in wholesale costs.
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -921,7 +2206,7 @@ export default function PurchasesTab({
                     }}
                     className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-xs rounded-xl transition border border-amber-200 cursor-pointer"
                   >
-                    Load Jahdithma Cargo
+                    Sample Cargo
                   </button>
 
                   <button
@@ -939,7 +2224,7 @@ export default function PurchasesTab({
                           totalCost: 0
                         }
                       ]);
-                      setSuccessNote("Reset cargo to empty skeleton for your manual delivery.");
+                      setSuccessNote("Reset cargo to empty row for your manual entry.");
                       setTimeout(() => setSuccessNote(null), 3000);
                     }}
                     className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-xl transition cursor-pointer"
@@ -958,8 +2243,121 @@ export default function PurchasesTab({
                 </div>
               </div>
 
-              {/* GOODS TABLE */}
-              <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+              {/* 1. MOBILE RESPONSIVE CARDS (SCREEN < MD) */}
+              <div className="block md:hidden space-y-3">
+                {itemLines.map((line, idx) => (
+                  <div key={line.id} className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-2.5 shadow-2xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold">
+                        Good #{idx + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLine(line.id)}
+                        className="text-slate-400 hover:text-red-600 p-1 rounded-lg"
+                        title="Remove good"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <label className="text-[10px] text-slate-500 uppercase font-semibold block">Product / Good Name</label>
+                        {suppliedGoodsList.length > 0 && (
+                          <span className="text-[9px] text-blue-600 font-mono font-bold">Supplied Item</span>
+                        )}
+                      </div>
+
+                      {suppliedGoodsList.length > 0 && (
+                        <div className="mb-1.5">
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleSelectSuppliedItemForRow(line.id, e.target.value);
+                              }
+                            }}
+                            className="w-full bg-blue-50/90 border border-blue-200 text-blue-900 rounded-lg p-1.5 text-[11px] font-semibold cursor-pointer"
+                            defaultValue=""
+                          >
+                            <option value="" disabled>⚡ Pick from {selectedSupplierName}&apos;s goods ({suppliedGoodsList.length})...</option>
+                            {suppliedGoodsList.map((g) => (
+                              <option key={g} value={g}>{g}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      <input
+                        type="text"
+                        required
+                        value={line.itemName}
+                        onChange={(e) => handleUpdateLine(line.id, { itemName: e.target.value })}
+                        placeholder="e.g. Unga Jogoo 2kg, Sugar 1kg"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-900"
+                        list="inventory-suggestions"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Quantity</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={line.quantity}
+                          onChange={(e) => handleUpdateLine(line.id, { quantity: parseInt(e.target.value, 10) || 1 })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Supply Pack</label>
+                        <select
+                          value={line.unit}
+                          onChange={(e) => handleUpdateLine(line.id, { unit: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs text-slate-800"
+                        >
+                          {unitOptions.map((u) => (
+                            <option key={u} value={u}>{u}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Unit Wholesale ({currency})</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={line.unitCost}
+                          onChange={(e) => handleUpdateLine(line.id, { unitCost: parseFloat(e.target.value) || 0 })}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 text-right"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Shelf Price ({currency})</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={line.retailPrice || ""}
+                          onChange={(e) => handleUpdateLine(line.id, { retailPrice: parseFloat(e.target.value) || 0 })}
+                          placeholder="Selling price"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-mono font-bold text-blue-700 text-right"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                      <span className="text-slate-500">Line Total Cost:</span>
+                      <strong className="text-slate-900 font-mono font-bold">{currency} {((line.quantity || 0) * (line.unitCost || 0)).toLocaleString()}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 2. DESKTOP / TABLET GOODS TABLE (SCREEN >= MD) */}
+              <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-2xl">
                 <table className="w-full text-left text-xs font-sans">
                   <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase text-slate-500">
                     <tr>
@@ -977,6 +2375,24 @@ export default function PurchasesTab({
                         
                         {/* ITEM NAME */}
                         <td className="p-2.5">
+                          {suppliedGoodsList.length > 0 && (
+                            <div className="mb-1">
+                              <select
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleSelectSuppliedItemForRow(line.id, e.target.value);
+                                  }
+                                }}
+                                className="w-full bg-blue-50/90 border border-blue-200 text-blue-900 rounded-lg py-1 px-1.5 text-[11px] font-semibold cursor-pointer"
+                                defaultValue=""
+                              >
+                                <option value="" disabled>⚡ Pick from {selectedSupplierName}&apos;s goods ({suppliedGoodsList.length})...</option>
+                                {suppliedGoodsList.map((g) => (
+                                  <option key={g} value={g}>{g}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
                           <input
                             type="text"
                             required

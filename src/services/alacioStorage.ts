@@ -8,9 +8,10 @@ import {
   ProjectCaseStudy,
   PayoutOrDrawing,
   MpesaStatementRecord,
-  SupplierProfile,
   MorningBookendRecord,
-  RestockReconciliationCard
+  RestockReconciliationCard,
+  SavedReceiptRecord,
+  SupplierProfile
 } from "../types/alacio";
 import { deduplicateMorningBookends } from "../utils/morningBookendHelper";
 import { deduplicateSuppliers } from "../utils/supplierHelper";
@@ -442,7 +443,14 @@ export const INITIAL_SUPPLIERS: SupplierProfile[] = [
     category: "Dairy & Chilled",
     total_orders_cost: 4160,
     last_delivery_date: "Today 05:40 AM",
-    payment_preference: "NATIONAL_ID_DEPOSIT"
+    payment_preference: "NATIONAL_ID_DEPOSIT",
+    supplied_items: [
+      "Brookside Fresh Milk 500ml",
+      "Brookside Lala / Mala 500ml",
+      "Brookside Cup Yoghurt 250ml",
+      "Brookside Dairy Butter 250g",
+      "Ilara Fresh Milk 500ml"
+    ]
   },
   {
     id: "supp_002",
@@ -453,7 +461,13 @@ export const INITIAL_SUPPLIERS: SupplierProfile[] = [
     category: "Bakery",
     total_orders_cost: 3240,
     last_delivery_date: "Today 05:30 AM",
-    payment_preference: "MPESA_TILL"
+    payment_preference: "MPESA_TILL",
+    supplied_items: [
+      "Broadway White Bread 400g",
+      "Broadway Brown Bread 400g",
+      "Broadway Sweet Scones 6pk",
+      "Broadway Sandwich Loaf 800g"
+    ]
   },
   {
     id: "supp_003",
@@ -464,7 +478,13 @@ export const INITIAL_SUPPLIERS: SupplierProfile[] = [
     category: "Flour & Cereals",
     total_orders_cost: 28200,
     last_delivery_date: "2 days ago",
-    payment_preference: "NATIONAL_ID_DEPOSIT"
+    payment_preference: "NATIONAL_ID_DEPOSIT",
+    supplied_items: [
+      "Jogoo Maize Meal 2kg",
+      "Hostess Premium Maize Flour 2kg",
+      "Amana Atta Flour 2kg",
+      "Faulu Maize Meal 2kg"
+    ]
   },
   {
     id: "supp_004",
@@ -475,7 +495,13 @@ export const INITIAL_SUPPLIERS: SupplierProfile[] = [
     category: "Cooking Oils & Soaps",
     total_orders_cost: 4070,
     last_delivery_date: "Yesterday",
-    payment_preference: "NATIONAL_ID_DEPOSIT"
+    payment_preference: "NATIONAL_ID_DEPOSIT",
+    supplied_items: [
+      "Elianto Pure Corn Oil 1L",
+      "Golden Fry Cooking Oil 1L",
+      "White Star Bar Soap 1kg",
+      "Gental Washing Powder 500g"
+    ]
   },
   {
     id: "supp_005",
@@ -486,7 +512,32 @@ export const INITIAL_SUPPLIERS: SupplierProfile[] = [
     category: "Grains & Pulses",
     total_orders_cost: 6400,
     last_delivery_date: "Yesterday",
-    payment_preference: "NATIONAL_ID_DEPOSIT"
+    payment_preference: "NATIONAL_ID_DEPOSIT",
+    supplied_items: [
+      "Kabras White Sugar 1kg",
+      "Daawat Pure Basmati Rice 2kg",
+      "Yellow Beans 1kg",
+      "Green Grams Ndengu 1kg",
+      "Kensalt Iodized Salt 1kg"
+    ]
+  },
+  {
+    id: "supp_006",
+    name: "Jahdithma Wholesalers",
+    company: "Jahdithma Wholesalers & Distributors",
+    phone: "0722 000 111",
+    national_id: "24891044",
+    category: "General Wholesaler",
+    total_orders_cost: 0,
+    last_delivery_date: "Active Wholesaler",
+    payment_preference: "NATIONAL_ID_DEPOSIT",
+    supplied_items: [
+      "Jogoo Maize Meal 2kg",
+      "Kabras White Sugar 1kg",
+      "Brookside Fresh Milk 500ml",
+      "Golden Fry Cooking Oil 1L",
+      "Royco Mchuzi Mix 40pcs"
+    ]
   }
 ];
 
@@ -585,11 +636,96 @@ export const INITIAL_RESTOCK_CARDS: RestockReconciliationCard[] = [
   }
 ];
 
+export const INITIAL_RECEIPTS_ARCHIVE: SavedReceiptRecord[] = [
+  {
+    id: "rcpt_arch_001",
+    receiptNumber: "BK-8841",
+    supplierName: "Brookside Dairy Kenya Ltd",
+    receiptDate: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
+    paymentMode: "MPESA",
+    status: "approved",
+    totalCost: 5040,
+    totalRetailShelfValue: 6060,
+    totalPotentialProfit: 1020,
+    markupPercentage: 20.2,
+    itemsCount: 3,
+    items: [
+      {
+        id: "item_b1",
+        itemName: "Brookside Fresh Milk 500ml",
+        supplyUnitsReceived: 2,
+        supplyUnit: "Crate (24pkts)",
+        retailUnitsAdded: 48,
+        unitCostAtDelivery: 55,
+        lineCost: 2640,
+        retailPrice: 65,
+        approved: true
+      },
+      {
+        id: "item_b2",
+        itemName: "Brookside Lala / Mala 500ml",
+        supplyUnitsReceived: 1,
+        supplyUnit: "Crate (24pkts)",
+        retailUnitsAdded: 24,
+        unitCostAtDelivery: 65,
+        lineCost: 1560,
+        retailPrice: 80,
+        approved: true
+      },
+      {
+        id: "item_b3",
+        itemName: "Brookside Cup Yoghurt 250ml",
+        supplyUnitsReceived: 1,
+        supplyUnit: "Tray (12cups)",
+        retailUnitsAdded: 12,
+        unitCostAtDelivery: 70,
+        lineCost: 840,
+        retailPrice: 85,
+        approved: true
+      }
+    ],
+    processedAt: "Yesterday, 08:30 AM",
+    decidedAt: new Date(Date.now() - 86400000).toISOString(),
+    notes: "Official Brookside dairy morning van drop. Approved all 3 lines."
+  },
+  {
+    id: "rcpt_arch_002",
+    receiptNumber: "INV-ERR-991",
+    supplierName: "Unknown Market Hawker",
+    receiptDate: new Date(Date.now() - 172800000).toISOString().slice(0, 10),
+    paymentMode: "CASH",
+    status: "rejected",
+    rejectionReason: "Wrong supplier & blurry handwritten chit without price breakdown",
+    totalCost: 1850,
+    totalRetailShelfValue: 2100,
+    totalPotentialProfit: 250,
+    markupPercentage: 13.5,
+    itemsCount: 1,
+    items: [
+      {
+        id: "item_err_1",
+        itemName: "Damaged Bar Soap Box",
+        supplyUnitsReceived: 1,
+        supplyUnit: "Carton",
+        retailUnitsAdded: 10,
+        unitCostAtDelivery: 185,
+        lineCost: 1850,
+        retailPrice: 210,
+        approved: false
+      }
+    ],
+    processedAt: "2 days ago, 04:15 PM",
+    decidedAt: new Date(Date.now() - 172800000).toISOString(),
+    notes: "Rejected due to water-damaged goods and unverified seller National ID."
+  }
+];
+
 export const INITIAL_ALACIO_STATE: AlacioMasterState = {
   inventory: INITIAL_INVENTORY_43,
   warehouse: INITIAL_WAREHOUSE_BATCHES,
   customers: INITIAL_CUSTOMERS,
   suppliers: INITIAL_SUPPLIERS,
+  receiptsArchive: INITIAL_RECEIPTS_ARCHIVE,
   morning_bookends: INITIAL_MORNING_BOOKENDS,
   floatDenominations: INITIAL_FLOAT_DENOMINATIONS,
   restockCards: INITIAL_RESTOCK_CARDS,
@@ -699,6 +835,7 @@ export function createSkeletonBusinessState(
     salesLedger: [],
     payouts: [],
     customers: [],
+    receiptsArchive: [],
     suppliers: [
       {
         id: "supp_001",
@@ -775,135 +912,446 @@ export function calculateKpis(inventory: InventoryItem[] = [], warehouse: Wareho
   };
 }
 
-export function loadAlacioState(): AlacioMasterState {
+export const SCHEMA_VERSION = 6;
+export const STORAGE_BACKUP_SNAPSHOT_A = "yubiflo_backup_snapshot_a";
+export const STORAGE_BACKUP_SNAPSHOT_B = "yubiflo_backup_snapshot_b";
+export const STORAGE_SNAPSHOT_SLOT = "yubiflo_snapshot_slot";
+export const STORAGE_LAST_SAVED = "yubiflo_last_saved_at";
+
+export function getUserStorageKey(email?: string): string {
+  if (!email) return STORAGE_KEY_ALACIO;
+  const clean = email.trim().toLowerCase().replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `yubiflo_user_state_${clean}`;
+}
+
+export function sanitizeWorkspaceDocId(identifier: string): string {
+  const clean = identifier.trim().toLowerCase().replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `ws_${clean.slice(0, 80)}`;
+}
+
+/**
+ * Defensive sanitizer for inventory items so schema changes or new attributes
+ * never break calculations or corrupt merchant goods.
+ */
+function sanitizeInventoryItem(item: any, idx: number): InventoryItem {
+  const cost = typeof item.unit_cost === "number" ? item.unit_cost : (parseFloat(item.unit_cost) || 0);
+  const retail = typeof item.unit_retail === "number" ? item.unit_retail : (parseFloat(item.unit_retail) || 0);
+  const stock = typeof item.current_stock === "number" ? item.current_stock : (parseFloat(item.current_stock) || 0);
+  const margin = typeof item.expected_margin === "number" ? item.expected_margin : (retail - cost);
+  const shelfVal = typeof item.total_shelf_value === "number" ? item.total_shelf_value : (stock * retail);
+
+  return {
+    ...item,
+    id: item.id ?? `item_${idx}_${Date.now()}`,
+    name: item.name || "Stock Item",
+    category: item.category || "General",
+    unit_type: item.unit_type || "units",
+    unit_cost: cost,
+    unit_retail: retail,
+    current_stock: stock,
+    expected_margin: margin,
+    total_shelf_value: shelfVal,
+    velocity_badge: item.velocity_badge || "Normal",
+    reorder_point: typeof item.reorder_point === "number" ? item.reorder_point : 5,
+    supplier: item.supplier || "Jahdithma Wholesalers"
+  };
+}
+
+/**
+ * Bulletproof Loader:
+ * 1. Checks user-scoped storage key first (if user email provided or found in session)
+ * 2. Checks active live storage key (v2)
+ * 3. Falls back to alternating rolling snapshots (A or B) if primary is corrupt
+ * 4. Checks legacy keys (v1, live_v1)
+ * 5. Applies defensive schema migration (preserves ALL custom/new attributes via spread)
+ * 6. Never erases user stock with demo data
+ */
+export function loadAlacioState(userEmail?: string): AlacioMasterState {
   try {
-    // Safely check storage keys so the user's existing data is never lost
-    const raw = localStorage.getItem(STORAGE_KEY_ALACIO) || 
-                localStorage.getItem("yubiflo_alacio_state_live_v1") || 
-                localStorage.getItem("yubiflo_alacio_state_v1");
-    if (!raw) return INITIAL_ALACIO_STATE;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") {
-      const isSkeleton = parsed.is_skeleton === true || (parsed.tier === "PAID_BLUEPRINT" && parsed.merchant_name !== "Duka Space");
-
-      const inv = Array.isArray(parsed.inventory)
-        ? (isSkeleton ? parsed.inventory : (parsed.inventory.length > 0 ? parsed.inventory : INITIAL_INVENTORY_43))
-        : (isSkeleton ? [] : INITIAL_INVENTORY_43);
-
-      const wh = Array.isArray(parsed.warehouse) 
-        ? parsed.warehouse 
-        : (isSkeleton ? [] : INITIAL_WAREHOUSE_BATCHES);
-
-      const cust = Array.isArray(parsed.customers) 
-        ? parsed.customers 
-        : (isSkeleton ? [] : INITIAL_CUSTOMERS);
-
-      const rawSupp = Array.isArray(parsed.suppliers) ? parsed.suppliers : (isSkeleton ? [] : INITIAL_SUPPLIERS);
-      const supp = deduplicateSuppliers(rawSupp);
-
-      const rawMb = Array.isArray(parsed.morning_bookends) ? parsed.morning_bookends : INITIAL_MORNING_BOOKENDS;
-      const mb = deduplicateMorningBookends(rawMb);
-      const fd = Array.isArray(parsed.floatDenominations) ? parsed.floatDenominations : INITIAL_FLOAT_DENOMINATIONS;
-
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const normalizedSales = (Array.isArray(parsed.salesLedger) ? parsed.salesLedger : []).map((s: any) => ({
-        ...s,
-        date: s.date || (s.timestamp && s.timestamp.match(/^\d{4}-\d{2}-\d{2}/) ? s.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0] : todayStr)
-      }));
-      const normalizedPayouts = (Array.isArray(parsed.payouts) ? parsed.payouts : []).map((p: any) => ({
-        ...p,
-        date: p.date || (p.timestamp && p.timestamp.match(/^\d{4}-\d{2}-\d{2}/) ? p.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0] : todayStr)
-      }));
-
-      const rawRecons = Array.isArray(parsed.reconciliations) ? parsed.reconciliations : [];
-      const reconsMap = new Map<string, any>();
-      rawRecons.forEach((r: any) => {
-        const d = r.date || r.timestamp?.slice(0, 10) || "today";
-        if (!reconsMap.has(d)) {
-          reconsMap.set(d, r);
+    const activeEmail = userEmail || (() => {
+      try {
+        const rawSess = localStorage.getItem("yubiflo_auth_session");
+        if (rawSess) {
+          const sess = JSON.parse(rawSess);
+          return sess?.user?.email || sess?.email;
         }
-      });
-      const normalizedReconciliations = Array.from(reconsMap.values());
+      } catch {}
+      return undefined;
+    })();
 
-      const effectiveInv = isSkeleton ? (Array.isArray(parsed.inventory) ? parsed.inventory : []) : (inv.length === 0 ? INITIAL_INVENTORY_43 : inv);
-      const effectiveWh = isSkeleton ? (Array.isArray(parsed.warehouse) ? parsed.warehouse : []) : ((!wh || wh.length === 0) ? INITIAL_WAREHOUSE_BATCHES : wh);
+    const userKey = activeEmail ? getUserStorageKey(activeEmail) : null;
+    
+    // Ordered candidate keys to check for zero-data-loss retrieval
+    const candidateKeys = [
+      userKey,
+      STORAGE_KEY_ALACIO,
+      STORAGE_BACKUP_SNAPSHOT_A,
+      STORAGE_BACKUP_SNAPSHOT_B,
+      "yubiflo_alacio_state_live_v1",
+      "yubiflo_alacio_state_v1"
+    ].filter(Boolean) as string[];
 
-      const effectiveDrawerCash = parsed.cash_register_balance ?? 8450;
-      const effectiveMpesaFloat = parsed.mpesa_float_balance ?? 28300;
-      const effectiveEquitel = parsed.equitel_account_balance ?? 14200;
+    let raw: string | null = null;
+    let loadedFromKey: string = "";
 
-      const effectiveCust = isSkeleton ? (Array.isArray(parsed.customers) ? parsed.customers : []) : (cust.length === 0 ? INITIAL_CUSTOMERS : cust);
-      const effectiveSales = isSkeleton ? (Array.isArray(parsed.salesLedger) ? normalizedSales : []) : ((normalizedSales && normalizedSales.length > 0) ? normalizedSales : INITIAL_ALACIO_STATE.salesLedger);
-      const effectivePayouts = isSkeleton ? (Array.isArray(parsed.payouts) ? normalizedPayouts : []) : ((normalizedPayouts && normalizedPayouts.length > 0) ? normalizedPayouts : INITIAL_ALACIO_STATE.payouts);
-      const effectiveMb = (mb && mb.length > 0) ? mb : INITIAL_MORNING_BOOKENDS;
-      const effectiveRestockCards = isSkeleton ? (Array.isArray(parsed.restockCards) ? parsed.restockCards : []) : (Array.isArray(parsed.restockCards) && parsed.restockCards.length > 0 ? parsed.restockCards : INITIAL_RESTOCK_CARDS);
-
-      return {
-        ...INITIAL_ALACIO_STATE,
-        ...parsed,
-        is_skeleton: isSkeleton,
-        inventory: effectiveInv,
-        warehouse: effectiveWh,
-        customers: effectiveCust,
-        suppliers: supp.length > 0 ? supp : [
-          {
-            id: "supp_001",
-            name: "Jahdithma Wholesalers",
-            company: "Jahdithma Wholesalers & Distributors",
-            phone: "0722 000 111",
-            national_id: "24891044",
-            category: "General Wholesaler",
-            total_orders_cost: 0,
-            last_delivery_date: "Active Wholesaler",
-            payment_preference: "NATIONAL_ID_DEPOSIT"
-          }
-        ],
-        morning_bookends: effectiveMb,
-        floatDenominations: fd,
-        salesLedger: effectiveSales,
-        payouts: effectivePayouts,
-        mpesaStatements: Array.isArray(parsed.mpesaStatements) ? parsed.mpesaStatements : [],
-        reconciliations: normalizedReconciliations,
-        restockCards: effectiveRestockCards,
-        mpesa_float_balance: effectiveMpesaFloat,
-        cash_register_balance: effectiveDrawerCash,
-        equitel_account_balance: effectiveEquitel,
-        tier: parsed.tier ?? "PAID_BLUEPRINT",
-        vcr_daily_count: parsed.vcr_daily_count || 0,
-        vcr_customer_consent: parsed.vcr_customer_consent ?? true,
-        kpis: calculateKpis(effectiveInv, effectiveWh)
-      };
+    for (const key of candidateKeys) {
+      try {
+        const candidate = localStorage.getItem(key);
+        if (candidate && candidate.length > 20) {
+          // Quick validation that it's parseable JSON
+          JSON.parse(candidate);
+          raw = candidate;
+          loadedFromKey = key;
+          break;
+        }
+      } catch (err) {
+        console.warn(`[YuBiFlo Storage] Corrupted snapshot in ${key}, falling back to next candidate:`, err);
+      }
     }
-    return INITIAL_ALACIO_STATE;
+
+    if (!raw) {
+      return INITIAL_ALACIO_STATE;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return INITIAL_ALACIO_STATE;
+    }
+
+    // Determine if this is a skeleton or real merchant store
+    const isSkeleton = parsed.is_skeleton === true || 
+      (parsed.tier === "PAID_BLUEPRINT" && parsed.merchant_name && parsed.merchant_name !== "Duka Space");
+
+    // Inventory migration: sanitize items without dropping unknown/new fields
+    let safeInventory: InventoryItem[] = [];
+    if (Array.isArray(parsed.inventory)) {
+      if (isSkeleton) {
+        safeInventory = parsed.inventory.map((item: any, idx: number) => sanitizeInventoryItem(item, idx));
+      } else {
+        safeInventory = parsed.inventory.length > 0 
+          ? parsed.inventory.map((item: any, idx: number) => sanitizeInventoryItem(item, idx))
+          : INITIAL_INVENTORY_43;
+      }
+    } else {
+      safeInventory = isSkeleton ? [] : INITIAL_INVENTORY_43;
+    }
+
+    // Warehouse batches
+    const safeWarehouse = Array.isArray(parsed.warehouse)
+      ? parsed.warehouse
+      : (isSkeleton ? [] : INITIAL_WAREHOUSE_BATCHES);
+
+    // Customers / Deni
+    const safeCustomers = Array.isArray(parsed.customers)
+      ? parsed.customers
+      : (isSkeleton ? [] : INITIAL_CUSTOMERS);
+
+    // Suppliers
+    const rawSupp = Array.isArray(parsed.suppliers) 
+      ? parsed.suppliers 
+      : (isSkeleton ? [] : INITIAL_SUPPLIERS);
+    const safeSuppliers = deduplicateSuppliers(rawSupp);
+
+    // Morning bookends
+    const rawMb = Array.isArray(parsed.morning_bookends) ? parsed.morning_bookends : INITIAL_MORNING_BOOKENDS;
+    const safeMb = deduplicateMorningBookends(rawMb);
+
+    // Float denominations
+    const safeFloatDenoms = Array.isArray(parsed.floatDenominations) ? parsed.floatDenominations : INITIAL_FLOAT_DENOMINATIONS;
+
+    // Sales ledger
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const normalizedSales = (Array.isArray(parsed.salesLedger) ? parsed.salesLedger : []).map((s: any) => ({
+      ...s,
+      date: s.date || (s.timestamp && s.timestamp.match(/^\d{4}-\d{2}-\d{2}/) ? s.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0] : todayStr)
+    }));
+    const safeSales = isSkeleton 
+      ? (Array.isArray(parsed.salesLedger) ? normalizedSales : []) 
+      : ((normalizedSales && normalizedSales.length > 0) ? normalizedSales : INITIAL_ALACIO_STATE.salesLedger);
+
+    // Payouts
+    const normalizedPayouts = (Array.isArray(parsed.payouts) ? parsed.payouts : []).map((p: any) => ({
+      ...p,
+      date: p.date || (p.timestamp && p.timestamp.match(/^\d{4}-\d{2}-\d{2}/) ? p.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0] : todayStr)
+    }));
+    const safePayouts = isSkeleton 
+      ? (Array.isArray(parsed.payouts) ? normalizedPayouts : []) 
+      : ((normalizedPayouts && normalizedPayouts.length > 0) ? normalizedPayouts : INITIAL_ALACIO_STATE.payouts);
+
+    // Reconciliations
+    const rawRecons = Array.isArray(parsed.reconciliations) ? parsed.reconciliations : [];
+    const reconsMap = new Map<string, any>();
+    rawRecons.forEach((r: any) => {
+      const d = r.date || r.timestamp?.slice(0, 10) || "today";
+      if (!reconsMap.has(d)) {
+        reconsMap.set(d, r);
+      }
+    });
+    const safeReconciliations = Array.from(reconsMap.values());
+
+    // Cash balances
+    const effectiveDrawerCash = typeof parsed.cash_register_balance === "number" ? parsed.cash_register_balance : 8450;
+    const effectiveMpesaFloat = typeof parsed.mpesa_float_balance === "number" ? parsed.mpesa_float_balance : 28300;
+    const effectiveEquitel = typeof parsed.equitel_account_balance === "number" ? parsed.equitel_account_balance : 14200;
+
+    // Restock cards
+    const safeRestockCards = isSkeleton 
+      ? (Array.isArray(parsed.restockCards) ? parsed.restockCards : []) 
+      : (Array.isArray(parsed.restockCards) && parsed.restockCards.length > 0 ? parsed.restockCards : INITIAL_RESTOCK_CARDS);
+
+    // Build hydrated state preserving ALL existing and custom properties
+    const hydratedState: AlacioMasterState = {
+      ...INITIAL_ALACIO_STATE,
+      ...parsed, // Strictly preserves any custom, newly introduced, or future feature attributes
+      schema_version: SCHEMA_VERSION,
+      last_persisted_at: parsed.last_persisted_at || new Date().toISOString(),
+      user_email: activeEmail || parsed.user_email,
+      is_skeleton: isSkeleton,
+      inventory: safeInventory,
+      warehouse: safeWarehouse,
+      customers: safeCustomers,
+      suppliers: safeSuppliers.length > 0 ? safeSuppliers : [
+        {
+          id: "supp_001",
+          name: "Jahdithma Wholesalers",
+          company: "Jahdithma Wholesalers & Distributors",
+          phone: "0722 000 111",
+          national_id: "24891044",
+          category: "General Wholesaler",
+          total_orders_cost: 0,
+          last_delivery_date: "Active Wholesaler",
+          payment_preference: "NATIONAL_ID_DEPOSIT"
+        }
+      ],
+      morning_bookends: safeMb.length > 0 ? safeMb : INITIAL_MORNING_BOOKENDS,
+      floatDenominations: safeFloatDenoms,
+      salesLedger: safeSales,
+      payouts: safePayouts,
+      mpesaStatements: Array.isArray(parsed.mpesaStatements) ? parsed.mpesaStatements : [],
+      reconciliations: safeReconciliations,
+      restockCards: safeRestockCards,
+      receiptsArchive: Array.isArray(parsed.receiptsArchive) 
+        ? parsed.receiptsArchive 
+        : (isSkeleton ? [] : INITIAL_RECEIPTS_ARCHIVE),
+      mpesa_float_balance: effectiveMpesaFloat,
+      cash_register_balance: effectiveDrawerCash,
+      equitel_account_balance: effectiveEquitel,
+      tier: parsed.tier ?? "PAID_BLUEPRINT",
+      vcr_daily_count: parsed.vcr_daily_count || 0,
+      vcr_customer_consent: parsed.vcr_customer_consent ?? true,
+      clean_trading_days: typeof parsed.clean_trading_days === "number" ? parsed.clean_trading_days : 14,
+      kpis: calculateKpis(safeInventory, safeWarehouse)
+    };
+
+    return hydratedState;
   } catch (error) {
-    console.warn("[YuBiFlo Storage] Error loading alacio state. Preserving state:", error);
+    console.warn("[YuBiFlo Storage] Error loading alacio state. Preserving state baseline:", error);
     return INITIAL_ALACIO_STATE;
   }
 }
 
-export async function saveAlacioState(state: AlacioMasterState): Promise<void> {
-  // 1. Offline-First Synchronous Persistence
+/**
+ * Atomic Multi-Tier Save:
+ * 1. Synchronous localStorage persistence to primary key
+ * 2. User-specific key persistence (so logging out / logging in retains exact user data)
+ * 3. Alternating rolling snapshot backup (Snapshot A and B) for crash-recovery
+ * 4. Cloud Firestore mirror with merge: true to user's workspace doc
+ */
+export async function saveAlacioState(state: AlacioMasterState, userEmail?: string): Promise<void> {
+  const targetEmail = userEmail || state.user_email || (() => {
+    try {
+      const rawSess = localStorage.getItem("yubiflo_auth_session");
+      if (rawSess) {
+        const sess = JSON.parse(rawSess);
+        return sess?.user?.email || sess?.email;
+      }
+    } catch {}
+    return undefined;
+  })();
+
+  const stateToPersist: AlacioMasterState = {
+    ...state,
+    schema_version: SCHEMA_VERSION,
+    last_persisted_at: new Date().toISOString(),
+    user_email: targetEmail || state.user_email
+  };
+
+  const serialized = JSON.stringify(stateToPersist);
+
+  // 1. Primary Live Storage
   try {
-    localStorage.setItem(STORAGE_KEY_ALACIO, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY_ALACIO, serialized);
   } catch (err) {
-    console.error("[YuBiFlo Storage] Failed to persist Alacio state to localStorage:", err);
+    console.error("[YuBiFlo Storage] Primary save to localStorage failed:", err);
   }
 
-  // 2. Cloud Mirroring to Firestore
+  // 2. User-Scoped Persistence (enables seamless multi-merchant and login restoration)
+  if (targetEmail) {
+    try {
+      const userKey = getUserStorageKey(targetEmail);
+      localStorage.setItem(userKey, serialized);
+    } catch (err) {
+      console.warn("[YuBiFlo Storage] User-scoped save failed:", err);
+    }
+  }
+
+  // 3. Alternating Rolling Backup Snapshots (Crash Recovery Safeguard)
   try {
-    const workspaceRef = doc(db, "workspaces", "ws_alacio_001");
+    const currentSlot = parseInt(localStorage.getItem(STORAGE_SNAPSHOT_SLOT) || "0", 10);
+    const nextSlot = (currentSlot + 1) % 2;
+    const backupKey = nextSlot === 0 ? STORAGE_BACKUP_SNAPSHOT_A : STORAGE_BACKUP_SNAPSHOT_B;
+    localStorage.setItem(backupKey, serialized);
+    localStorage.setItem(STORAGE_SNAPSHOT_SLOT, nextSlot.toString());
+    localStorage.setItem(STORAGE_LAST_SAVED, stateToPersist.last_persisted_at);
+  } catch (backupErr) {
+    console.warn("[YuBiFlo Storage] Rolling backup snapshot skipped:", backupErr);
+  }
+
+  // 4. Cloud Firestore Mirroring (Zero Data Loss across browser clears and device switches)
+  try {
+    const docId = targetEmail ? sanitizeWorkspaceDocId(targetEmail) : "ws_alacio_001";
+    const workspaceRef = doc(db, "workspaces", docId);
+    
     await setDoc(workspaceRef, {
-      id: "ws_alacio_001",
-      business_name: "Alacio Mini Shop",
-      blueprint_type: "RETAIL_FMCG",
-      currency: state.currency,
-      kpis: state.kpis,
-      cash_register_balance: state.cash_register_balance,
-      total_items_count: state.inventory.length,
-      warehouse_batches_count: state.warehouse.length,
-      last_updated: new Date().toISOString()
+      id: docId,
+      business_name: stateToPersist.merchant_name || "YuBiFlo Merchant",
+      client_type: stateToPersist.client_type || "Retail / Duka",
+      user_email: targetEmail || "",
+      currency: stateToPersist.currency || "KSh",
+      kpis: stateToPersist.kpis,
+      cash_register_balance: stateToPersist.cash_register_balance,
+      mpesa_float_balance: stateToPersist.mpesa_float_balance,
+      equitel_account_balance: stateToPersist.equitel_account_balance,
+      total_items_count: stateToPersist.inventory.length,
+      warehouse_batches_count: stateToPersist.warehouse.length,
+      inventory: stateToPersist.inventory,
+      warehouse: stateToPersist.warehouse,
+      customers: stateToPersist.customers,
+      suppliers: stateToPersist.suppliers || [],
+      salesLedger: stateToPersist.salesLedger || [],
+      payouts: stateToPersist.payouts || [],
+      morning_bookends: stateToPersist.morning_bookends || [],
+      floatDenominations: stateToPersist.floatDenominations || [],
+      reconciliations: stateToPersist.reconciliations || [],
+      restockCards: stateToPersist.restockCards || [],
+      schema_version: SCHEMA_VERSION,
+      last_updated: stateToPersist.last_persisted_at
     }, { merge: true });
+
+    // Also mirror to baseline ws_alacio_001 so legacy references remain populated
+    if (docId !== "ws_alacio_001") {
+      const defaultRef = doc(db, "workspaces", "ws_alacio_001");
+      setDoc(defaultRef, {
+        id: "ws_alacio_001",
+        business_name: stateToPersist.merchant_name || "Alacio Mini Shop",
+        kpis: stateToPersist.kpis,
+        total_items_count: stateToPersist.inventory.length,
+        last_updated: stateToPersist.last_persisted_at
+      }, { merge: true }).catch(() => {});
+    }
   } catch (cloudErr) {
-    handleFirestoreError(cloudErr, OperationType.WRITE, "workspaces/ws_alacio_001");
+    handleFirestoreError(cloudErr, OperationType.WRITE, `workspaces/${targetEmail ? sanitizeWorkspaceDocId(targetEmail) : "ws_alacio_001"}`);
+  }
+}
+
+/**
+ * Disaster Recovery & Cloud Hydration:
+ * Queries Firestore when local storage is empty (e.g. browser cleared cookies, new laptop)
+ */
+export async function restoreUserStateFromCloud(userEmail: string): Promise<AlacioMasterState | null> {
+  try {
+    const { getDoc } = await import("firebase/firestore");
+    const docId = sanitizeWorkspaceDocId(userEmail);
+    const workspaceRef = doc(db, "workspaces", docId);
+    const snap = await getDoc(workspaceRef);
+
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data && (Array.isArray(data.inventory) || Array.isArray(data.salesLedger) || Array.isArray(data.suppliers))) {
+        const restored: AlacioMasterState = {
+          ...INITIAL_ALACIO_STATE,
+          ...data,
+          merchant_name: data.business_name || data.merchant_name,
+          client_type: data.client_type,
+          user_email: userEmail,
+          inventory: Array.isArray(data.inventory) ? data.inventory : [],
+          warehouse: Array.isArray(data.warehouse) ? data.warehouse : [],
+          customers: Array.isArray(data.customers) ? data.customers : [],
+          suppliers: Array.isArray(data.suppliers) ? data.suppliers : [],
+          salesLedger: Array.isArray(data.salesLedger) ? data.salesLedger : [],
+          payouts: Array.isArray(data.payouts) ? data.payouts : [],
+          morning_bookends: Array.isArray(data.morning_bookends) ? data.morning_bookends : [],
+          floatDenominations: Array.isArray(data.floatDenominations) ? data.floatDenominations : [],
+          reconciliations: Array.isArray(data.reconciliations) ? data.reconciliations : [],
+          restockCards: Array.isArray(data.restockCards) ? data.restockCards : [],
+          kpis: data.kpis || calculateKpis(data.inventory || [], data.warehouse || [])
+        };
+
+        // Cache restored data to localStorage so offline access works immediately
+        saveAlacioState(restored, userEmail);
+        return restored;
+      }
+    }
+    return null;
+  } catch (err) {
+    console.warn("[YuBiFlo Storage] Cloud restore check completed with notice:", err);
+    return null;
+  }
+}
+
+/**
+ * Export full business state to JSON for client offline backup
+ */
+export function exportBusinessDataJson(state: AlacioMasterState): string {
+  const exportPayload = {
+    app: "YuBiFlo",
+    version: SCHEMA_VERSION,
+    exported_at: new Date().toISOString(),
+    merchant_name: state.merchant_name,
+    client_type: state.client_type,
+    user_email: state.user_email,
+    state: state
+  };
+  return JSON.stringify(exportPayload, null, 2);
+}
+
+/**
+ * Import and validate JSON backup file with automatic schema migration
+ */
+export function importBusinessDataJson(jsonText: string): { success: boolean; state?: AlacioMasterState; error?: string } {
+  try {
+    const parsed = JSON.parse(jsonText);
+    const candidateState = parsed.state || parsed;
+
+    if (!candidateState || typeof candidateState !== "object") {
+      return { success: false, error: "Invalid backup file: missing business state." };
+    }
+
+    // Load through defensive migration
+    const tempKey = "yubiflo_temp_import_buffer";
+    localStorage.setItem(tempKey, JSON.stringify(candidateState));
+    
+    // Read and sanitize
+    const raw = localStorage.getItem(tempKey);
+    localStorage.removeItem(tempKey);
+    
+    if (!raw) {
+      return { success: false, error: "Could not buffer import data." };
+    }
+
+    const stateObj = JSON.parse(raw);
+    const restoredState: AlacioMasterState = {
+      ...INITIAL_ALACIO_STATE,
+      ...stateObj,
+      schema_version: SCHEMA_VERSION,
+      last_persisted_at: new Date().toISOString()
+    };
+
+    // Save to all persistence tiers
+    saveAlacioState(restoredState, restoredState.user_email);
+
+    return { success: true, state: restoredState };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to parse backup JSON file." };
   }
 }

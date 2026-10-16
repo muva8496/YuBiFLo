@@ -14,6 +14,8 @@ export interface InventoryItem {
   bulk_pack_size?: number;
   bulk_pack_name?: string;
   is_bulk_decanted?: boolean;
+  supplier?: string; // Linked supplier providing this good
+  [key: string]: any;
 }
 
 export interface CustomerDebtor {
@@ -42,6 +44,7 @@ export interface SupplierProfile {
   payment_terms?: string;
   lead_time_days?: number;
   location?: string;
+  supplied_items?: string[]; // 1 to many goods supplied by this distributor
 }
 
 export type Supplier = SupplierProfile;
@@ -269,5 +272,46 @@ export interface AlacioMasterState {
   vcr_daily_count: number;
   vcr_customer_consent: boolean;
   clean_trading_days: number; // e.g. 18 of 30 clean trading days logged before Tier 3 AI
+  schema_version?: number;
+  last_persisted_at?: string;
+  user_email?: string;
+  receiptsArchive?: SavedReceiptRecord[];
+  is_demo_template?: boolean;
+  [key: string]: any; // Preserve future, experimental, or custom feature fields across updates
+}
+
+export interface SavedReceiptItem {
+  id: string;
+  itemName: string;
+  supplyUnitsReceived: number;
+  supplyUnit: string;
+  conversionRatio?: number;
+  retailUnitsAdded: number;
+  retailUnit?: string;
+  unitCostAtDelivery: number;
+  lineCost: number;
+  retailPrice: number;
+  expectedMargin?: number;
+  approved?: boolean;
+}
+
+export interface SavedReceiptRecord {
+  id: string;
+  receiptNumber: string;
+  supplierName: string;
+  receiptDate: string;
+  paymentMode: "CASH" | "MPESA" | "CREDIT" | "EQUITEL" | "NATIONAL_ID_DEPOSIT" | "SUPPLIER_CREDIT";
+  status: "approved" | "rejected";
+  rejectionReason?: string;
+  totalCost: number;
+  totalRetailShelfValue: number;
+  totalPotentialProfit: number;
+  markupPercentage: number;
+  itemsCount: number;
+  items: SavedReceiptItem[];
+  imageUrl?: string;
+  processedAt: string;
+  decidedAt: string;
+  notes?: string;
 }
 

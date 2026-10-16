@@ -19,16 +19,19 @@ import {
   FreemiumTier,
   Blueprint,
   SupplierProfile,
-  RestockReconciliationCard
+  RestockReconciliationCard,
+  SavedReceiptRecord
 } from "./types/alacio";
 import { 
   loadAlacioState, 
   saveAlacioState, 
   calculateKpis,
   createSkeletonBusinessState,
+  restoreUserStateFromCloud,
   PLATFORM_BLUEPRINTS,
   PROJECT_ALACIO_CASE_STUDY
 } from "./services/alacioStorage";
+import DataVaultModal from "./components/DataVaultModal";
 import { 
   loadDemoSandboxState, 
   saveDemoSandboxState, 
@@ -129,15 +132,16 @@ export default function App() {
   const [isOneTapGapOpen, setIsOneTapGapOpen] = useState(false);
   const [isMpesaImportOpen, setIsMpesaImportOpen] = useState(false);
   const [isPullYourOwnAppOpen, setIsPullYourOwnAppOpen] = useState(false);
+  const [isDataVaultOpen, setIsDataVaultOpen] = useState(false);
   const [lastVoiceLog, setLastVoiceLog] = useState<string | null>(null);
 
   // Active state pointer: demoState when in demo, alacioState when in real workspace
   const currentMasterState = isDemoMode ? demoState : alacioState;
 
-  // Persist real state to storage
+  // Persist real state to multi-tier storage with zero-data-loss snapshots
   useEffect(() => {
-    saveAlacioState(alacioState);
-  }, [alacioState]);
+    saveAlacioState(alacioState, currentUser?.email);
+  }, [alacioState, currentUser?.email]);
 
   // Persist demo state strictly to isolated sandbox storage
   useEffect(() => {
@@ -192,32 +196,61 @@ export default function App() {
     }
   };
 
-  const handleAuthSuccess = (user: UserProfile) => {
+  const handleAuthSuccess = async (user: UserProfile) => {
     setCurrentUser(user);
     setIsAuthModalOpen(false);
     setIsDemoMode(false);
     resetDemoSandbox();
 
-    // As requested: "when a customer has already signed up it is his or her goods that come in...
-    // once a client signs in, say a person chooses a retail shop, the thing he gets should be a skeleton, not again the values in the demo"
-    const skeletonState = createSkeletonBusinessState(user.businessName, user.businessType);
-    setAlacioState(skeletonState);
-    saveAlacioState(skeletonState);
+    // Zero Data Loss: Check if this user already has saved state in local cache or backups
+    const existingUserState = loadAlacioState(user.email);
+    const hasExistingData = 
+      (existingUserState.inventory && existingUserState.inventory.length > 0) ||
+      (existingUserState.salesLedger && existingUserState.salesLedger.length > 0) ||
+      (existingUserState.payouts && existingUserState.payouts.length > 0) ||
+      (existingUserState.suppliers && existingUserState.suppliers.length > 1) ||
+      (existingUserState.merchant_name === user.businessName && existingUserState.is_skeleton === true);
 
-    const freshLaunchpad: LaunchpadProgress = {
-      step1_dawnLock: false,
-      step2_addStock: false,
-      step3_firstSale: false,
-      step4_addSuppliers: false,
-      step5_customersDeni: false,
-      step6_vcrNotice: false,
-      step7_closeDay: false
-    };
-    setRealLaunchpadProgress(freshLaunchpad);
-    localStorage.setItem("yubiflo_real_launchpad_progress", JSON.stringify(freshLaunchpad));
+    if (hasExistingData) {
+      // Existing client logging in or returning: DO NOT OVERWRITE! Restore their goods and ledger!
+      existingUserState.user_email = user.email;
+      setAlacioState(existingUserState);
+      saveAlacioState(existingUserState, user.email);
+    } else {
+      // Check Firestore cloud mirror in case they are on a new device or cleared cache
+      try {
+        const cloudState = await restoreUserStateFromCloud(user.email);
+        if (cloudState && ((cloudState.inventory && cloudState.inventory.length > 0) || (cloudState.salesLedger && cloudState.salesLedger.length > 0))) {
+          setAlacioState(cloudState);
+          setCurrentView("workspace");
+          setActiveTab("dashboard");
+          return;
+        }
+      } catch (e) {
+        console.warn("[YuBiFlo Storage] Cloud state check notice:", e);
+      }
+
+      // First-time signup with no prior data: initialize clean skeleton ready for their goods
+      const skeletonState = createSkeletonBusinessState(user.businessName, user.businessType);
+      skeletonState.user_email = user.email;
+      setAlacioState(skeletonState);
+      saveAlacioState(skeletonState, user.email);
+
+      const freshLaunchpad: LaunchpadProgress = {
+        step1_dawnLock: false,
+        step2_addStock: false,
+        step3_firstSale: false,
+        step4_addSuppliers: false,
+        step5_customersDeni: false,
+        step6_vcrNotice: false,
+        step7_closeDay: false
+      };
+      setRealLaunchpadProgress(freshLaunchpad);
+      localStorage.setItem("yubiflo_real_launchpad_progress", JSON.stringify(freshLaunchpad));
+    }
 
     setCurrentView("workspace");
-    setActiveTab("launchpad");
+    setActiveTab("dashboard");
   };
 
   // State updater router (mutates demoState in sandbox, or alacioState in real)
@@ -744,22 +777,24 @@ export default function App() {
               unit_cost: updatedCost,
               unit_retail: updatedRetail,
               total_shelf_value: updatedStock * updatedRetail,
-              expected_margin: updatedRetail - updatedCost
+              expected_margin: updatedRetail - updatedCost,
+              supplier: purchase.supplier.trim()
             };
           } else {
             const newSku: InventoryItem = {
               id: `sku_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-              name: line.itemName,
+              name: line.itemName.trim(),
               category: line.category || "General Wholesaler",
               unit_type: line.unit || "pcs",
               unit_cost: line.unitCost,
-              unit_retail: line.retailPrice || (line.unitCost * 1.2),
+              unit_retail: line.retailPrice || (line.unitCost * 1.25),
               current_stock: line.quantity,
               opening_stock: line.quantity,
-              expected_margin: (line.retailPrice || (line.unitCost * 1.2)) - line.unitCost,
-              total_shelf_value: line.quantity * (line.retailPrice || (line.unitCost * 1.2)),
+              expected_margin: (line.retailPrice || (line.unitCost * 1.25)) - line.unitCost,
+              total_shelf_value: line.quantity * (line.retailPrice || (line.unitCost * 1.25)),
               velocity_badge: "NORMAL",
               reorder_point: 5,
+              supplier: purchase.supplier.trim(),
               bulk_pack_size: 1,
               bulk_pack_name: line.unit,
               is_bulk_decanted: false
@@ -769,6 +804,8 @@ export default function App() {
         });
       }
 
+      const purchasedGoodNames = (purchase.itemLines || []).map((l: any) => l.itemName.trim()).filter(Boolean);
+
       const supplierExists = (prev.suppliers || []).some(
         (s) => s.name.toLowerCase().trim() === purchase.supplier.toLowerCase().trim()
       );
@@ -777,26 +814,30 @@ export default function App() {
       if (supplierExists) {
         updatedSuppliers = (prev.suppliers || []).map((s) => {
           if (s.name.toLowerCase().trim() === purchase.supplier.toLowerCase().trim()) {
+            const existingGoods = s.supplied_items || [];
+            const mergedGoods = Array.from(new Set([...existingGoods, ...purchasedGoodNames]));
             return {
               ...s,
               total_orders_cost: (s.total_orders_cost || 0) + purchase.amount,
-              last_delivery_date: purchase.date || "Today"
+              last_delivery_date: purchase.date || "Today",
+              supplied_items: mergedGoods
             };
           }
           return s;
         });
       } else {
-        // Auto-create new supplier (e.g. Jahdithma Wholesalers) and total their cargo goods
+        // Auto-create new supplier and record all supplied goods
         const newSupplier: SupplierProfile = {
           id: `supp_${Date.now()}`,
-          name: purchase.supplier,
-          company: `${purchase.supplier}`,
+          name: purchase.supplier.trim(),
+          company: `${purchase.supplier.trim()}`,
           phone: purchase.supplierPhone || "0722 000 111",
-          national_id: purchase.supplierNationalId || "24891044",
-          category: "General Wholesaler",
+          national_id: purchase.supplierNationalId || "ID-PENDING",
+          category: (purchase as any).supplierCategory || "Wholesale Distributor",
           total_orders_cost: purchase.amount,
           last_delivery_date: purchase.date || "Today",
-          payment_preference: purchase.payment_channel === "MPESA" ? "MPESA_TILL" : "NATIONAL_ID_DEPOSIT"
+          payment_preference: purchase.payment_channel === "MPESA" ? "MPESA_TILL" : "NATIONAL_ID_DEPOSIT",
+          supplied_items: purchasedGoodNames
         };
         updatedSuppliers = [newSupplier, ...(prev.suppliers || [])];
       }
@@ -808,6 +849,19 @@ export default function App() {
         suppliers: updatedSuppliers,
         restockCards: [...newlyGeneratedRestockCards, ...(prev.restockCards || [])],
         kpis: calculateKpis(updatedInventory, prev.warehouse),
+        last_updated: new Date().toISOString()
+      };
+    });
+  };
+
+  // ARCHIVE WORKED-ON OR REJECTED RECEIPT IN DATABASE (GIVES SPACE FOR NEW UPLOADS)
+  const handleSaveReceiptToDatabase = (receipt: SavedReceiptRecord) => {
+    setMasterState((prev) => {
+      const existingArchive = prev.receiptsArchive || [];
+      const updatedArchive = [receipt, ...existingArchive.filter((r) => r.id !== receipt.id)];
+      return {
+        ...prev,
+        receiptsArchive: updatedArchive,
         last_updated: new Date().toISOString()
       };
     });
@@ -1064,6 +1118,7 @@ export default function App() {
         onOpenQuickPurchase={() => setActiveTab("purchases")}
         onOpenQuickDeni={() => setActiveTab("customer_deni")}
         onResetToSkeleton={handleResetToSkeleton}
+        onOpenDataVault={() => setIsDataVaultOpen(true)}
         onOpenSettings={() => {}}
         onSignOut={() => {
           signOut();
@@ -1123,6 +1178,7 @@ export default function App() {
             onLogPurchase={handleLogMultiItemPurchase}
             onAuthorizeRestockSale={handleAuthorizeRestockSale}
             onDismissRestockCard={handleDismissRestockCard}
+            onSaveReceiptToDatabase={handleSaveReceiptToDatabase}
           />
         )}
 
@@ -1338,6 +1394,21 @@ export default function App() {
         isOpen={isPullYourOwnAppOpen}
         onClose={() => setIsPullYourOwnAppOpen(false)}
         state={currentMasterState}
+      />
+
+      {/* ZERO DATA LOSS & DATA PROTECTION VAULT MODAL */}
+      <DataVaultModal
+        isOpen={isDataVaultOpen}
+        onClose={() => setIsDataVaultOpen(false)}
+        masterState={currentMasterState}
+        onStateRestored={(newState) => {
+          if (isDemoMode) {
+            setDemoState(newState);
+          } else {
+            setAlacioState(newState);
+            saveAlacioState(newState, currentUser?.email);
+          }
+        }}
       />
     </>
   );
