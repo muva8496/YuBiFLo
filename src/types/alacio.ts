@@ -96,6 +96,8 @@ export interface PayoutOrDrawing {
   date?: string; // YYYY-MM-DD format for editable reporting
   amount: number;
   type: "BUSINESS_EXPENSE" | "OWNER_DRAWING" | "SUPPLIER_PAYOUT";
+  expense_category?: "RENT" | "MISC" | "TRAVEL" | "PERSONAL_WITHDRAWAL" | "UTILITIES" | "WAGES" | "SUPPLIES" | string;
+  payee?: string;
   notes: string;
   resolved_gap_id?: string;
   payment_channel?: string;

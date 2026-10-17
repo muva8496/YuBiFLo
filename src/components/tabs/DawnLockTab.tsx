@@ -270,6 +270,7 @@ export default function DawnLockTab({
                     <span className="absolute left-3 top-2.5 text-slate-400 font-mono text-sm">{currency}</span>
                     <input
                       type="number"
+                      step="any"
                       min={0}
                       value={cashBalanceInput}
                       onChange={(e) => setCashBalanceInput(Math.max(0, parseFloat(e.target.value) || 0))}
@@ -343,6 +344,7 @@ export default function DawnLockTab({
                     <span className="absolute left-3 top-2.5 text-slate-400 font-mono text-sm">{currency}</span>
                     <input
                       type="number"
+                      step="any"
                       min={0}
                       value={mpesaFloatInput}
                       onChange={(e) => setMpesaFloatInput(Math.max(0, parseFloat(e.target.value) || 0))}
@@ -434,6 +436,7 @@ export default function DawnLockTab({
                     <span className="absolute left-3 top-2.5 text-slate-400 font-mono text-sm">{currency}</span>
                     <input
                       type="number"
+                      step="any"
                       min={0}
                       value={bankPaybillInput}
                       onChange={(e) => setBankPaybillInput(Math.max(0, parseFloat(e.target.value) || 0))}

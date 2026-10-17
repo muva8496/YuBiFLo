@@ -39,6 +39,18 @@ export default function QuickCreateModal({
       }
     },
     {
+      id: "owner_expense",
+      title: "Note Owner Expense & Personal Withdrawal",
+      desc: "Record shop Rent, Misc, Travel/Transport, Utilities, or Personal Withdrawal",
+      icon: <Receipt className="text-indigo-600" size={20} />,
+      badge: "Rent • Misc • Travel • Drawings",
+      bg: "bg-indigo-50 hover:bg-indigo-100/70 border-indigo-200",
+      action: () => {
+        onClose();
+        onNavigateTab("owner_expenses");
+      }
+    },
+    {
       id: "purchase",
       title: "Log Inbound Cargo & Lots of Goods",
       desc: "Record supplier batches with multiple goods, quantities, and wholesale costs",

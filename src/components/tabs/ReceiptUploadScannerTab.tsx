@@ -35,14 +35,14 @@ export default function ReceiptUploadScannerTab({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Active receipt in scanner (starts with sample 420 combo so user immediately sees 140 + 280 = 420 working)
-  const defaultSample = SAMPLE_SUPPLIER_RECEIPTS[3]?.mockData || SAMPLE_SUPPLIER_RECEIPTS[0].mockData;
+  // Active receipt in scanner (starts with THE PHIMAR TRADING CENTER receipt)
+  const defaultSample = SAMPLE_SUPPLIER_RECEIPTS[0].mockData;
   const [activeReceipt, setActiveReceipt] = useState<ProcessedReceipt | null>(() => ({
     ...defaultSample,
     items: defaultSample.items.map((i) => ({ ...i, approved: true }))
   }));
   const [activeReceiptImage, setActiveReceiptImage] = useState<string>(
-    SAMPLE_SUPPLIER_RECEIPTS[3]?.previewUrl || SAMPLE_SUPPLIER_RECEIPTS[0].previewUrl
+    SAMPLE_SUPPLIER_RECEIPTS[0].previewUrl
   );
   const [isScanning, setIsScanning] = useState(false);
   const [successNote, setSuccessNote] = useState<string | null>(null);
@@ -738,10 +738,11 @@ export default function ReceiptUploadScannerTab({
                           <div className="flex items-center gap-1 font-bold text-white mt-0.5">
                             <input
                               type="number"
-                              min={1}
+                              step="any"
+                              min={0}
                               value={item.supplyUnitsReceived}
                               onChange={(e) => handleUpdateItem(item.id, "supplyUnitsReceived", e.target.value)}
-                              className="w-12 bg-[#111113] border border-slate-700 rounded px-1 text-center"
+                              className="w-14 bg-[#111113] border border-slate-700 rounded px-1 text-center"
                             />
                             <span className="text-[10px] text-slate-400">{item.supplyUnit}</span>
                           </div>
@@ -760,6 +761,7 @@ export default function ReceiptUploadScannerTab({
                             <span>{currency}</span>
                             <input
                               type="number"
+                              step="any"
                               min={0}
                               value={item.lineCost}
                               onChange={(e) => handleUpdateItem(item.id, "lineCost", e.target.value)}
@@ -774,6 +776,7 @@ export default function ReceiptUploadScannerTab({
                             <span>{currency}</span>
                             <input
                               type="number"
+                              step="any"
                               min={0}
                               value={item.retailPrice}
                               onChange={(e) => handleUpdateItem(item.id, "retailPrice", e.target.value)}

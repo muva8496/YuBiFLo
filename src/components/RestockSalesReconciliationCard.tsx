@@ -233,10 +233,11 @@ export default function RestockSalesReconciliationCardView({
                 </button>
                 <input
                   type="number"
+                  step="any"
                   min="0"
                   max={previousBatch}
                   value={remains}
-                  onChange={(e) => setRemains(Math.max(0, parseInt(e.target.value) || 0))}
+                  onChange={(e) => setRemains(Math.max(0, parseFloat(e.target.value) || 0))}
                   className="w-full text-center bg-[#091018] border border-slate-700 text-white font-bold font-mono py-1 rounded-lg focus:outline-none focus:border-cyan-400 text-sm"
                 />
                 <button
@@ -276,10 +277,11 @@ export default function RestockSalesReconciliationCardView({
                 </button>
                 <input
                   type="number"
+                  step="any"
                   min="0"
                   max={previousBatch}
                   value={ownerConsumed}
-                  onChange={(e) => setOwnerConsumed(Math.max(0, parseInt(e.target.value) || 0))}
+                  onChange={(e) => setOwnerConsumed(Math.max(0, parseFloat(e.target.value) || 0))}
                   className="w-full text-center bg-[#091018] border border-slate-700 text-amber-300 font-bold font-mono py-1 rounded-lg focus:outline-none focus:border-amber-400 text-sm"
                 />
                 <button
@@ -319,10 +321,11 @@ export default function RestockSalesReconciliationCardView({
                 </button>
                 <input
                   type="number"
+                  step="any"
                   min="0"
                   max={previousBatch}
                   value={spoilage}
-                  onChange={(e) => setSpoilage(Math.max(0, parseInt(e.target.value) || 0))}
+                  onChange={(e) => setSpoilage(Math.max(0, parseFloat(e.target.value) || 0))}
                   className="w-full text-center bg-[#091018] border border-slate-700 text-rose-300 font-bold font-mono py-1 rounded-lg focus:outline-none focus:border-rose-400 text-sm"
                 />
                 <button
@@ -362,10 +365,11 @@ export default function RestockSalesReconciliationCardView({
                 </button>
                 <input
                   type="number"
+                  step="any"
                   min="0"
                   max={previousBatch}
                   value={giveaways}
-                  onChange={(e) => setGiveaways(Math.max(0, parseInt(e.target.value) || 0))}
+                  onChange={(e) => setGiveaways(Math.max(0, parseFloat(e.target.value) || 0))}
                   className="w-full text-center bg-[#091018] border border-slate-700 text-purple-300 font-bold font-mono py-1 rounded-lg focus:outline-none focus:border-purple-400 text-sm"
                 />
                 <button
@@ -394,8 +398,10 @@ export default function RestockSalesReconciliationCardView({
                 <span className="text-xs font-mono text-slate-400">{currency}</span>
                 <input
                   type="number"
+                  step="any"
+                  min="0"
                   value={retailPrice}
-                  onChange={(e) => setRetailPrice(Math.max(1, parseFloat(e.target.value) || 1))}
+                  onChange={(e) => setRetailPrice(Math.max(0, parseFloat(e.target.value) || 0))}
                   className="w-full bg-[#121d2a] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono font-bold text-sm focus:outline-none focus:border-amber-400"
                 />
               </div>

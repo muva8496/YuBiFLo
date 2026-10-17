@@ -4,7 +4,7 @@ import {
   Sun, Mic, Users, BookOpen, BarChart2, ChevronDown, HelpCircle, 
   LogOut, Settings, Building2, Menu, X, ArrowRight, Shield, 
   CheckCircle2, AlertCircle, Phone, Lock, Globe, Check, Sparkles,
-  Plus, Play, FileText, Bookmark, Truck, ShieldCheck
+  Plus, Play, FileText, Bookmark, Truck, ShieldCheck, Wallet
 } from "lucide-react";
 import { UserProfile, signOut, signOutAllDevices } from "../services/authSessionService";
 import VideoFactorModal from "./VideoFactorModal";
@@ -70,13 +70,14 @@ export default function SaasAppShell({
     }
   }, [isDemo]);
 
-  // Exact MSME modules from the workspace including Suppliers, rendered with Wave-style clean iconography:
+  // Exact MSME modules from the workspace including Suppliers & Owner Expenses, rendered with Wave-style clean iconography:
   const sidebarItems: SaasNavItem[] = [
     { id: "launchpad", name: "Launchpad", icon: <Rocket size={17} /> },
     { id: "dashboard", name: "Dashboard", icon: <LayoutDashboard size={17} /> },
     { id: "supply_sales", name: "Sales & Payments", icon: <TrendingUp size={17} /> },
     { id: "purchases", name: "Purchases", icon: <ShoppingBag size={17} /> },
     { id: "suppliers", name: "Suppliers", icon: <Truck size={17} /> },
+    { id: "owner_expenses", name: "Owner Expenses", icon: <Wallet size={17} /> },
     { id: "stock_vault", name: "Stock Vault", icon: <Layers size={17} /> },
     { id: "dawn_lock", name: "Dawn Lock", icon: <Sun size={17} /> },
     { id: "voice_ledger", name: "Voice Ledger", icon: <Mic size={17} /> },

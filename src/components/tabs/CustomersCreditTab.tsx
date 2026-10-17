@@ -492,8 +492,9 @@ export default function CustomersCreditTab({
                 <label className="text-slate-300 text-xs font-semibold block mb-1">Repayment Cash Amount ({currency})</label>
                 <input
                   type="number"
+                  step="any"
                   required
-                  min="1"
+                  min="0"
                   max={selectedCust.debt_balance}
                   value={repayAmount}
                   onChange={(e) => setRepayAmount(e.target.value)}
@@ -573,6 +574,8 @@ export default function CustomersCreditTab({
                   <label className="text-slate-300 font-semibold block mb-1">Credit Limit ({currency})</label>
                   <input
                     type="number"
+                    step="any"
+                    min="0"
                     value={newLimit}
                     onChange={(e) => setNewLimit(e.target.value)}
                     className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
@@ -582,6 +585,8 @@ export default function CustomersCreditTab({
                   <label className="text-slate-300 font-semibold block mb-1">Opening Debt ({currency})</label>
                   <input
                     type="number"
+                    step="any"
+                    min="0"
                     value={newDebt}
                     onChange={(e) => setNewDebt(e.target.value)}
                     className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white font-mono"

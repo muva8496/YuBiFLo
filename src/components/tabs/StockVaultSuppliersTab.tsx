@@ -55,7 +55,7 @@ export default function StockVaultSuppliersTab({
 
     const cost = parseFloat(newItemCost) || 0;
     const retail = parseFloat(newItemRetail) || 0;
-    const stock = parseInt(newItemStock, 10) || 0;
+    const stock = parseFloat(newItemStock) || 0;
 
     const newItem: InventoryItem = {
       id: `sku_${Date.now()}`,
@@ -234,11 +234,12 @@ export default function StockVaultSuppliersTab({
                 <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">Wholesale Cost ({currency})</label>
                 <input
                   type="number"
+                  step="any"
                   required
                   min={0}
                   value={newItemCost}
                   onChange={(e) => setNewItemCost(e.target.value)}
-                  placeholder="e.g. 55"
+                  placeholder="e.g. 55 or 55.50"
                   className="w-full bg-[#080D15] border border-[#182C40] rounded-xl p-2.5 text-white font-mono"
                 />
               </div>
@@ -247,11 +248,12 @@ export default function StockVaultSuppliersTab({
                 <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">Retail Selling Price ({currency})</label>
                 <input
                   type="number"
+                  step="any"
                   required
                   min={0}
                   value={newItemRetail}
                   onChange={(e) => setNewItemRetail(e.target.value)}
-                  placeholder="e.g. 65"
+                  placeholder="e.g. 65 or 65.50"
                   className="w-full bg-[#080D15] border border-[#182C40] rounded-xl p-2.5 text-white font-mono"
                 />
               </div>
@@ -260,11 +262,12 @@ export default function StockVaultSuppliersTab({
                 <label className="text-[10px] font-mono uppercase text-slate-400 block mb-1">Current Stock Count</label>
                 <input
                   type="number"
+                  step="any"
                   required
                   min={0}
                   value={newItemStock}
                   onChange={(e) => setNewItemStock(e.target.value)}
-                  placeholder="e.g. 24"
+                  placeholder="e.g. 24 or 1.5"
                   className="w-full bg-[#080D15] border border-[#182C40] rounded-xl p-2.5 text-white font-mono"
                 />
               </div>

@@ -4,7 +4,7 @@ import {
   Layers, ArrowUpRight, Search, Filter, AlertCircle, RefreshCw,
   Camera, Upload, FileText, Image as ImageIcon, Sparkles, Check,
   Trash2, Copy, ShieldCheck, ChevronDown, ChevronUp, Eye, Phone,
-  ArrowRight, Scan, Clock, Package, XCircle, CheckSquare, Square, History, X
+  ArrowRight, Scan, Clock, Package, XCircle, CheckSquare, Square, History, X, Wallet
 } from "lucide-react";
 import { 
   AlacioMasterState, 
@@ -15,6 +15,7 @@ import {
   SavedReceiptRecord
 } from "../../types/alacio";
 import RestockSalesReconciliationCardView from "../RestockSalesReconciliationCard";
+import OwnerExpensesTab from "./OwnerExpensesTab";
 import { 
   ReceiptOcrService, 
   SAMPLE_SUPPLIER_RECEIPTS, 
@@ -68,6 +69,9 @@ interface PurchasesTabProps {
   onAuthorizeRestockSale?: (payload: any) => void;
   onDismissRestockCard?: (cardId: string) => void;
   onSaveReceiptToDatabase?: (receipt: SavedReceiptRecord) => void;
+  onAddExpense?: (expense: PayoutOrDrawing) => void;
+  onEditExpense?: (id: string, updated: Partial<PayoutOrDrawing>) => void;
+  onDeleteExpense?: (id: string) => void;
 }
 
 export default function PurchasesTab({ 
@@ -77,13 +81,18 @@ export default function PurchasesTab({
   initialSupplier,
   onAuthorizeRestockSale,
   onDismissRestockCard,
-  onSaveReceiptToDatabase
+  onSaveReceiptToDatabase,
+  onAddExpense,
+  onEditExpense,
+  onDeleteExpense
 }: PurchasesTabProps) {
   const { currency, inventory = [], suppliers = [], payouts = [], restockCards = [], receiptsArchive = [] } = state;
   const [showAllRestockCards, setShowAllRestockCards] = useState<boolean>(false);
+  const [activeSubSection, setActiveSubSection] = useState<"ALL" | "EXPENSES_ONLY">("ALL");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const purchaseFormRef = useRef<HTMLDivElement>(null);
+  const ownerExpensesSectionRef = useRef<HTMLDivElement>(null);
 
   // Success and feedback notes
   const [successNote, setSuccessNote] = useState<string | null>(null);
@@ -245,16 +254,16 @@ export default function PurchasesTab({
     });
   };
 
-  // Receipt Photo OCR Scanner State
+  // Receipt Photo OCR Scanner State (defaults to THE PHIMAR TRADING CENTER receipt)
   const [isScanningReceipt, setIsScanningReceipt] = useState(false);
   const [scannedReceipt, setScannedReceipt] = useState<ProcessedReceipt | null>(() => {
-    const defaultSample = SAMPLE_SUPPLIER_RECEIPTS[3]?.mockData || SAMPLE_SUPPLIER_RECEIPTS[0].mockData;
+    const defaultSample = SAMPLE_SUPPLIER_RECEIPTS[0].mockData;
     return {
       ...defaultSample,
       items: defaultSample.items.map((i) => ({ ...i, approved: true }))
     };
   });
-  const [scannedReceiptImage, setScannedReceiptImage] = useState<string>(SAMPLE_SUPPLIER_RECEIPTS[3]?.previewUrl || SAMPLE_SUPPLIER_RECEIPTS[0].previewUrl);
+  const [scannedReceiptImage, setScannedReceiptImage] = useState<string>(SAMPLE_SUPPLIER_RECEIPTS[0].previewUrl);
   const [scannerFeedback, setScannerFeedback] = useState<string | null>(null);
 
   // Receipts Database Archive state
@@ -312,15 +321,20 @@ export default function PurchasesTab({
     setItemLines([...itemLines, newLine]);
   };
 
-  // Update line row
+  // Update line row (supports both deriving unit wholesale cost from line total and calculating line total from unit cost)
   const handleUpdateLine = (id: string, updates: Partial<PurchaseItemLine>) => {
     setItemLines((prev) =>
       prev.map((line) => {
         if (line.id === id) {
           const updated = { ...line, ...updates };
-          // recalculate line total
-          if (updates.quantity !== undefined || updates.unitCost !== undefined) {
-            updated.totalCost = (updated.quantity || 0) * (updated.unitCost || 0);
+          if (updates.totalCost !== undefined) {
+            const qty = updated.quantity && updated.quantity > 0 ? updated.quantity : 1;
+            updated.unitCost = Math.round(((updated.totalCost || 0) / qty) * 100) / 100;
+          } else if (updates.quantity !== undefined && updated.totalCost > 0 && updates.unitCost === undefined) {
+            const qty = updated.quantity > 0 ? updated.quantity : 1;
+            updated.unitCost = Math.round((updated.totalCost / qty) * 100) / 100;
+          } else if (updates.unitCost !== undefined) {
+            updated.totalCost = Math.round((updated.quantity || 0) * (updated.unitCost || 0) * 100) / 100;
           }
           return updated;
         }
@@ -473,27 +487,40 @@ export default function PurchasesTab({
 
       const updated = { ...item };
 
-      if (field === "itemName" || field === "supplyUnit" || field === "retailUnit") {
+      if (field === "itemName" || field === "supplyUnit" || field === "retailUnit" || field === "rawSpecification") {
         (updated as any)[field] = value;
       } else {
         const numVal = value === "" ? 0 : Number(value) || 0;
         (updated as any)[field] = numVal;
 
-        if (field === "supplyUnitsReceived" || field === "unitCostAtDelivery") {
-          const qty = field === "supplyUnitsReceived" ? numVal : Number(item.supplyUnitsReceived) || 1;
-          const uCost = field === "unitCostAtDelivery" ? numVal : Number(item.unitCostAtDelivery) || 0;
-          updated.lineCost = Math.round(qty * uCost * 100) / 100;
+        if (field === "supplyUnitsReceived") {
+          const qty = numVal > 0 ? numVal : 1;
+          updated.retailUnitsAdded = numVal;
+          const currentLineCost = Number(item.lineCost) || 0;
+          if (currentLineCost > 0) {
+            // Derive unit wholesale cost from receipt line total ÷ quantity
+            updated.unitCostAtDelivery = Math.round((currentLineCost / qty) * 100) / 100;
+          } else {
+            const uCost = Number(item.unitCostAtDelivery) || 0;
+            updated.lineCost = Math.round(qty * uCost * 100) / 100;
+          }
         }
 
         if (field === "lineCost") {
           const qty = Number(item.supplyUnitsReceived) > 0 ? Number(item.supplyUnitsReceived) : 1;
+          // Derive unit wholesale cost = lineCost ÷ qty
           updated.unitCostAtDelivery = Math.round((numVal / qty) * 100) / 100;
         }
 
-        if (field === "retailPrice" || field === "unitCostAtDelivery" || field === "lineCost") {
+        if (field === "unitCostAtDelivery") {
+          const qty = Number(item.supplyUnitsReceived) > 0 ? Number(item.supplyUnitsReceived) : 1;
+          updated.lineCost = Math.round(qty * numVal * 100) / 100;
+        }
+
+        if (field === "retailPrice" || field === "unitCostAtDelivery" || field === "lineCost" || field === "supplyUnitsReceived") {
           const rPrice = field === "retailPrice" ? numVal : Number(item.retailPrice) || 0;
           const uCost = Number(updated.unitCostAtDelivery) || 0;
-          updated.expectedMargin = Math.max(0, rPrice - uCost);
+          updated.expectedMargin = Math.max(0, Math.round((rPrice - uCost) * 100) / 100);
         }
       }
 
@@ -806,19 +833,36 @@ export default function PurchasesTab({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab("suppliers")}
-              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
             >
               <Truck size={14} className="text-slate-600" />
-              <span>Suppliers Registry</span>
+              <span>Suppliers</span>
             </button>
           )}
+          <button
+            onClick={() => {
+              setActiveSubSection(activeSubSection === "EXPENSES_ONLY" ? "ALL" : "EXPENSES_ONLY");
+              if (ownerExpensesSectionRef.current) {
+                ownerExpensesSectionRef.current.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
+            className={`px-3.5 py-2 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer border ${
+              activeSubSection === "EXPENSES_ONLY"
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                : "bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border-indigo-200"
+            }`}
+          >
+            <Wallet size={14} className={activeSubSection === "EXPENSES_ONLY" ? "text-white" : "text-indigo-600"} />
+            <span>+ Note Owner Expense (Rent, Misc, Travel, Withdrawal)</span>
+          </button>
 
           <button
             onClick={() => {
+              setActiveSubSection("ALL");
               setIsAddingPurchase(true);
               if (purchaseFormRef.current) {
                 purchaseFormRef.current.scrollIntoView({ behavior: "smooth" });
@@ -831,6 +875,60 @@ export default function PurchasesTab({
           </button>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* PROMINENT MODE SWITCHER: STOCK PURCHASES vs OWNER EXPENSES & WITHDRAWALS  */}
+      {/* ========================================================================= */}
+      <div className="bg-slate-100/90 border border-slate-200 p-1.5 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setActiveSubSection("ALL")}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              activeSubSection === "ALL"
+                ? "bg-white text-blue-700 shadow-xs border border-slate-200/80"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Camera size={14} className="text-blue-600" />
+            <span>1. Stock Purchases &amp; Receipt Scanner</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubSection("EXPENSES_ONLY")}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              activeSubSection === "EXPENSES_ONLY"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "text-indigo-800 bg-indigo-50/70 hover:bg-indigo-100/80 border border-indigo-200/60"
+            }`}
+          >
+            <Wallet size={14} className={activeSubSection === "EXPENSES_ONLY" ? "text-white" : "text-indigo-600"} />
+            <span>2. Owner Expenses &amp; Withdrawals (Rent &bull; Misc &bull; Travel &bull; Personal Withdrawal)</span>
+          </button>
+        </div>
+
+        {onNavigateTab && (
+          <button
+            type="button"
+            onClick={() => onNavigateTab("owner_expenses")}
+            className="px-3 py-1.5 rounded-xl text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50 transition cursor-pointer self-end sm:self-auto"
+          >
+            Open Full Expenses Tab &rarr;
+          </button>
+        )}
+      </div>
+
+      {/* IF USER SWITCHED TO EXPENSES_ONLY AT TOP, RENDER OWNER EXPENSES IMMEDIATELY AT TOP */}
+      {activeSubSection === "EXPENSES_ONLY" && onAddExpense && (
+        <div ref={ownerExpensesSectionRef} className="bg-indigo-50/30 border-2 border-indigo-200 rounded-3xl p-4 sm:p-6 shadow-xs">
+          <OwnerExpensesTab
+            state={state}
+            onAddExpense={onAddExpense}
+            onEditExpense={onEditExpense}
+            onDeleteExpense={onDeleteExpense}
+          />
+        </div>
+      )}
 
       {/* SUCCESS TOAST */}
       {successNote && (
@@ -1038,40 +1136,119 @@ export default function PurchasesTab({
           return (
             <div className="bg-slate-50 border-2 border-blue-200/90 rounded-2xl p-3.5 sm:p-5 space-y-4">
               
-              {/* TOP BANNER: RECEIPT METADATA & ACTIONS */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
-                <div>
+              {/* TOP BANNER: EDITABLE RECEIPT METADATA & ACTIONS */}
+              <div className="flex flex-col gap-3 border-b border-slate-200 pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[10px] font-mono uppercase font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full inline-block">
                       Receipt Under Review &bull; {approvedItems.length} of {scannedReceipt.items.length} Goods Approved
                     </span>
-                    <span className="text-[10px] font-mono text-slate-500">
-                      Date: {scannedReceipt.receiptDate} &bull; Inv: {scannedReceipt.receiptNumber}
-                    </span>
                   </div>
-                  <h3 className="text-base font-bold text-slate-900 mt-1">
-                    {scannedReceipt.supplierName}
-                  </h3>
+
+                  {/* APPROVAL TOGGLES & TOP BUTTONS */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newItem: ProcessedReceiptItem = {
+                          id: `item_manual_${Date.now()}`,
+                          itemName: "New Receipt Item",
+                          supplyUnitsReceived: 1,
+                          supplyUnit: "Packets",
+                          conversionRatio: 1,
+                          retailUnitsAdded: 1,
+                          retailUnit: "packets",
+                          unitCostAtDelivery: 100,
+                          lineCost: 100,
+                          retailPrice: 125,
+                          expectedMargin: 25,
+                          approved: true
+                        };
+                        const nextItems = [...scannedReceipt.items, newItem];
+                        const nextApproved = nextItems.filter((i) => i.approved !== false);
+                        const nextCost = nextApproved.reduce((a, i) => a + (Number(i.lineCost) || 0), 0);
+                        const nextRetail = nextApproved.reduce((a, i) => a + ((Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 0) * (Number(i.retailPrice) || 0)), 0);
+                        setScannedReceipt({
+                          ...scannedReceipt,
+                          items: nextItems,
+                          totalCost: nextCost,
+                          totalRetailShelfValue: nextRetail,
+                          totalPotentialProfit: Math.max(0, nextRetail - nextCost)
+                        });
+                      }}
+                      className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold rounded-lg transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus size={13} />
+                      <span>+ Add Good</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleApproveAllItems}
+                      className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold rounded-lg transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <CheckSquare size={13} className="text-emerald-600" />
+                      <span>Approve All</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRejectAllItems}
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Square size={13} className="text-slate-500" />
+                      <span>Exclude All</span>
+                    </button>
+                  </div>
                 </div>
 
-                {/* APPROVAL TOGGLES & TOP BUTTONS */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={handleApproveAllItems}
-                    className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold rounded-lg transition flex items-center gap-1 cursor-pointer"
-                  >
-                    <CheckSquare size={13} className="text-emerald-600" />
-                    <span>Approve All</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleRejectAllItems}
-                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition flex items-center gap-1 cursor-pointer"
-                  >
-                    <Square size={13} className="text-slate-500" />
-                    <span>Exclude All</span>
-                  </button>
+                {/* EDITABLE SUPPLIER, INVOICE NO, DATE, PAYMENT MODE */}
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200">
+                  <div>
+                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Supplier Name</label>
+                    <input
+                      type="text"
+                      list="receipt-suppliers-datalist"
+                      value={scannedReceipt.supplierName}
+                      onChange={(e) => setScannedReceipt({ ...scannedReceipt, supplierName: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-900"
+                      placeholder="Supplier or distributor"
+                    />
+                    <datalist id="receipt-suppliers-datalist">
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.name} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Receipt / Invoice #</label>
+                    <input
+                      type="text"
+                      value={scannedReceipt.receiptNumber}
+                      onChange={(e) => setScannedReceipt({ ...scannedReceipt, receiptNumber: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Receipt Date</label>
+                    <input
+                      type="date"
+                      value={scannedReceipt.receiptDate}
+                      onChange={(e) => setScannedReceipt({ ...scannedReceipt, receiptDate: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Payment Mode</label>
+                    <select
+                      value={scannedReceipt.paymentMode}
+                      onChange={(e) => setScannedReceipt({ ...scannedReceipt, paymentMode: e.target.value as any })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-900"
+                    >
+                      <option value="CASH">CASH</option>
+                      <option value="MPESA">MPESA</option>
+                      <option value="CREDIT">SUPPLIER CREDIT</option>
+                      <option value="EQUITEL">EQUITEL / BANK</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -1129,12 +1306,15 @@ export default function PurchasesTab({
                   </div>
 
                   {/* ITEM CARDS / ROWS */}
-                  <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
                     {scannedReceipt.items.map((item, idx) => {
                       const isApproved = item.approved !== false;
                       const lineTotal = Number(item.lineCost) || 0;
-                      const unitCost = Number(item.unitCostAtDelivery) || (item.supplyUnitsReceived > 0 ? lineTotal / item.supplyUnitsReceived : 0);
+                      const qty = Number(item.supplyUnitsReceived) > 0 ? Number(item.supplyUnitsReceived) : 1;
+                      const derivedUnitCost = Math.round((lineTotal / qty) * 100) / 100;
+                      const unitCost = Number(item.unitCostAtDelivery) || derivedUnitCost;
                       const retailPrice = Number(item.retailPrice) || 0;
+                      const is25kgBag = item.itemName.toLowerCase().includes("25kg") && qty === 1;
 
                       return (
                         <div
@@ -1172,67 +1352,88 @@ export default function PurchasesTab({
                               </button>
 
                               {/* EDITABLE ITEM NAME */}
-                              <input
-                                type="text"
-                                value={item.itemName}
-                                onChange={(e) => handleUpdateScannedItem(item.id, "itemName", e.target.value)}
-                                className="font-bold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none flex-1 text-xs"
-                                placeholder="Good description"
-                              />
+                              <div className="flex-1 min-w-0">
+                                <input
+                                  type="text"
+                                  value={item.itemName}
+                                  onChange={(e) => handleUpdateScannedItem(item.id, "itemName", e.target.value)}
+                                  className="font-bold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none w-full text-xs"
+                                  placeholder="Good description"
+                                />
+                                {item.rawSpecification && (
+                                  <div className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
+                                    Receipt Line: {item.rawSpecification}
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
-                            {/* LINE TOTAL DISPLAY */}
-                            <div className="flex items-center gap-2 self-end sm:self-auto font-mono">
-                              <span className="text-[10px] text-slate-400 uppercase">Line Cost:</span>
-                              <strong className={`text-xs ${isApproved ? "text-slate-900" : "text-slate-500"}`}>
-                                {currency} {lineTotal.toLocaleString()}
-                              </strong>
+                            {/* DERIVED WHOLESALE FORMULA PILL & DELETE BUTTON */}
+                            <div className="flex items-center gap-2 self-end sm:self-auto font-mono flex-wrap">
+                              <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-[10px] font-bold">
+                                Derived Wholesale: {currency} {lineTotal.toLocaleString()} &divide; {qty} = {currency} {unitCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}/{item.supplyUnit || "unit"}
+                                {is25kgBag ? ` (${currency} ${(lineTotal / 25).toFixed(2)}/kg)` : ""}
+                              </span>
+                              {scannedReceipt.items.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nextItems = scannedReceipt.items.filter((i) => i.id !== item.id);
+                                    const nextApproved = nextItems.filter((i) => i.approved !== false);
+                                    const nextCost = nextApproved.reduce((a, i) => a + (Number(i.lineCost) || 0), 0);
+                                    const nextRetail = nextApproved.reduce((a, i) => a + ((Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 0) * (Number(i.retailPrice) || 0)), 0);
+                                    setScannedReceipt({
+                                      ...scannedReceipt,
+                                      items: nextItems,
+                                      totalCost: nextCost,
+                                      totalRetailShelfValue: nextRetail,
+                                      totalPotentialProfit: Math.max(0, nextRetail - nextCost)
+                                    });
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer"
+                                  title="Remove item from receipt"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
                             </div>
                           </div>
 
-                          {/* EDITABLE NUMERICAL FIELDS: QTY, UNIT, UNIT COST, LINE COST, RETAIL PRICE */}
+                          {/* EDITABLE NUMERICAL FIELDS: QTY & UNIT, LINE TOTAL (FROM RECEIPT), DERIVED UNIT WHOLESALE COST, RETAIL PRICE */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 text-[11px]">
                             
-                            {/* WHOLESALE QUANTITY & UNIT */}
+                            {/* 1. WHOLESALE QUANTITY / PACKETS & UNIT */}
                             <div>
                               <label className="text-[9px] text-slate-500 uppercase font-semibold block mb-0.5">
-                                Qty &amp; Unit
+                                Packets / Qty &amp; Unit
                               </label>
                               <div className="flex items-center gap-1 font-mono">
                                 <input
                                   type="number"
-                                  min={1}
+                                  step="any"
+                                  min={0}
                                   value={item.supplyUnitsReceived}
                                   onChange={(e) => handleUpdateScannedItem(item.id, "supplyUnitsReceived", e.target.value)}
-                                  className="w-14 bg-white border border-slate-200 rounded-md p-1 text-center font-bold text-slate-800 text-xs"
+                                  className="w-16 bg-white border border-slate-200 rounded-md p-1 text-center font-bold text-slate-800 text-xs"
                                 />
-                                <span className="text-[10px] text-slate-500 truncate" title={item.supplyUnit}>
-                                  {item.supplyUnit}
-                                </span>
+                                <input
+                                  type="text"
+                                  value={item.supplyUnit}
+                                  onChange={(e) => handleUpdateScannedItem(item.id, "supplyUnit", e.target.value)}
+                                  className="w-full bg-white border border-slate-200 rounded-md p-1 text-[10px] text-slate-700 font-sans"
+                                  placeholder="Packets / Bag"
+                                />
                               </div>
                             </div>
 
-                            {/* UNIT WHOLESALE COST */}
-                            <div>
-                              <label className="text-[9px] text-slate-500 uppercase font-semibold block mb-0.5">
-                                Unit Cost ({currency})
-                              </label>
-                              <input
-                                type="number"
-                                min={0}
-                                value={unitCost}
-                                onChange={(e) => handleUpdateScannedItem(item.id, "unitCostAtDelivery", e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-md p-1 font-mono font-bold text-slate-800 text-xs text-right"
-                              />
-                            </div>
-
-                            {/* EXACT LINE TOTAL COST (STRICT NUMERIC: E.G. 140 OR 280) */}
+                            {/* 2. EXACT LINE TOTAL COST FROM RECEIPT (E.G. 1600, 1270, 1290) */}
                             <div>
                               <label className="text-[9px] text-amber-800 uppercase font-bold block mb-0.5">
-                                Line Total ({currency}) *
+                                Receipt Line Cost ({currency}) *
                               </label>
                               <input
                                 type="number"
+                                step="any"
                                 min={0}
                                 value={lineTotal}
                                 onChange={(e) => handleUpdateScannedItem(item.id, "lineCost", e.target.value)}
@@ -1240,13 +1441,29 @@ export default function PurchasesTab({
                               />
                             </div>
 
-                            {/* RETAIL SELLING PRICE */}
+                            {/* 3. DERIVED UNIT WHOLESALE COST (LINE COST ÷ QTY) */}
+                            <div>
+                              <label className="text-[9px] text-blue-700 uppercase font-bold block mb-0.5">
+                                Derived Unit Wholesale ({currency})
+                              </label>
+                              <input
+                                type="number"
+                                step="any"
+                                min={0}
+                                value={unitCost}
+                                onChange={(e) => handleUpdateScannedItem(item.id, "unitCostAtDelivery", e.target.value)}
+                                className="w-full bg-blue-50/60 border border-blue-300 rounded-md p-1 font-mono font-bold text-blue-900 text-xs text-right"
+                              />
+                            </div>
+
+                            {/* 4. RETAIL SELLING PRICE */}
                             <div>
                               <label className="text-[9px] text-emerald-800 uppercase font-semibold block mb-0.5">
                                 Shelf Retail ({currency})
                               </label>
                               <input
                                 type="number"
+                                step="any"
                                 min={0}
                                 value={retailPrice}
                                 onChange={(e) => handleUpdateScannedItem(item.id, "retailPrice", e.target.value)}
@@ -2304,9 +2521,11 @@ export default function PurchasesTab({
                         <label className="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Quantity</label>
                         <input
                           type="number"
-                          min={1}
-                          value={line.quantity}
-                          onChange={(e) => handleUpdateLine(line.id, { quantity: parseInt(e.target.value, 10) || 1 })}
+                          step="any"
+                          min={0}
+                          value={line.quantity === 0 ? "" : line.quantity}
+                          onChange={(e) => handleUpdateLine(line.id, { quantity: e.target.value === "" ? 0 : parseFloat(e.target.value) })}
+                          placeholder="e.g. 1 or 0.5"
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 text-center"
                         />
                       </div>
@@ -2329,9 +2548,11 @@ export default function PurchasesTab({
                         <label className="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Unit Wholesale ({currency})</label>
                         <input
                           type="number"
+                          step="any"
                           min={0}
-                          value={line.unitCost}
-                          onChange={(e) => handleUpdateLine(line.id, { unitCost: parseFloat(e.target.value) || 0 })}
+                          value={line.unitCost === 0 ? "" : line.unitCost}
+                          onChange={(e) => handleUpdateLine(line.id, { unitCost: e.target.value === "" ? 0 : parseFloat(e.target.value) })}
+                          placeholder="0.00"
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 text-right"
                         />
                       </div>
@@ -2339,9 +2560,10 @@ export default function PurchasesTab({
                         <label className="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Shelf Price ({currency})</label>
                         <input
                           type="number"
+                          step="any"
                           min={0}
                           value={line.retailPrice || ""}
-                          onChange={(e) => handleUpdateLine(line.id, { retailPrice: parseFloat(e.target.value) || 0 })}
+                          onChange={(e) => handleUpdateLine(line.id, { retailPrice: e.target.value === "" ? 0 : parseFloat(e.target.value) })}
                           placeholder="Selling price"
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-mono font-bold text-blue-700 text-right"
                         />
@@ -2350,7 +2572,7 @@ export default function PurchasesTab({
 
                     <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
                       <span className="text-slate-500">Line Total Cost:</span>
-                      <strong className="text-slate-900 font-mono font-bold">{currency} {((line.quantity || 0) * (line.unitCost || 0)).toLocaleString()}</strong>
+                      <strong className="text-slate-900 font-mono font-bold">{currency} {((line.quantity || 0) * (line.unitCost || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</strong>
                     </div>
                   </div>
                 ))}
@@ -2408,10 +2630,12 @@ export default function PurchasesTab({
                         <td className="p-2.5">
                           <input
                             type="number"
+                            step="any"
                             required
-                            min={1}
-                            value={line.quantity}
-                            onChange={(e) => handleUpdateLine(line.id, { quantity: parseInt(e.target.value, 10) || 1 })}
+                            min={0}
+                            value={line.quantity === 0 ? "" : line.quantity}
+                            onChange={(e) => handleUpdateLine(line.id, { quantity: e.target.value === "" ? 0 : parseFloat(e.target.value) })}
+                            placeholder="e.g. 1 or 0.5"
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 text-center"
                           />
                         </td>
@@ -2433,17 +2657,28 @@ export default function PurchasesTab({
                         <td className="p-2.5">
                           <input
                             type="number"
+                            step="any"
                             required
-                            min={1}
-                            value={line.unitCost}
-                            onChange={(e) => handleUpdateLine(line.id, { unitCost: parseFloat(e.target.value) || 0 })}
+                            min={0}
+                            value={line.unitCost === 0 ? "" : line.unitCost}
+                            onChange={(e) => handleUpdateLine(line.id, { unitCost: e.target.value === "" ? 0 : parseFloat(e.target.value) })}
+                            placeholder="0.00"
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-mono font-semibold text-slate-900 text-right"
                           />
                         </td>
 
-                        {/* LINE TOTAL COST */}
-                        <td className="p-2.5 text-right font-mono font-bold text-slate-900">
-                          {currency} {((line.quantity || 0) * (line.unitCost || 0)).toLocaleString()}
+                        {/* LINE TOTAL COST (EDITABLE TO DERIVE UNIT WHOLESALE COST) */}
+                        <td className="p-2.5">
+                          <input
+                            type="number"
+                            step="any"
+                            required
+                            min={0}
+                            value={line.totalCost === 0 ? "" : line.totalCost}
+                            onChange={(e) => handleUpdateLine(line.id, { totalCost: e.target.value === "" ? 0 : parseFloat(e.target.value) })}
+                            placeholder="0.00"
+                            className="w-full bg-amber-50/60 border border-amber-300 rounded-xl p-2 text-xs font-mono font-bold text-amber-900 text-right"
+                          />
                         </td>
 
                         {/* REMOVE BUTTON */}
@@ -2643,6 +2878,21 @@ export default function PurchasesTab({
           </div>
         )}
       </div>
+
+      {/* ========================================================================= */}
+      {/* 5. OWNER EXPENSES & PERSONAL WITHDRAWALS NOTEBOOK (RENT, MISC, TRAVEL)    */}
+      {/* Always accessible directly under Purchases as well as in the sidebar      */}
+      {/* ========================================================================= */}
+      {activeSubSection === "ALL" && onAddExpense && (
+        <div ref={ownerExpensesSectionRef} className="bg-indigo-50/25 border-2 border-indigo-200/80 rounded-3xl p-4 sm:p-6 shadow-xs">
+          <OwnerExpensesTab
+            state={state}
+            onAddExpense={onAddExpense}
+            onEditExpense={onEditExpense}
+            onDeleteExpense={onDeleteExpense}
+          />
+        </div>
+      )}
 
     </div>
   );

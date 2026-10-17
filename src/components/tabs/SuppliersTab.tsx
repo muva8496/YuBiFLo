@@ -786,11 +786,12 @@ export default function SuppliersTab({
                   </label>
                   <input
                     type="number"
+                    step="any"
                     required
-                    min={1}
+                    min={0}
                     value={payAmount}
                     onChange={(e) => setPayAmount(e.target.value)}
-                    placeholder="e.g. 5040"
+                    placeholder="e.g. 5040 or 1250.50"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   />
                 </div>

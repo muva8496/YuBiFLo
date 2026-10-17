@@ -56,6 +56,7 @@ import UnifiedVoiceLedgerTab from "./components/tabs/UnifiedVoiceLedgerTab";
 import CustomersCreditTab from "./components/tabs/CustomersCreditTab";
 import ThreeFoldLedgersTab from "./components/tabs/ThreeFoldLedgersTab";
 import AnalyticsTab from "./components/tabs/AnalyticsTab";
+import OwnerExpensesTab from "./components/tabs/OwnerExpensesTab";
 import { VoiceDraftRecord } from "./components/tabs/PendingDraftsQueueTab";
 import TemplateInDevelopmentView from "./components/TemplateInDevelopmentView";
 import OneTapGapModal from "./components/OneTapGapModal";
@@ -623,6 +624,37 @@ export default function App() {
     }));
   };
 
+  const handleAddExpense = (expense: PayoutOrDrawing) => {
+    setMasterState((prev) => {
+      const amt = parseFloat(String(expense.amount)) || 0;
+      const isMpesa = (expense.payment_channel || "").includes("MPESA");
+      const isCash = !isMpesa && !(expense.payment_channel || "").includes("BANK");
+      return {
+        ...prev,
+        payouts: [expense, ...(prev.payouts || [])],
+        cash_register_balance: isCash ? Math.max(0, Math.round(((prev.cash_register_balance || 0) - amt) * 100) / 100) : prev.cash_register_balance,
+        mpesa_float_balance: isMpesa ? Math.max(0, Math.round(((prev.mpesa_float_balance || 0) - amt) * 100) / 100) : prev.mpesa_float_balance,
+        last_updated: new Date().toISOString()
+      };
+    });
+  };
+
+  const handleEditExpense = (id: string, updated: Partial<PayoutOrDrawing>) => {
+    setMasterState((prev) => ({
+      ...prev,
+      payouts: (prev.payouts || []).map((p) => (p.id === id ? { ...p, ...updated } : p)),
+      last_updated: new Date().toISOString()
+    }));
+  };
+
+  const handleDeleteExpense = (id: string) => {
+    setMasterState((prev) => ({
+      ...prev,
+      payouts: (prev.payouts || []).filter((p) => p.id !== id),
+      last_updated: new Date().toISOString()
+    }));
+  };
+
   const handleImportMpesa = (records: MpesaStatementRecord[]) => {
     setMasterState((prev) => ({
       ...prev,
@@ -1154,6 +1186,7 @@ export default function App() {
             onOpenQuickSale={() => setActiveTab("voice_ledger")}
             onOpenQuickPurchase={() => setActiveTab("purchases")}
             onOpenQuickDeni={() => setActiveTab("customer_deni")}
+            onAddExpense={handleAddExpense}
             launchpadProgress={isDemoMode ? demoLaunchpadProgress : realLaunchpadProgress}
             isDemo={isDemoMode}
           />
@@ -1179,6 +1212,9 @@ export default function App() {
             onAuthorizeRestockSale={handleAuthorizeRestockSale}
             onDismissRestockCard={handleDismissRestockCard}
             onSaveReceiptToDatabase={handleSaveReceiptToDatabase}
+            onAddExpense={handleAddExpense}
+            onEditExpense={handleEditExpense}
+            onDeleteExpense={handleDeleteExpense}
           />
         )}
 
@@ -1195,6 +1231,16 @@ export default function App() {
               setPreselectedSupplier(supplierName);
               setActiveTab("purchases");
             }}
+          />
+        )}
+
+        {/* TAB 4C: OWNER EXPENSES & PERSONAL WITHDRAWALS (RENT, MISC, TRAVEL, PERSONAL WITHDRAWAL) */}
+        {(activeTab === "owner_expenses" || activeTab === "expenses") && (
+          <OwnerExpensesTab
+            state={currentMasterState}
+            onAddExpense={handleAddExpense}
+            onEditExpense={handleEditExpense}
+            onDeleteExpense={handleDeleteExpense}
           />
         )}
 
@@ -1317,11 +1363,12 @@ export default function App() {
                 </label>
                 <input
                   type="number"
+                  step="any"
                   required
-                  min={1}
+                  min={0}
                   value={restockQty}
                   onChange={(e) => setRestockQty(e.target.value)}
-                  placeholder="e.g. 24"
+                  placeholder="e.g. 24 or 1.5"
                   className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:outline-none focus:border-white"
                   autoFocus
                 />
@@ -1334,6 +1381,8 @@ export default function App() {
                   </label>
                   <input
                     type="number"
+                    step="any"
+                    min={0}
                     value={restockCost}
                     onChange={(e) => setRestockCost(e.target.value)}
                     className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono"
@@ -1345,6 +1394,8 @@ export default function App() {
                   </label>
                   <input
                     type="number"
+                    step="any"
+                    min={0}
                     value={restockRetail}
                     onChange={(e) => setRestockRetail(e.target.value)}
                     className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono"

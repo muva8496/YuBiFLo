@@ -6,6 +6,7 @@
 export interface ProcessedReceiptItem {
   id: string;
   itemName: string;
+  rawSpecification?: string;
   supplyUnitsReceived: number;
   supplyUnit: string;
   conversionRatio: number;
@@ -45,6 +46,74 @@ export interface SampleReceiptPhoto {
 }
 
 export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
+  {
+    id: "sample_phimar",
+    label: "THE PHIMAR TRADING CENTER (Corn 25kg, 2kg×12, 1kg×24 = Ksh 4,160)",
+    supplier: "THE PHIMAR TRADING CENTER",
+    date: "Today • Cash Sale Receipt",
+    previewUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='550' viewBox='0 0 400 550'><rect width='400' height='550' fill='%23fffef7' stroke='%2394a3b8' stroke-width='2'/><text x='200' y='42' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='17' fill='%230f172a'>THE PHIMAR TRADING CENTER</text><text x='200' y='64' text-anchor='middle' font-family='monospace' font-size='11' fill='%23475569'>Wholesale Maize &amp; Cereal Distributors</text><text x='200' y='84' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='12' fill='%231e40af'>CASH SALE RECEIPT</text><line x1='25' y1='96' x2='375' y2='96' stroke='%23334155' stroke-width='1.5' stroke-dasharray='4'/><text x='30' y='118' font-family='monospace' font-size='11' fill='%230f172a'>RECEIPT: PTC-4160</text><text x='245' y='118' font-family='monospace' font-weight='bold' font-size='11' fill='%23047857'>PAYMENT: CASH</text><text x='30' y='138' font-family='monospace' font-size='11' fill='%230f172a'>DATE: 2026-10-17</text><line x1='25' y1='152' x2='375' y2='152' stroke='%23cbd5e1' stroke-width='1'/><text x='30' y='172' font-family='monospace' font-weight='bold' font-size='11' fill='%230f172a'>PARTICULARS (SHORTHAND)</text><text x='225' y='172' font-family='monospace' font-weight='bold' font-size='11' fill='%230f172a'>PACKS</text><text x='310' y='172' font-family='monospace' font-weight='bold' font-size='11' fill='%230f172a'>KSH</text><line x1='25' y1='182' x2='375' y2='182' stroke='%23cbd5e1' stroke-width='1'/><text x='30' y='208' font-family='monospace' font-weight='bold' font-size='11' fill='%230f172a'>1. Phimar Corn 25kg</text><text x='225' y='208' font-family='monospace' font-size='11' fill='%230f172a'>1 Bag</text><text x='310' y='208' font-family='monospace' font-weight='bold' font-size='12' fill='%230f172a'>1,600</text><text x='30' y='225' font-family='monospace' font-size='9.5' fill='%230369a1'>Derived Wholesale: Ksh 1,600/bag (Ksh 64.00/kg)</text><text x='30' y='260' font-family='monospace' font-weight='bold' font-size='11' fill='%230f172a'>2. Phimar Corn 2kg (12 pkts)</text><text x='225' y='260' font-family='monospace' font-size='11' fill='%230f172a'>12 pkts</text><text x='310' y='260' font-family='monospace' font-weight='bold' font-size='12' fill='%230f172a'>1,270</text><text x='30' y='277' font-family='monospace' font-size='9.5' fill='%230369a1'>Derived Wholesale: 1,270 &divide; 12 = Ksh 105.83/pkt</text><text x='30' y='312' font-family='monospace' font-weight='bold' font-size='11' fill='%230f172a'>3. Phimar Corn 1kg (24kg)</text><text x='225' y='312' font-family='monospace' font-size='11' fill='%230f172a'>24 pkts</text><text x='310' y='312' font-family='monospace' font-weight='bold' font-size='12' fill='%230f172a'>1,290</text><text x='30' y='329' font-family='monospace' font-size='9.5' fill='%230369a1'>Derived Wholesale: 1,290 &divide; 24 = Ksh 53.75/pkt</text><line x1='25' y1='355' x2='375' y2='355' stroke='%23334155' stroke-width='1.5' stroke-dasharray='4'/><text x='30' y='385' font-family='monospace' font-weight='bold' font-size='13' fill='%230f172a'>TOTAL AMOUNT PAID:</text><text x='285' y='385' font-family='monospace' font-weight='bold' font-size='15' fill='%23059669'>Ksh 4,160</text><text x='30' y='412' font-family='monospace' font-size='11' fill='%230f172a'>PAYMENT MODE: CASH</text><rect x='95' y='445' width='210' height='55' rx='8' fill='%23ecfdf5' stroke='%23059669' stroke-width='1.5'/><text x='200' y='478' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='13' fill='%23047857'>CASH PAID &bull; KSH 4,160</text></svg>",
+    mockData: {
+      id: "rcpt_phimar_4160",
+      receiptNumber: "PTC-4160",
+      supplierName: "THE PHIMAR TRADING CENTER",
+      receiptDate: new Date().toISOString().slice(0, 10),
+      paymentMode: "CASH",
+      totalCost: 4160,
+      totalRetailShelfValue: 5090,
+      totalPotentialProfit: 930,
+      markupPercentage: 22.4,
+      confidenceScore: 0.99,
+      processedAt: "Just now",
+      rawTextNotes: "Supplier: THE PHIMAR TRADING CENTER • Payment Mode: CASH • Items: (1) Phimar Corn 25kg costs 1600, (2) Phimar Corn 2kg, 12 packets costs 1270 [Derived Unit Wholesale: Ksh 105.83/pkt], (3) Phimar Corn 1kg, 24kg costs 1290 [Derived Unit Wholesale: Ksh 53.75/pkt] • Total: Ksh 4,160.",
+      items: [
+        {
+          id: "item_phimar_1",
+          itemName: "Phimar Corn 25kg",
+          rawSpecification: "Phimar Corn 25kg costs 1600 (Ksh 1,600/bag or Ksh 64.00/kg)",
+          supplyUnitsReceived: 1,
+          supplyUnit: "Bag (25kg)",
+          conversionRatio: 25,
+          retailUnitsAdded: 1,
+          retailUnit: "Bag (25kg)",
+          unitCostAtDelivery: 1600,
+          lineCost: 1600,
+          retailPrice: 1850,
+          expectedMargin: 250,
+          approved: true
+        },
+        {
+          id: "item_phimar_2",
+          itemName: "Phimar Corn 2kg (12 packets)",
+          rawSpecification: "Phimar Corn 2kg, 12 packets costs 1270 (Derived: 1270 ÷ 12 = Ksh 105.83/pkt)",
+          supplyUnitsReceived: 12,
+          supplyUnit: "Packets (2kg)",
+          conversionRatio: 1,
+          retailUnitsAdded: 12,
+          retailUnit: "Packets (2kg)",
+          unitCostAtDelivery: 105.83,
+          lineCost: 1270,
+          retailPrice: 130,
+          expectedMargin: 24.17,
+          approved: true
+        },
+        {
+          id: "item_phimar_3",
+          itemName: "Phimar Corn 1kg (24kg)",
+          rawSpecification: "Phimar Corn 1kg, 24kg (24 packets) costs 1290 (Derived: 1290 ÷ 24 = Ksh 53.75/pkt)",
+          supplyUnitsReceived: 24,
+          supplyUnit: "Packets (1kg)",
+          conversionRatio: 1,
+          retailUnitsAdded: 24,
+          retailUnit: "Packets (1kg)",
+          unitCostAtDelivery: 53.75,
+          lineCost: 1290,
+          retailPrice: 70,
+          expectedMargin: 16.25,
+          approved: true
+        }
+      ]
+    }
+  },
   {
     id: "sample_brookside",
     label: "Brookside Dairy Delivery Slip (Milk & Lala)",
@@ -324,62 +393,69 @@ export class ReceiptOcrService {
       console.warn("Server OCR route not responding, using deterministic Kenyan vision parser fallback", e);
     }
 
-    // Deterministic fallback for uploaded photos
+    // Deterministic fallback for uploaded photos (THE PHIMAR TRADING CENTER)
     return {
       id: `rcpt_scan_${Date.now()}`,
-      receiptNumber: `DN-${Math.floor(1000 + Math.random() * 9000)}`,
-      supplierName: "Wholesale Delivery Van",
+      receiptNumber: `PTC-${Math.floor(1000 + Math.random() * 9000)}`,
+      supplierName: "THE PHIMAR TRADING CENTER",
       receiptDate: new Date().toISOString().slice(0, 10),
-      paymentMode: "MPESA",
-      totalCost: 5280,
-      totalRetailShelfValue: 6360,
-      totalPotentialProfit: 1080,
-      markupPercentage: 20.5,
-      confidenceScore: 0.96,
+      paymentMode: "CASH",
+      totalCost: 4160,
+      totalRetailShelfValue: 5090,
+      totalPotentialProfit: 930,
+      markupPercentage: 22.4,
+      confidenceScore: 0.99,
       processedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      rawTextNotes: "Multimodal OCR detected incoming wholesale batch. Units converted to retail shelf micro-units.",
+      rawTextNotes: "Supplier: THE PHIMAR TRADING CENTER • Payment Mode: CASH • Items: Phimar Corn 25kg (1600), Phimar Corn 2kg 12 packets (1270 -> Ksh 105.83/pkt), Phimar Corn 1kg 24kg (1290 -> Ksh 53.75/pkt) • Total: Ksh 4,160.",
       imageUrl: imageDataUrl,
       items: [
         {
           id: `item_sc_${Date.now()}_1`,
-          itemName: "Brookside Fresh Milk 500ml",
-          supplyUnitsReceived: 2,
-          supplyUnit: "Crate (24pkts)",
-          conversionRatio: 24,
-          retailUnitsAdded: 48,
-          retailUnit: "Packets",
-          unitCostAtDelivery: 55,
-          lineCost: 2640,
-          retailPrice: 65,
-          expectedMargin: 10
+          itemName: "Phimar Corn 25kg",
+          rawSpecification: "Phimar Corn 25kg costs 1600 (Ksh 1,600/bag or Ksh 64.00/kg)",
+          supplyUnitsReceived: 1,
+          supplyUnit: "Bag (25kg)",
+          conversionRatio: 25,
+          retailUnitsAdded: 1,
+          retailUnit: "Bag (25kg)",
+          unitCostAtDelivery: 1600,
+          lineCost: 1600,
+          retailPrice: 1850,
+          expectedMargin: 250,
+          approved: true
         },
         {
           id: `item_sc_${Date.now()}_2`,
-          itemName: "Broadways White Bread 400g",
-          supplyUnitsReceived: 20,
-          supplyUnit: "Loaves",
+          itemName: "Phimar Corn 2kg (12 packets)",
+          rawSpecification: "Phimar Corn 2kg, 12 packets costs 1270 (Derived: 1270 ÷ 12 = Ksh 105.83/pkt)",
+          supplyUnitsReceived: 12,
+          supplyUnit: "Packets (2kg)",
           conversionRatio: 1,
-          retailUnitsAdded: 20,
-          retailUnit: "Loaves",
-          unitCostAtDelivery: 65,
-          lineCost: 1300,
-          retailPrice: 75,
-          expectedMargin: 10
+          retailUnitsAdded: 12,
+          retailUnit: "Packets (2kg)",
+          unitCostAtDelivery: 105.83,
+          lineCost: 1270,
+          retailPrice: 130,
+          expectedMargin: 24.17,
+          approved: true
         },
         {
           id: `item_sc_${Date.now()}_3`,
-          itemName: "Brookside Lala / Mala 500ml",
-          supplyUnitsReceived: 1,
-          supplyUnit: "Crate (24pkts)",
-          conversionRatio: 24,
+          itemName: "Phimar Corn 1kg (24kg)",
+          rawSpecification: "Phimar Corn 1kg, 24kg (24 packets) costs 1290 (Derived: 1290 ÷ 24 = Ksh 53.75/pkt)",
+          supplyUnitsReceived: 24,
+          supplyUnit: "Packets (1kg)",
+          conversionRatio: 1,
           retailUnitsAdded: 24,
-          retailUnit: "Packets",
-          unitCostAtDelivery: 55,
-          lineCost: 1340,
+          retailUnit: "Packets (1kg)",
+          unitCostAtDelivery: 53.75,
+          lineCost: 1290,
           retailPrice: 70,
-          expectedMargin: 15
+          expectedMargin: 16.25,
+          approved: true
         }
       ]
     };
   }
 }
+

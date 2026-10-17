@@ -394,9 +394,10 @@ export default function SupplyDrivenSalesTab({
               <div className="relative">
                 <input
                   type="number"
-                  min="1"
+                  step="any"
+                  min="0"
                   value={boxCapacity}
-                  onChange={(e) => setBoxCapacity(Math.max(1, parseInt(e.target.value) || 1))}
+                  onChange={(e) => setBoxCapacity(Math.max(0, parseFloat(e.target.value) || 0))}
                   className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
                   required
                 />
@@ -412,15 +413,16 @@ export default function SupplyDrivenSalesTab({
               <div className="relative">
                 <input
                   type="number"
+                  step="any"
                   min="0"
                   value={shelfRemaining}
-                  onChange={(e) => setShelfRemaining(Math.max(0, parseInt(e.target.value) || 0))}
+                  onChange={(e) => setShelfRemaining(Math.max(0, parseFloat(e.target.value) || 0))}
                   className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-amber-300 font-mono text-sm focus:border-amber-400 focus:outline-none font-bold"
                   required
                 />
                 <span className="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">units</span>
               </div>
-              <span className="text-[10px] text-slate-500 font-mono block mt-0.5">Counted right as delivery arrives (e.g. 4)</span>
+              <span className="text-[10px] text-slate-500 font-mono block mt-0.5">Counted right as delivery arrives (e.g. 4 or 1.5)</span>
             </div>
           </div>
 
@@ -432,14 +434,15 @@ export default function SupplyDrivenSalesTab({
               <div className="relative">
                 <input
                   type="number"
+                  step="any"
                   min="0"
                   value={ownerConsumed}
-                  onChange={(e) => setOwnerConsumed(Math.max(0, parseInt(e.target.value) || 0))}
+                  onChange={(e) => setOwnerConsumed(Math.max(0, parseFloat(e.target.value) || 0))}
                   className="w-full bg-[#09090b] border border-purple-500/50 rounded-xl p-2.5 text-purple-300 font-mono text-sm focus:border-purple-400 focus:outline-none font-bold"
                 />
                 <span className="absolute right-3 top-2.5 text-xs text-purple-400 font-mono">pieces</span>
               </div>
-              <span className="text-[10px] text-slate-500 font-mono block mt-0.5">Owner/family drank or used (e.g. 2 pieces)</span>
+              <span className="text-[10px] text-slate-500 font-mono block mt-0.5">Owner/family drank or used (e.g. 2 or 0.5)</span>
             </div>
 
             <div>
@@ -449,9 +452,10 @@ export default function SupplyDrivenSalesTab({
               <div className="relative">
                 <input
                   type="number"
-                  min="1"
+                  step="any"
+                  min="0"
                   value={newSupplyArrived}
-                  onChange={(e) => setNewSupplyArrived(Math.max(1, parseInt(e.target.value) || 1))}
+                  onChange={(e) => setNewSupplyArrived(Math.max(0, parseFloat(e.target.value) || 0))}
                   className="w-full bg-[#09090b] border border-emerald-500/50 rounded-xl p-2.5 text-emerald-400 font-mono text-sm focus:border-emerald-400 focus:outline-none font-bold"
                   required
                 />
@@ -468,7 +472,8 @@ export default function SupplyDrivenSalesTab({
               </label>
               <input
                 type="number"
-                step="0.5"
+                step="any"
+                min="0"
                 value={unitCost}
                 onChange={(e) => setUnitCost(parseFloat(e.target.value) || 0)}
                 className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"
@@ -481,7 +486,8 @@ export default function SupplyDrivenSalesTab({
               </label>
               <input
                 type="number"
-                step="0.5"
+                step="any"
+                min="0"
                 value={unitRetail}
                 onChange={(e) => setUnitRetail(parseFloat(e.target.value) || 0)}
                 className="w-full bg-[#09090b] border border-slate-700 rounded-xl p-2.5 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none"

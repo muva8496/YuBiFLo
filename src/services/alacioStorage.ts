@@ -781,12 +781,58 @@ export const INITIAL_ALACIO_STATE: AlacioMasterState = {
   ],
   payouts: [
     {
+      id: "exp_rent_001",
+      date: new Date().toISOString().slice(0, 10),
+      timestamp: "08:15 AM",
+      amount: 6500,
+      type: "BUSINESS_EXPENSE",
+      expense_category: "RENT",
+      payee: "Landlord — Stall #14",
+      payment_channel: "MPESA_TILL",
+      notes: "[Rent] Monthly shop rent & stall lease — Paid to: Landlord — Stall #14"
+    },
+    {
+      id: "exp_travel_001",
+      date: new Date().toISOString().slice(0, 10),
+      timestamp: "09:40 AM",
+      amount: 250,
+      type: "BUSINESS_EXPENSE",
+      expense_category: "TRAVEL",
+      payee: "Boda Rider",
+      payment_channel: "CASH_DRAWER",
+      notes: "[Travel] Travel & boda fare to The Phimar Trading Center wholesale — Paid to: Boda Rider"
+    },
+    {
+      id: "exp_misc_001",
+      date: new Date().toISOString().slice(0, 10),
+      timestamp: "11:20 AM",
+      amount: 185.5,
+      type: "BUSINESS_EXPENSE",
+      expense_category: "MISC",
+      payee: "Packaging Vendor",
+      payment_channel: "CASH_DRAWER",
+      notes: "[Misc] Brown paper bags, carrier bags, tea & shop cleaning soap — Paid to: Packaging Vendor"
+    },
+    {
+      id: "exp_withdrawal_001",
+      date: new Date().toISOString().slice(0, 10),
+      timestamp: "01:10 PM",
+      amount: 1200,
+      type: "OWNER_DRAWING",
+      expense_category: "PERSONAL_WITHDRAWAL",
+      payee: "Owner (Personal Drawing)",
+      payment_channel: "CASH_DRAWER",
+      notes: "[Personal Withdrawal] Owner personal cash withdrawal for home upkeep & lunch — Paid to: Owner (Personal Drawing)"
+    },
+    {
       id: "pay_001",
       date: new Date().toISOString().slice(0, 10),
-      timestamp: new Date().toISOString(),
+      timestamp: "07:30 AM",
       amount: 200,
       type: "BUSINESS_EXPENSE",
-      notes: "Daily market council trade permit stamp"
+      expense_category: "SUPPLIES",
+      payment_channel: "CASH_DRAWER",
+      notes: "[Permits] Daily market council trade permit stamp"
     }
   ],
   mpesaStatements: [],
@@ -1074,9 +1120,13 @@ export function loadAlacioState(userEmail?: string): AlacioMasterState {
       ...p,
       date: p.date || (p.timestamp && p.timestamp.match(/^\d{4}-\d{2}-\d{2}/) ? p.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0] : todayStr)
     }));
-    const safePayouts = isSkeleton 
-      ? (Array.isArray(parsed.payouts) ? normalizedPayouts : []) 
-      : ((normalizedPayouts && normalizedPayouts.length > 0) ? normalizedPayouts : INITIAL_ALACIO_STATE.payouts);
+    const hasOnlyLegacyPermit =
+      normalizedPayouts.length === 1 && normalizedPayouts[0].id === "pay_001";
+    const safePayouts = isSkeleton
+      ? (Array.isArray(parsed.payouts) ? normalizedPayouts : [])
+      : ((normalizedPayouts && normalizedPayouts.length > 0 && !hasOnlyLegacyPermit)
+          ? normalizedPayouts
+          : INITIAL_ALACIO_STATE.payouts);
 
     // Reconciliations
     const rawRecons = Array.isArray(parsed.reconciliations) ? parsed.reconciliations : [];
