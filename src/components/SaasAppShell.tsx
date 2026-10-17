@@ -15,6 +15,10 @@ export interface SaasNavItem {
   name: string;
   icon: React.ReactNode;
   badge?: string;
+  children?: Array<{
+    id: string;
+    name: string;
+  }>;
 }
 
 interface SaasAppShellProps {
@@ -70,14 +74,21 @@ export default function SaasAppShell({
     }
   }, [isDemo]);
 
-  // Exact MSME modules from the workspace including Suppliers & Owner Expenses, rendered with Wave-style clean iconography:
+  // Exact MSME modules from the workspace including Suppliers & Expenses -> Owner Expenses, rendered with Wave-style clean iconography:
   const sidebarItems: SaasNavItem[] = [
     { id: "launchpad", name: "Launchpad", icon: <Rocket size={17} /> },
     { id: "dashboard", name: "Dashboard", icon: <LayoutDashboard size={17} /> },
     { id: "supply_sales", name: "Sales & Payments", icon: <TrendingUp size={17} /> },
     { id: "purchases", name: "Purchases", icon: <ShoppingBag size={17} /> },
     { id: "suppliers", name: "Suppliers", icon: <Truck size={17} /> },
-    { id: "owner_expenses", name: "Owner Expenses", icon: <Wallet size={17} /> },
+    {
+      id: "expenses",
+      name: "Expenses",
+      icon: <Wallet size={17} />,
+      children: [
+        { id: "owner_expenses", name: "Owner Expenses" }
+      ]
+    },
     { id: "stock_vault", name: "Stock Vault", icon: <Layers size={17} /> },
     { id: "dawn_lock", name: "Dawn Lock", icon: <Sun size={17} /> },
     { id: "voice_ledger", name: "Voice Ledger", icon: <Mic size={17} /> },
@@ -362,23 +373,54 @@ export default function SaasAppShell({
 
             <nav className="space-y-0.5">
               {sidebarItems.map((item) => {
-                const isActive = activeTab === item.id;
+                const hasChildren = item.children && item.children.length > 0;
+                const isChildActive = hasChildren && item.children!.some((c) => activeTab === c.id);
+                const isActive = activeTab === item.id || isChildActive;
 
                 return (
-                  <button
-                    key={item.id}
-                    onClick={() => onNavigateTab(item.id)}
-                    className={`w-full px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-3 cursor-pointer ${
-                      isActive
-                        ? "bg-[#EBF3FC] text-[#1A56DB] font-semibold"
-                        : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
-                    }`}
-                  >
-                    <span className={isActive ? "text-[#1A56DB]" : "text-slate-500"}>
-                      {item.icon}
-                    </span>
-                    <span className="truncate">{item.name}</span>
-                  </button>
+                  <div key={item.id} className="space-y-0.5">
+                    <button
+                      onClick={() => onNavigateTab(item.id)}
+                      className={`w-full px-3 py-2 rounded-xl text-xs font-medium transition flex items-center justify-between cursor-pointer ${
+                        activeTab === item.id
+                          ? "bg-[#EBF3FC] text-[#1A56DB] font-semibold"
+                          : isChildActive
+                            ? "bg-slate-50 text-[#1A56DB] font-semibold"
+                            : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={isActive ? "text-[#1A56DB]" : "text-slate-500"}>
+                          {item.icon}
+                        </span>
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                      {hasChildren && (
+                        <ChevronDown size={13} className="text-slate-400 shrink-0" />
+                      )}
+                    </button>
+
+                    {hasChildren && (
+                      <div className="pl-7 pr-1 space-y-0.5">
+                        {item.children!.map((child) => {
+                          const childSelected = activeTab === child.id;
+                          return (
+                            <button
+                              key={child.id}
+                              onClick={() => onNavigateTab(child.id)}
+                              className={`w-full px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition flex items-center gap-2 cursor-pointer border-l-2 ${
+                                childSelected
+                                  ? "bg-[#EBF3FC] text-[#1A56DB] font-bold border-[#1A56DB]"
+                                  : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 border-slate-200"
+                              }`}
+                            >
+                              <span className="truncate">{child.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </nav>
@@ -445,21 +487,38 @@ export default function SaasAppShell({
 
               <nav className="grid grid-cols-1 gap-1">
                 {sidebarItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      onNavigateTab(item.id);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`p-2.5 rounded-xl text-left text-xs font-medium flex items-center gap-3 ${
-                      activeTab === item.id ? "bg-[#EBF3FC] text-[#1A56DB] font-semibold" : "text-slate-700 hover:bg-slate-100"
-                    }`}
-                  >
-                    <span className={activeTab === item.id ? "text-[#1A56DB]" : "text-slate-500"}>
-                      {item.icon}
-                    </span>
-                    <span>{item.name}</span>
-                  </button>
+                  <div key={item.id} className="space-y-1">
+                    <button
+                      onClick={() => {
+                        onNavigateTab(item.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`w-full p-2.5 rounded-xl text-left text-xs font-medium flex items-center gap-3 ${
+                        activeTab === item.id ? "bg-[#EBF3FC] text-[#1A56DB] font-semibold" : "text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      <span className={activeTab === item.id ? "text-[#1A56DB]" : "text-slate-500"}>
+                        {item.icon}
+                      </span>
+                      <span>{item.name}</span>
+                    </button>
+                    {item.children && item.children.map((child) => (
+                      <button
+                        key={child.id}
+                        onClick={() => {
+                          onNavigateTab(child.id);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`w-full ml-6 p-2 rounded-lg text-left text-xs font-medium flex items-center gap-2 border-l-2 ${
+                          activeTab === child.id
+                            ? "bg-[#EBF3FC] text-[#1A56DB] font-bold border-[#1A56DB]"
+                            : "text-slate-600 hover:bg-slate-100 border-slate-200"
+                        }`}
+                      >
+                        <span>{child.name}</span>
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </nav>
 

@@ -325,12 +325,51 @@ export default function OwnerExpensesTab({
 
   const activeCategoryMeta = EXPENSE_CATEGORIES.find((c) => c.id === selectedCategory) || EXPENSE_CATEGORIES[0];
 
+  // Quick inline notepad state (moved from Home Page into Expenses -> Owner Expenses module)
+  const [quickExpCategory, setQuickExpCategory] = useState<"RENT" | "MISC" | "TRAVEL" | "PERSONAL_WITHDRAWAL">("RENT");
+  const [quickExpAmount, setQuickExpAmount] = useState("");
+  const [quickExpNote, setQuickExpNote] = useState("");
+  const [quickExpChannel, setQuickExpChannel] = useState<"CASH_DRAWER" | "MPESA_TILL">("CASH_DRAWER");
+
+  const handleQuickExpenseSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const num = parseFloat(quickExpAmount);
+    if (isNaN(num) || num <= 0) return;
+    const catLabels: Record<string, string> = {
+      RENT: "Rent",
+      MISC: "Misc",
+      TRAVEL: "Travel",
+      PERSONAL_WITHDRAWAL: "Personal Withdrawal"
+    };
+    const shortLabel = catLabels[quickExpCategory] || "Misc";
+    const newRecord: PayoutOrDrawing = {
+      id: `exp_quick_${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      date: new Date().toISOString().slice(0, 10),
+      amount: Math.round(num * 100) / 100,
+      type: quickExpCategory === "PERSONAL_WITHDRAWAL" ? "OWNER_DRAWING" : "BUSINESS_EXPENSE",
+      expense_category: quickExpCategory,
+      notes: `[${shortLabel}] ${quickExpNote.trim() || `${shortLabel} noted by owner`}`,
+      payment_channel: quickExpChannel
+    };
+    onAddExpense(newRecord);
+    setQuickExpAmount("");
+    setQuickExpNote("");
+    setSuccessBanner(
+      `✓ Noted ${shortLabel}: ${currency} ${newRecord.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+    );
+    setTimeout(() => setSuccessBanner(null), 4500);
+  };
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto font-sans text-slate-900 pb-12">
-      {/* HEADER */}
+      {/* HEADER: EXPENSES -> OWNER EXPENSES */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">
+              Expenses /
+            </span>
             <h1 className="text-xl sm:text-2xl font-serif font-bold text-slate-900 flex items-center gap-2">
               <Wallet className="text-blue-600 shrink-0" size={22} /> Owner Expenses &amp; Personal Withdrawals
             </h1>
@@ -339,7 +378,7 @@ export default function OwnerExpensesTab({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Note shop rent, miscellaneous costs, travel/transport, utilities, and personal owner withdrawals with full decimal support.
+            Under Expenses: Note shop rent, miscellaneous costs, travel/transport, utilities, and personal owner withdrawals with full decimal support.
           </p>
         </div>
       </div>
@@ -351,6 +390,85 @@ export default function OwnerExpensesTab({
           <span className="font-medium">{successBanner}</span>
         </div>
       )}
+
+      {/* QUICK OWNER EXPENSE & PERSONAL WITHDRAWAL NOTE PAD (MOVED FROM HOME PAGE TO EXPENSES MODULE) */}
+      <div className="bg-white rounded-2xl border-2 border-indigo-200/90 p-4 shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center shrink-0">
+              <Wallet size={15} />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900">
+                Quick Note: Owner Expense or Personal Withdrawal (Rent &bull; Misc &bull; Travel &bull; Personal Withdrawal)
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Fast 1-line entry for shop rent, miscellaneous upkeep, travel/boda fare, or personal cash withdrawals.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleQuickExpenseSubmit} className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {[
+              { id: "RENT", label: "Rent", icon: <Home size={12} /> },
+              { id: "MISC", label: "Misc", icon: <Coffee size={12} /> },
+              { id: "TRAVEL", label: "Travel", icon: <Car size={12} /> },
+              { id: "PERSONAL_WITHDRAWAL", label: "Personal Withdrawal", icon: <UserMinus size={12} /> }
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setQuickExpCategory(cat.id as any)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border ${
+                  quickExpCategory === cat.id
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+                }`}
+              >
+                {cat.icon}
+                <span>{cat.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
+            <input
+              type="number"
+              step="any"
+              min="0"
+              required
+              value={quickExpAmount}
+              onChange={(e) => setQuickExpAmount(e.target.value)}
+              placeholder={`Amount (${currency}) e.g. 250 or 145.50`}
+              className="w-full sm:w-44 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
+            />
+            <input
+              type="text"
+              value={quickExpNote}
+              onChange={(e) => setQuickExpNote(e.target.value)}
+              placeholder="Note (e.g. Stall rent, boda fare, packaging bags, home drawing...)"
+              className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
+            />
+            <select
+              value={quickExpChannel}
+              onChange={(e) => setQuickExpChannel(e.target.value as any)}
+              className="bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-800"
+            >
+              <option value="CASH_DRAWER">Cash</option>
+              <option value="MPESA_TILL">M-Pesa</option>
+            </select>
+            <button
+              type="submit"
+              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-2xs"
+            >
+              <Plus size={14} />
+              <span>Save Note</span>
+            </button>
+          </div>
+        </form>
+      </div>
 
       {/* KPI SUMMARY CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
@@ -392,7 +510,7 @@ export default function OwnerExpensesTab({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
           <div>
             <h2 className="text-base font-serif font-bold text-slate-900">
-              Note an Expense or Personal Withdrawal
+              Detailed Owner Expense &amp; Withdrawal Entry
             </h2>
             <p className="text-xs text-slate-500">
               Tap a category or 1-tap preset below and enter the amount (whole numbers or decimals like 150.50).

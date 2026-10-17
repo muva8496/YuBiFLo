@@ -843,26 +843,18 @@ export default function PurchasesTab({
               <span>Suppliers</span>
             </button>
           )}
-          <button
-            onClick={() => {
-              setActiveSubSection(activeSubSection === "EXPENSES_ONLY" ? "ALL" : "EXPENSES_ONLY");
-              if (ownerExpensesSectionRef.current) {
-                ownerExpensesSectionRef.current.scrollIntoView({ behavior: "smooth" });
-              }
-            }}
-            className={`px-3.5 py-2 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer border ${
-              activeSubSection === "EXPENSES_ONLY"
-                ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-                : "bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border-indigo-200"
-            }`}
-          >
-            <Wallet size={14} className={activeSubSection === "EXPENSES_ONLY" ? "text-white" : "text-indigo-600"} />
-            <span>+ Note Owner Expense (Rent, Misc, Travel, Withdrawal)</span>
-          </button>
+          {onNavigateTab && (
+            <button
+              onClick={() => onNavigateTab("owner_expenses")}
+              className="px-3.5 py-2 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer border bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border-indigo-200"
+            >
+              <Wallet size={14} className="text-indigo-600" />
+              <span>Owner Expenses</span>
+            </button>
+          )}
 
           <button
             onClick={() => {
-              setActiveSubSection("ALL");
               setIsAddingPurchase(true);
               if (purchaseFormRef.current) {
                 purchaseFormRef.current.scrollIntoView({ behavior: "smooth" });
@@ -875,60 +867,6 @@ export default function PurchasesTab({
           </button>
         </div>
       </div>
-
-      {/* ========================================================================= */}
-      {/* PROMINENT MODE SWITCHER: STOCK PURCHASES vs OWNER EXPENSES & WITHDRAWALS  */}
-      {/* ========================================================================= */}
-      <div className="bg-slate-100/90 border border-slate-200 p-1.5 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setActiveSubSection("ALL")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeSubSection === "ALL"
-                ? "bg-white text-blue-700 shadow-xs border border-slate-200/80"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Camera size={14} className="text-blue-600" />
-            <span>1. Stock Purchases &amp; Receipt Scanner</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSubSection("EXPENSES_ONLY")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              activeSubSection === "EXPENSES_ONLY"
-                ? "bg-indigo-600 text-white shadow-xs"
-                : "text-indigo-800 bg-indigo-50/70 hover:bg-indigo-100/80 border border-indigo-200/60"
-            }`}
-          >
-            <Wallet size={14} className={activeSubSection === "EXPENSES_ONLY" ? "text-white" : "text-indigo-600"} />
-            <span>2. Owner Expenses &amp; Withdrawals (Rent &bull; Misc &bull; Travel &bull; Personal Withdrawal)</span>
-          </button>
-        </div>
-
-        {onNavigateTab && (
-          <button
-            type="button"
-            onClick={() => onNavigateTab("owner_expenses")}
-            className="px-3 py-1.5 rounded-xl text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50 transition cursor-pointer self-end sm:self-auto"
-          >
-            Open Full Expenses Tab &rarr;
-          </button>
-        )}
-      </div>
-
-      {/* IF USER SWITCHED TO EXPENSES_ONLY AT TOP, RENDER OWNER EXPENSES IMMEDIATELY AT TOP */}
-      {activeSubSection === "EXPENSES_ONLY" && onAddExpense && (
-        <div ref={ownerExpensesSectionRef} className="bg-indigo-50/30 border-2 border-indigo-200 rounded-3xl p-4 sm:p-6 shadow-xs">
-          <OwnerExpensesTab
-            state={state}
-            onAddExpense={onAddExpense}
-            onEditExpense={onEditExpense}
-            onDeleteExpense={onDeleteExpense}
-          />
-        </div>
-      )}
 
       {/* SUCCESS TOAST */}
       {successNote && (
@@ -2878,21 +2816,6 @@ export default function PurchasesTab({
           </div>
         )}
       </div>
-
-      {/* ========================================================================= */}
-      {/* 5. OWNER EXPENSES & PERSONAL WITHDRAWALS NOTEBOOK (RENT, MISC, TRAVEL)    */}
-      {/* Always accessible directly under Purchases as well as in the sidebar      */}
-      {/* ========================================================================= */}
-      {activeSubSection === "ALL" && onAddExpense && (
-        <div ref={ownerExpensesSectionRef} className="bg-indigo-50/25 border-2 border-indigo-200/80 rounded-3xl p-4 sm:p-6 shadow-xs">
-          <OwnerExpensesTab
-            state={state}
-            onAddExpense={onAddExpense}
-            onEditExpense={onEditExpense}
-            onDeleteExpense={onDeleteExpense}
-          />
-        </div>
-      )}
 
     </div>
   );

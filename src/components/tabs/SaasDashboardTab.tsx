@@ -166,24 +166,25 @@ export default function SaasDashboardTab({
   // Include approved receipt purchases if not already duplicated in supplier payouts, or active stock cost if no supplier payouts yet
   const receiptsTotalCost = filteredReceipts.reduce((acc, r) => acc + (Number(r.totalCost) || 0), 0);
   const effectiveStockPurchasesAmt = Math.max(supplierPayoutsAmt, receiptsTotalCost, (!isDemo && supplierPayoutsAmt === 0 && receiptsTotalCost === 0 ? totalStockCost : 0));
+  const ownerExpensesTotalAmt = rentAndUtilitiesAmt + personalWithdrawalsAmt + travelAndTransportAmt + miscAndPermitsAmt;
 
   const realRawSegments = [
     { id: 1, label: "Stock & Restock", rawAmount: effectiveStockPurchasesAmt, color: "#EA580C", hasAlert: false, isHatched: false },
-    { id: 2, label: "Shop Rent & Utilities", rawAmount: rentAndUtilitiesAmt, color: "#8B5CF6", hasAlert: false, isHatched: false },
+    { id: 2, label: "Owner Expenses (Rent, Misc, Travel)", rawAmount: rentAndUtilitiesAmt + travelAndTransportAmt + miscAndPermitsAmt, color: "#6366F1", hasAlert: false, isHatched: false },
     { id: 3, label: "Personal Withdrawals", rawAmount: personalWithdrawalsAmt, color: "#F59E0B", hasAlert: personalWithdrawalsAmt > 5000, isHatched: false },
-    { id: 4, label: "Travel & Transport", rawAmount: travelAndTransportAmt, color: "#38BDF8", hasAlert: false, isHatched: false },
+    { id: 4, label: "Shop Rent & Utilities", rawAmount: rentAndUtilitiesAmt, color: "#8B5CF6", hasAlert: false, isHatched: false },
     { id: 5, label: "Wages & Labor", rawAmount: wagesAndLaborAmt, color: "#3B82F6", hasAlert: false, isHatched: false },
-    { id: 6, label: "Misc & Permits", rawAmount: miscAndPermitsAmt, color: "#94A3B8", hasAlert: false, isHatched: true }
+    { id: 6, label: "Travel & Misc Upkeep", rawAmount: travelAndTransportAmt + miscAndPermitsAmt, color: "#94A3B8", hasAlert: false, isHatched: true }
   ];
 
-  const totalRealExpensesBreakdown = realRawSegments.reduce((acc, s) => acc + s.rawAmount, 0);
+  const totalRealExpensesBreakdown = effectiveStockPurchasesAmt + ownerExpensesTotalAmt + wagesAndLaborAmt;
 
   const expenseSegments = isDemo
     ? [
-        { id: 1, label: "Payroll & Labor", pct: 27, rawAmount: 42600, amount: `${currency} 42,600`, color: "#F59E0B", hasAlert: false, isHatched: false },
+        { id: 1, label: "Payroll & Labor", pct: 25, rawAmount: 39450, amount: `${currency} 39,450`, color: "#F59E0B", hasAlert: false, isHatched: false },
         { id: 2, label: "Stock & Restock", pct: 23, rawAmount: 36400, amount: `${currency} 36,400`, color: "#EA580C", hasAlert: false, isHatched: false },
-        { id: 3, label: "Shop Rent & Permits", pct: 16, rawAmount: 25200, amount: `${currency} 25,200`, color: "#8B5CF6", hasAlert: false, isHatched: false },
-        { id: 4, label: "Cash on hand", pct: 14, rawAmount: 22100, amount: `${currency} 22,100`, color: "#38BDF8", hasAlert: false, isHatched: false },
+        { id: 3, label: "Owner Expenses (Rent, Misc, Travel)", pct: 18, rawAmount: 28350, amount: `${currency} 28,350`, color: "#6366F1", hasAlert: false, isHatched: false },
+        { id: 4, label: "Personal Withdrawals", pct: 14, rawAmount: 22100, amount: `${currency} 22,100`, color: "#38BDF8", hasAlert: false, isHatched: false },
         { id: 5, label: "Supplier Payable", pct: 12, rawAmount: 18900, amount: `${currency} 18,900`, color: "#3B82F6", hasAlert: true, isHatched: false },
         { id: 6, label: "Other / Packaging", pct: 8, rawAmount: 12600, amount: `${currency} 12,600`, color: "#94A3B8", isHatched: true, hasAlert: false }
       ]
@@ -195,7 +196,7 @@ export default function SaasDashboardTab({
             amount: `${currency} 0`
           }));
         }
-        // Compute percentages that cleanly sum to 100% across active categories
+        const sumSegments = realRawSegments.reduce((a, b) => a + b.rawAmount, 0) || 1;
         let runningPct = 0;
         const nonZeroIndices = realRawSegments.map((s, idx) => (s.rawAmount > 0 ? idx : -1)).filter(i => i !== -1);
         const lastNonZeroIdx = nonZeroIndices.length > 0 ? nonZeroIndices[nonZeroIndices.length - 1] : -1;
@@ -206,7 +207,7 @@ export default function SaasDashboardTab({
             if (idx === lastNonZeroIdx) {
               pct = Math.max(1, 100 - runningPct);
             } else {
-              pct = Math.max(1, Math.round((seg.rawAmount / totalRealExpensesBreakdown) * 100));
+              pct = Math.max(1, Math.round((seg.rawAmount / sumSegments) * 100));
               runningPct += pct;
             }
           }
@@ -344,152 +345,16 @@ export default function SaasDashboardTab({
       {/* ========================================================================= */}
       {/* 1. ELEGANT SERIF GREETING & REAL CURRENT DATE BADGE                       */}
       {/* ========================================================================= */}
-      <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      <div className="pt-1 flex items-center justify-between gap-2.5 flex-wrap">
         <div className="flex items-center gap-2.5 flex-wrap">
           <h1 className="text-2xl sm:text-3xl font-serif font-normal text-slate-900 tracking-tight">
             {timeGreeting}, {firstName}
           </h1>
-          <span className="text-[11px] font-mono uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1.5 shadow-2xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-            <span>{isDemo ? "Demo Sandbox" : "Live Workspace"} &bull; {merchantDisplayName}</span>
-          </span>
           <span className="text-[11px] font-mono bg-slate-100 text-slate-700 border border-slate-300 px-2.5 py-0.5 rounded-full font-semibold">
-            Today: {todayReadable}
+            {todayReadable}
           </span>
         </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => onNavigateTab("owner_expenses")}
-            className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-          >
-            <Receipt size={14} className="text-indigo-600" />
-            <span>+ Note Expense (Rent, Misc, Travel, Withdrawal)</span>
-          </button>
-          <button
-            onClick={() => onNavigateTab("purchases")}
-            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-          >
-            <Camera size={14} />
-            <span>Upload Receipt / Purchase</span>
-          </button>
-        </div>
       </div>
-
-      {/* ========================================================================= */}
-      {/* 1B. LIVE REAL-CLIENT METRICS STRIP                                        */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div
-          onClick={() => onNavigateTab("voice_ledger")}
-          className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-2xs hover:border-emerald-300 transition cursor-pointer"
-        >
-          <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
-            <span>Today&apos;s Sales ({todayShortLabel})</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold">
-              {todaySales.length} txns
-            </span>
-          </div>
-          <div className="text-lg sm:text-xl font-bold font-mono text-slate-900 mt-1">
-            {currency} {todaySalesTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
-            Cumulative Sales: <strong className="text-slate-700 font-mono">{currency} {totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</strong>
-          </div>
-        </div>
-
-        <div
-          onClick={() => onNavigateTab("stock_vault")}
-          className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-2xs hover:border-blue-300 transition cursor-pointer"
-        >
-          <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
-            <span>Active Shelf Stock Value</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-bold">
-              {inventory.length} SKUs
-            </span>
-          </div>
-          <div className="text-lg sm:text-xl font-bold font-mono text-slate-900 mt-1">
-            {currency} {totalStockValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
-            Wholesale Cost: <strong className="text-slate-700 font-mono">{currency} {totalStockCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</strong>
-          </div>
-        </div>
-
-        <div
-          onClick={() => onNavigateTab("owner_expenses")}
-          className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-2xs hover:border-indigo-300 transition cursor-pointer"
-        >
-          <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
-            <span>Expenses &amp; Withdrawals</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">
-              {payouts.length} notes
-            </span>
-          </div>
-          <div className="text-lg sm:text-xl font-bold font-mono text-slate-900 mt-1">
-            {currency} {totalPayouts.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
-            OpEx: <strong className="text-slate-700 font-mono">{currency} {realOperatingExpenses.toLocaleString()}</strong> &bull; Drawings: <strong className="text-amber-700 font-mono">{currency} {realPersonalDrawings.toLocaleString()}</strong>
-          </div>
-        </div>
-
-        <div
-          onClick={() => onNavigateTab("customer_deni")}
-          className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-2xs hover:border-purple-300 transition cursor-pointer"
-        >
-          <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
-            <span>Customer Deni (Credit Owed)</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-bold">
-              {customers.filter(c => c.debt_balance > 0).length} debtors
-            </span>
-          </div>
-          <div className="text-lg sm:text-xl font-bold font-mono text-slate-900 mt-1">
-            {currency} {totalDeniOwed.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
-            Tracked across <strong className="text-slate-700 font-mono">{customers.length}</strong> customer accounts
-          </div>
-        </div>
-      </div>
-
-      {/* RESTOCK IMPLIED SALES NOTIFICATION BANNER */}
-      {(() => {
-        const pendingRestockCards = (state.restockCards || []).filter(c => c.status === "PENDING_AUTHORIZATION");
-        if (pendingRestockCards.length === 0) return null;
-        const firstCard = pendingRestockCards[0];
-
-        return (
-          <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-amber-500/5 border-2 border-amber-500/40 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 font-bold flex items-center justify-center shrink-0 shadow-xs">
-                <Sparkles size={18} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold font-serif text-slate-900">
-                    {pendingRestockCards.length} Restock Implied Sales Card{pendingRestockCards.length > 1 ? "s" : ""} Ready
-                  </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-bold uppercase">
-                    Restock Velocity
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  Restock arrived for <strong>{firstCard.skuName}</strong>. Bringing this in confirms yesterday&apos;s batch has moved &bull; Authorize sales without manual counter typing.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => onNavigateTab("purchases")}
-              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shrink-0 shadow-xs font-mono cursor-pointer"
-            >
-              <span>Authorize Sales</span>
-              <ArrowRight size={13} />
-            </button>
-          </div>
-        );
-      })()}
 
       {/* ========================================================================= */}
       {/* 2. ROW OF 4 PASTEL ROUNDED ACTION CARDS                                   */}
@@ -560,104 +425,6 @@ export default function SaasDashboardTab({
       </div>
 
       {/* ========================================================================= */}
-      {/* 2B. QUICK OWNER EXPENSE & PERSONAL WITHDRAWAL NOTE PAD                    */}
-      {/* Rent, Misc, Travel, Personal Withdrawal directly on the Dashboard         */}
-      {/* ========================================================================= */}
-      <div className="bg-white rounded-2xl border border-indigo-200/90 p-4 shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center shrink-0">
-              <Wallet size={15} />
-            </div>
-            <div>
-              <h3 className="text-xs sm:text-sm font-bold text-slate-900">
-                Note Owner Expense or Personal Withdrawal (Rent &bull; Misc &bull; Travel &bull; Personal Withdrawal)
-              </h3>
-              <p className="text-[11px] text-slate-500">
-                Quickly note shop rent, miscellaneous upkeep, travel/boda fare, or personal cash withdrawals with decimal support.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => onNavigateTab("owner_expenses")}
-            className="px-3 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition cursor-pointer self-start sm:self-auto shrink-0"
-          >
-            View All Expenses ({payouts.filter(p => p.type !== "SUPPLIER_PAYOUT").length}) &rarr;
-          </button>
-        </div>
-
-        {quickExpFeedback && (
-          <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
-            <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-            <span>{quickExpFeedback}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleQuickDashboardExpense} className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
-          {/* CATEGORY PILLS */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {[
-              { id: "RENT", label: "Rent", icon: <Home size={12} /> },
-              { id: "MISC", label: "Misc", icon: <Coffee size={12} /> },
-              { id: "TRAVEL", label: "Travel", icon: <Car size={12} /> },
-              { id: "PERSONAL_WITHDRAWAL", label: "Personal Withdrawal", icon: <UserMinus size={12} /> }
-            ].map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setQuickExpCategory(cat.id as any)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border ${
-                  quickExpCategory === cat.id
-                    ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
-                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
-                }`}
-              >
-                {cat.icon}
-                <span>{cat.label}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
-            <input
-              type="number"
-              step="any"
-              min="0"
-              required
-              value={quickExpAmount}
-              onChange={(e) => setQuickExpAmount(e.target.value)}
-              placeholder={`Amount (${currency}) e.g. 250 or 145.50`}
-              className="w-full sm:w-44 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
-            />
-            <input
-              type="text"
-              value={quickExpNote}
-              onChange={(e) => setQuickExpNote(e.target.value)}
-              placeholder="Note (e.g. Stall rent, boda fare, packaging bags, home drawing...)"
-              className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
-            />
-            <select
-              value={quickExpChannel}
-              onChange={(e) => setQuickExpChannel(e.target.value as any)}
-              className="bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-800"
-            >
-              <option value="CASH_DRAWER">Cash</option>
-              <option value="MPESA_TILL">M-Pesa</option>
-            </select>
-            <button
-              type="submit"
-              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-2xs"
-            >
-              <Plus size={14} />
-              <span>Save Note</span>
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* ========================================================================= */}
       {/* 3. SECTION: INSIGHTS FOR YOU                                              */}
       {/* ========================================================================= */}
       <div className="flex items-center justify-between pt-1">
@@ -691,7 +458,7 @@ export default function SaasDashboardTab({
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
           
           {/* HEADER ROW */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <h3 className="text-base sm:text-lg font-semibold text-slate-900">
                 Expenses breakdown
@@ -704,6 +471,14 @@ export default function SaasDashboardTab({
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => onNavigateTab("owner_expenses")}
+                className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-300 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+              >
+                <Wallet size={12} />
+                <span>Owner Expenses</span>
+              </button>
+
+              <button 
+                onClick={() => onNavigateTab("expenses")}
                 className="px-3 py-1 rounded-full border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-semibold transition cursor-pointer"
               >
                 View report
