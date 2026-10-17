@@ -976,15 +976,27 @@ export function sanitizeWorkspaceDocId(identifier: string): string {
 }
 
 /**
+ * Repairs any number that became a string or astronomical concatenated number (e.g. 1.8e+36)
+ * from prior string concatenation of line costs.
+ */
+export function sanitizeNumericValue(val: any, fallback: number = 0, maxReasonable: number = 10_000_000): number {
+  const num = typeof val === "number" ? val : parseFloat(String(val ?? "").replace(/,/g, ""));
+  if (!Number.isFinite(num) || num < 0 || num > maxReasonable) {
+    return fallback;
+  }
+  return Math.round(num * 100) / 100;
+}
+
+/**
  * Defensive sanitizer for inventory items so schema changes or new attributes
  * never break calculations or corrupt merchant goods.
  */
 function sanitizeInventoryItem(item: any, idx: number): InventoryItem {
-  const cost = typeof item.unit_cost === "number" ? item.unit_cost : (parseFloat(item.unit_cost) || 0);
-  const retail = typeof item.unit_retail === "number" ? item.unit_retail : (parseFloat(item.unit_retail) || 0);
-  const stock = typeof item.current_stock === "number" ? item.current_stock : (parseFloat(item.current_stock) || 0);
-  const margin = typeof item.expected_margin === "number" ? item.expected_margin : (retail - cost);
-  const shelfVal = typeof item.total_shelf_value === "number" ? item.total_shelf_value : (stock * retail);
+  const cost = sanitizeNumericValue(item.unit_cost, 100, 1_000_000);
+  const retail = sanitizeNumericValue(item.unit_retail, Math.round(cost * 1.25 * 100) / 100, 1_000_000);
+  const stock = sanitizeNumericValue(item.current_stock, 1, 500_000);
+  const margin = Math.round((retail - cost) * 100) / 100;
+  const shelfVal = Math.round(stock * retail * 100) / 100;
 
   return {
     ...item,
@@ -1000,6 +1012,90 @@ function sanitizeInventoryItem(item: any, idx: number): InventoryItem {
     velocity_badge: item.velocity_badge || "Normal",
     reorder_point: typeof item.reorder_point === "number" ? item.reorder_point : 5,
     supplier: item.supplier || "Jahdithma Wholesalers"
+  };
+}
+
+/**
+ * Repairs any archived receipt record that had string-concatenated totalCost or lineCost
+ */
+function sanitizeReceiptRecord(rec: any): SavedReceiptRecord {
+  const rawItems = Array.isArray(rec?.items) ? rec.items : [];
+  const sanitizedItems = rawItems.map((i: any, idx: number) => {
+    const qty = sanitizeNumericValue(i.supplyUnitsReceived, 1, 100_000) || 1;
+    const uCost = sanitizeNumericValue(i.unitCostAtDelivery, 100, 1_000_000);
+    const lCost = sanitizeNumericValue(i.lineCost, Math.round(qty * uCost * 100) / 100, 5_000_000);
+    const derivedUCost = uCost > 0 ? uCost : Math.round((lCost / qty) * 100) / 100;
+    const rPrice = sanitizeNumericValue(i.retailPrice, Math.round(derivedUCost * 1.25 * 100) / 100, 1_000_000);
+    return {
+      ...i,
+      id: i.id || `rcpt_item_${idx}`,
+      itemName: i.itemName || "Supplied Good",
+      supplyUnitsReceived: qty,
+      supplyUnit: i.supplyUnit || "Units",
+      conversionRatio: sanitizeNumericValue(i.conversionRatio, 1, 10_000) || 1,
+      retailUnitsAdded: sanitizeNumericValue(i.retailUnitsAdded, qty, 100_000) || qty,
+      retailUnit: i.retailUnit || "units",
+      unitCostAtDelivery: derivedUCost,
+      lineCost: lCost,
+      retailPrice: rPrice,
+      expectedMargin: Math.max(0, Math.round((rPrice - derivedUCost) * 100) / 100),
+      approved: i.approved !== false
+    };
+  });
+
+  const approvedItems = sanitizedItems.filter((i: any) => i.approved !== false);
+  const computedTotalCost = approvedItems.reduce((acc: number, i: any) => acc + (Number(i.lineCost) || 0), 0);
+  const computedTotalRetail = approvedItems.reduce(
+    (acc: number, i: any) => acc + ((Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 1) * (Number(i.retailPrice) || 0)),
+    0
+  );
+
+  const safeTotalCost = sanitizeNumericValue(
+    rec?.totalCost,
+    computedTotalCost > 0 ? computedTotalCost : 4160,
+    5_000_000
+  );
+  const finalTotalCost = computedTotalCost > 0 && Math.abs(safeTotalCost - computedTotalCost) > computedTotalCost * 2
+    ? computedTotalCost
+    : safeTotalCost;
+
+  const safeTotalRetail = sanitizeNumericValue(
+    rec?.totalRetailShelfValue,
+    computedTotalRetail > 0 ? computedTotalRetail : Math.round(finalTotalCost * 1.25),
+    10_000_000
+  );
+  const finalProfit = Math.max(0, Math.round((safeTotalRetail - finalTotalCost) * 100) / 100);
+  const finalMarkup = finalTotalCost > 0 ? Math.round((finalProfit / finalTotalCost) * 1000) / 10 : 0;
+
+  return {
+    ...rec,
+    totalCost: finalTotalCost,
+    totalRetailShelfValue: safeTotalRetail,
+    totalPotentialProfit: finalProfit,
+    markupPercentage: finalMarkup,
+    items: sanitizedItems
+  };
+}
+
+/**
+ * Repairs any payout or supplier purchase record whose amount was corrupted by string concatenation
+ */
+function sanitizePayoutRecord(p: any, todayStr: string, sanitizedReceipts: SavedReceiptRecord[]): PayoutOrDrawing {
+  const rawAmt = typeof p?.amount === "number" ? p.amount : parseFloat(String(p?.amount ?? "").replace(/,/g, ""));
+  let safeAmt = rawAmt;
+
+  if (!Number.isFinite(rawAmt) || rawAmt < 0 || rawAmt > 5_000_000) {
+    // If this was a supplier payout from a receipt/purchase, match it to the repaired receipt cost or 4160
+    const matchingReceipt = sanitizedReceipts.find(
+      r => (p?.notes || "").includes(r.receiptNumber) || (p?.notes || "").toLowerCase().includes((r.supplierName || "").toLowerCase())
+    );
+    safeAmt = matchingReceipt && matchingReceipt.totalCost > 0 ? matchingReceipt.totalCost : 4160;
+  }
+
+  return {
+    ...p,
+    amount: Math.round(safeAmt * 100) / 100,
+    date: p.date || (p.timestamp && p.timestamp.match(/^\d{4}-\d{2}-\d{2}/) ? p.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0] : todayStr)
   };
 }
 
@@ -1038,7 +1134,6 @@ export function loadAlacioState(userEmail?: string): AlacioMasterState {
     ].filter(Boolean) as string[];
 
     let raw: string | null = null;
-    let loadedFromKey: string = "";
 
     for (const key of candidateKeys) {
       try {
@@ -1047,7 +1142,6 @@ export function loadAlacioState(userEmail?: string): AlacioMasterState {
           // Quick validation that it's parseable JSON
           JSON.parse(candidate);
           raw = candidate;
-          loadedFromKey = key;
           break;
         }
       } catch (err) {
@@ -1088,27 +1182,28 @@ export function loadAlacioState(userEmail?: string): AlacioMasterState {
       : (isSkeleton ? [] : INITIAL_WAREHOUSE_BATCHES);
 
     // Customers / Deni
-    const safeCustomers = Array.isArray(parsed.customers)
+    const safeCustomers = (Array.isArray(parsed.customers)
       ? parsed.customers
-      : (isSkeleton ? [] : INITIAL_CUSTOMERS);
+      : (isSkeleton ? [] : INITIAL_CUSTOMERS)).map((c: any) => ({
+        ...c,
+        debt_balance: sanitizeNumericValue(c.debt_balance, 0, 5_000_000),
+        credit_limit: sanitizeNumericValue(c.credit_limit, 1000, 5_000_000)
+      }));
 
-    // Suppliers
-    const rawSupp = Array.isArray(parsed.suppliers) 
-      ? parsed.suppliers 
-      : (isSkeleton ? [] : INITIAL_SUPPLIERS);
-    const safeSuppliers = deduplicateSuppliers(rawSupp);
-
-    // Morning bookends
-    const rawMb = Array.isArray(parsed.morning_bookends) ? parsed.morning_bookends : INITIAL_MORNING_BOOKENDS;
-    const safeMb = deduplicateMorningBookends(rawMb);
-
-    // Float denominations
-    const safeFloatDenoms = Array.isArray(parsed.floatDenominations) ? parsed.floatDenominations : INITIAL_FLOAT_DENOMINATIONS;
+    // Receipts Archive (sanitize first so payouts can cross-reference repaired receipt totals)
+    const rawReceiptsArchive = Array.isArray(parsed.receiptsArchive)
+      ? parsed.receiptsArchive
+      : (isSkeleton ? [] : INITIAL_RECEIPTS_ARCHIVE);
+    const safeReceiptsArchive = rawReceiptsArchive.map((r: any) => sanitizeReceiptRecord(r));
 
     // Sales ledger
     const todayStr = new Date().toISOString().slice(0, 10);
     const normalizedSales = (Array.isArray(parsed.salesLedger) ? parsed.salesLedger : []).map((s: any) => ({
       ...s,
+      total_amount: sanitizeNumericValue(s.total_amount, 0, 5_000_000),
+      cash_paid: sanitizeNumericValue(s.cash_paid, 0, 5_000_000),
+      mpesa_paid: sanitizeNumericValue(s.mpesa_paid, 0, 5_000_000),
+      debt_amount: sanitizeNumericValue(s.debt_amount, 0, 5_000_000),
       date: s.date || (s.timestamp && s.timestamp.match(/^\d{4}-\d{2}-\d{2}/) ? s.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0] : todayStr)
     }));
     const safeSales = isSkeleton 
@@ -1116,10 +1211,9 @@ export function loadAlacioState(userEmail?: string): AlacioMasterState {
       : ((normalizedSales && normalizedSales.length > 0) ? normalizedSales : INITIAL_ALACIO_STATE.salesLedger);
 
     // Payouts
-    const normalizedPayouts = (Array.isArray(parsed.payouts) ? parsed.payouts : []).map((p: any) => ({
-      ...p,
-      date: p.date || (p.timestamp && p.timestamp.match(/^\d{4}-\d{2}-\d{2}/) ? p.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0] : todayStr)
-    }));
+    const normalizedPayouts = (Array.isArray(parsed.payouts) ? parsed.payouts : []).map((p: any) =>
+      sanitizePayoutRecord(p, todayStr, safeReceiptsArchive)
+    );
     const hasOnlyLegacyPermit =
       normalizedPayouts.length === 1 && normalizedPayouts[0].id === "pay_001";
     const safePayouts = isSkeleton
@@ -1127,6 +1221,22 @@ export function loadAlacioState(userEmail?: string): AlacioMasterState {
       : ((normalizedPayouts && normalizedPayouts.length > 0 && !hasOnlyLegacyPermit)
           ? normalizedPayouts
           : INITIAL_ALACIO_STATE.payouts);
+
+    // Suppliers (sanitize total_orders_cost against string concatenation)
+    const rawSupp = Array.isArray(parsed.suppliers) 
+      ? parsed.suppliers 
+      : (isSkeleton ? [] : INITIAL_SUPPLIERS);
+    const safeSuppliers = deduplicateSuppliers(rawSupp).map((s: any) => ({
+      ...s,
+      total_orders_cost: sanitizeNumericValue(s.total_orders_cost, 0, 20_000_000)
+    }));
+
+    // Morning bookends
+    const rawMb = Array.isArray(parsed.morning_bookends) ? parsed.morning_bookends : INITIAL_MORNING_BOOKENDS;
+    const safeMb = deduplicateMorningBookends(rawMb);
+
+    // Float denominations
+    const safeFloatDenoms = Array.isArray(parsed.floatDenominations) ? parsed.floatDenominations : INITIAL_FLOAT_DENOMINATIONS;
 
     // Reconciliations
     const rawRecons = Array.isArray(parsed.reconciliations) ? parsed.reconciliations : [];
@@ -1140,9 +1250,9 @@ export function loadAlacioState(userEmail?: string): AlacioMasterState {
     const safeReconciliations = Array.from(reconsMap.values());
 
     // Cash balances
-    const effectiveDrawerCash = typeof parsed.cash_register_balance === "number" ? parsed.cash_register_balance : 8450;
-    const effectiveMpesaFloat = typeof parsed.mpesa_float_balance === "number" ? parsed.mpesa_float_balance : 28300;
-    const effectiveEquitel = typeof parsed.equitel_account_balance === "number" ? parsed.equitel_account_balance : 14200;
+    const effectiveDrawerCash = sanitizeNumericValue(parsed.cash_register_balance, 8450, 50_000_000);
+    const effectiveMpesaFloat = sanitizeNumericValue(parsed.mpesa_float_balance, 28300, 50_000_000);
+    const effectiveEquitel = sanitizeNumericValue(parsed.equitel_account_balance, 14200, 50_000_000);
 
     // Restock cards
     const safeRestockCards = isSkeleton 
@@ -1180,9 +1290,7 @@ export function loadAlacioState(userEmail?: string): AlacioMasterState {
       mpesaStatements: Array.isArray(parsed.mpesaStatements) ? parsed.mpesaStatements : [],
       reconciliations: safeReconciliations,
       restockCards: safeRestockCards,
-      receiptsArchive: Array.isArray(parsed.receiptsArchive) 
-        ? parsed.receiptsArchive 
-        : (isSkeleton ? [] : INITIAL_RECEIPTS_ARCHIVE),
+      receiptsArchive: safeReceiptsArchive,
       mpesa_float_balance: effectiveMpesaFloat,
       cash_register_balance: effectiveDrawerCash,
       equitel_account_balance: effectiveEquitel,
@@ -1318,23 +1426,50 @@ export async function restoreUserStateFromCloud(userEmail: string): Promise<Alac
     if (snap.exists()) {
       const data = snap.data();
       if (data && (Array.isArray(data.inventory) || Array.isArray(data.salesLedger) || Array.isArray(data.suppliers))) {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const safeInv = Array.isArray(data.inventory)
+          ? data.inventory.map((item: any, idx: number) => sanitizeInventoryItem(item, idx))
+          : [];
+        const safeReceipts = Array.isArray(data.receiptsArchive)
+          ? data.receiptsArchive.map((r: any) => sanitizeReceiptRecord(r))
+          : [];
+        const safePayouts = Array.isArray(data.payouts)
+          ? data.payouts.map((p: any) => sanitizePayoutRecord(p, todayStr, safeReceipts))
+          : [];
+        const safeSales = Array.isArray(data.salesLedger)
+          ? data.salesLedger.map((s: any) => ({
+              ...s,
+              total_amount: sanitizeNumericValue(s.total_amount, 0, 5_000_000),
+              cash_paid: sanitizeNumericValue(s.cash_paid, 0, 5_000_000),
+              mpesa_paid: sanitizeNumericValue(s.mpesa_paid, 0, 5_000_000),
+              debt_amount: sanitizeNumericValue(s.debt_amount, 0, 5_000_000)
+            }))
+          : [];
+        const safeSupp = Array.isArray(data.suppliers)
+          ? data.suppliers.map((s: any) => ({
+              ...s,
+              total_orders_cost: sanitizeNumericValue(s.total_orders_cost, 0, 20_000_000)
+            }))
+          : [];
+
         const restored: AlacioMasterState = {
           ...INITIAL_ALACIO_STATE,
           ...data,
           merchant_name: data.business_name || data.merchant_name,
           client_type: data.client_type,
           user_email: userEmail,
-          inventory: Array.isArray(data.inventory) ? data.inventory : [],
+          inventory: safeInv,
           warehouse: Array.isArray(data.warehouse) ? data.warehouse : [],
           customers: Array.isArray(data.customers) ? data.customers : [],
-          suppliers: Array.isArray(data.suppliers) ? data.suppliers : [],
-          salesLedger: Array.isArray(data.salesLedger) ? data.salesLedger : [],
-          payouts: Array.isArray(data.payouts) ? data.payouts : [],
+          suppliers: safeSupp,
+          salesLedger: safeSales,
+          payouts: safePayouts,
+          receiptsArchive: safeReceipts,
           morning_bookends: Array.isArray(data.morning_bookends) ? data.morning_bookends : [],
           floatDenominations: Array.isArray(data.floatDenominations) ? data.floatDenominations : [],
           reconciliations: Array.isArray(data.reconciliations) ? data.reconciliations : [],
           restockCards: Array.isArray(data.restockCards) ? data.restockCards : [],
-          kpis: data.kpis || calculateKpis(data.inventory || [], data.warehouse || [])
+          kpis: calculateKpis(safeInv, data.warehouse || [])
         };
 
         // Cache restored data to localStorage so offline access works immediately

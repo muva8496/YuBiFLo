@@ -698,11 +698,12 @@ export default function App() {
     date: string;
     notes?: string;
   }) => {
+    const cleanAmt = Number(payoutData.amount) || 0;
     const newPayout: PayoutOrDrawing = {
       id: `payout_supp_${Date.now()}`,
       date: payoutData.date,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      amount: payoutData.amount,
+      amount: cleanAmt,
       type: "SUPPLIER_PAYOUT",
       payment_channel: payoutData.paymentChannel,
       notes: `${payoutData.supplierName} (National ID: ${payoutData.supplierNationalId}, Phone: ${payoutData.supplierPhone}): ${payoutData.notes || "Supplier settlement"} [${payoutData.paymentChannel}]`
@@ -713,7 +714,7 @@ export default function App() {
       payouts: [newPayout, ...(prev.payouts || [])],
       suppliers: (prev.suppliers || []).map((s) => 
         s.id === payoutData.supplierId || s.name === payoutData.supplierName
-          ? { ...s, total_orders_cost: (s.total_orders_cost || 0) + payoutData.amount, last_delivery_date: payoutData.date }
+          ? { ...s, total_orders_cost: (Number(s.total_orders_cost) || 0) + cleanAmt, last_delivery_date: payoutData.date }
           : s
       ),
       last_updated: new Date().toISOString()
@@ -732,11 +733,12 @@ export default function App() {
     notes?: string;
     receiptImageUrl?: string;
   }) => {
+    const cleanPurchaseAmt = Number(purchase.amount) || 0;
     const newPayout: PayoutOrDrawing = {
       id: `payout_cargo_${Date.now()}`,
       date: purchase.date,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      amount: purchase.amount,
+      amount: cleanPurchaseAmt,
       type: "SUPPLIER_PAYOUT",
       payment_channel: purchase.payment_channel,
       notes: `${purchase.supplier} [ID: ${purchase.supplierNationalId || "N/A"}, Phone: ${purchase.supplierPhone || "N/A"}]: ${purchase.items} [${purchase.payment_channel}]`
@@ -748,18 +750,22 @@ export default function App() {
 
       if (purchase.itemLines && purchase.itemLines.length > 0) {
         purchase.itemLines.forEach((line) => {
+          const lineQty = Number(line.quantity) || 0;
+          const lineUnitCost = Number(line.unitCost) || 0;
+          const lineRetailPrice = Number(line.retailPrice) || 0;
+
           const existingIdx = updatedInventory.findIndex(
             (inv) => inv.name.toLowerCase().trim() === line.itemName.toLowerCase().trim()
           );
 
           // AUTO-GENERATE RESTOCK RECONCILIATION CARD:
           // "whenever we record a purchase... bringing in that today means we have dealt with all those of yesterday, meaning they are sales"
-          const prevBatchUnits = existingIdx >= 0 && updatedInventory[existingIdx].current_stock > 0
-            ? updatedInventory[existingIdx].current_stock
-            : line.quantity;
+          const prevBatchUnits = existingIdx >= 0 && Number(updatedInventory[existingIdx].current_stock) > 0
+            ? Number(updatedInventory[existingIdx].current_stock)
+            : lineQty;
 
-          const unitWholesale = line.unitCost > 0 ? line.unitCost : (existingIdx >= 0 ? updatedInventory[existingIdx].unit_cost : 50);
-          const unitRetail = line.retailPrice && line.retailPrice > 0 ? line.retailPrice : (existingIdx >= 0 ? updatedInventory[existingIdx].unit_retail : unitWholesale * 1.2);
+          const unitWholesale = lineUnitCost > 0 ? lineUnitCost : (existingIdx >= 0 ? Number(updatedInventory[existingIdx].unit_cost) || 50 : 50);
+          const unitRetail = lineRetailPrice > 0 ? lineRetailPrice : (existingIdx >= 0 ? Number(updatedInventory[existingIdx].unit_retail) || unitWholesale * 1.2 : unitWholesale * 1.2);
           const defaultRemains = Math.max(0, Math.min(2, Math.round(prevBatchUnits * 0.15)));
           const defaultEaten = 0;
           const defaultSold = Math.max(0, prevBatchUnits - defaultRemains - defaultEaten);
@@ -774,7 +780,7 @@ export default function App() {
             previousBatchTotalUnits: prevBatchUnits,
             previousBatchDate: "Previous Batch Recorded (Yesterday)",
             previousBatchCost: prevBatchUnits * unitWholesale,
-            newBatchQty: line.quantity,
+            newBatchQty: lineQty,
             newBatchDate: purchase.date || "Today Morning",
             supplierName: purchase.supplier,
             deliveryNoteNumber: purchase.notes || "Inward Restock Delivery",
@@ -792,38 +798,39 @@ export default function App() {
             calculatedSpoilageLoss: 0,
             status: "PENDING_AUTHORIZATION",
             paymentMethod: "CASH",
-            notes: `Auto-generated when ${line.quantity} ${line.unit} of ${line.itemName} arrived from ${purchase.supplier}. Authorize yesterday's sales without typing.`
+            notes: `Auto-generated when ${lineQty} ${line.unit} of ${line.itemName} arrived from ${purchase.supplier}. Authorize yesterday's sales without typing.`
           };
           newlyGeneratedRestockCards.push(autoCard);
 
           if (existingIdx >= 0) {
             const existing = updatedInventory[existingIdx];
-            const addedStock = line.quantity;
-            const updatedStock = existing.current_stock + addedStock;
-            const updatedCost = line.unitCost > 0 ? line.unitCost : existing.unit_cost;
-            const updatedRetail = line.retailPrice && line.retailPrice > 0 ? line.retailPrice : existing.unit_retail;
+            const addedStock = lineQty;
+            const updatedStock = (Number(existing.current_stock) || 0) + addedStock;
+            const updatedCost = lineUnitCost > 0 ? lineUnitCost : (Number(existing.unit_cost) || 0);
+            const updatedRetail = lineRetailPrice > 0 ? lineRetailPrice : (Number(existing.unit_retail) || 0);
             
             updatedInventory[existingIdx] = {
               ...existing,
               current_stock: updatedStock,
               unit_cost: updatedCost,
               unit_retail: updatedRetail,
-              total_shelf_value: updatedStock * updatedRetail,
-              expected_margin: updatedRetail - updatedCost,
+              total_shelf_value: Math.round(updatedStock * updatedRetail * 100) / 100,
+              expected_margin: Math.round((updatedRetail - updatedCost) * 100) / 100,
               supplier: purchase.supplier.trim()
             };
           } else {
+            const effectiveRetail = lineRetailPrice || Math.round(lineUnitCost * 1.25 * 100) / 100;
             const newSku: InventoryItem = {
               id: `sku_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
               name: line.itemName.trim(),
               category: line.category || "General Wholesaler",
               unit_type: line.unit || "pcs",
-              unit_cost: line.unitCost,
-              unit_retail: line.retailPrice || (line.unitCost * 1.25),
-              current_stock: line.quantity,
-              opening_stock: line.quantity,
-              expected_margin: (line.retailPrice || (line.unitCost * 1.25)) - line.unitCost,
-              total_shelf_value: line.quantity * (line.retailPrice || (line.unitCost * 1.25)),
+              unit_cost: lineUnitCost,
+              unit_retail: effectiveRetail,
+              current_stock: lineQty,
+              opening_stock: lineQty,
+              expected_margin: Math.round((effectiveRetail - lineUnitCost) * 100) / 100,
+              total_shelf_value: Math.round(lineQty * effectiveRetail * 100) / 100,
               velocity_badge: "NORMAL",
               reorder_point: 5,
               supplier: purchase.supplier.trim(),
@@ -850,7 +857,7 @@ export default function App() {
             const mergedGoods = Array.from(new Set([...existingGoods, ...purchasedGoodNames]));
             return {
               ...s,
-              total_orders_cost: (s.total_orders_cost || 0) + purchase.amount,
+              total_orders_cost: (Number(s.total_orders_cost) || 0) + cleanPurchaseAmt,
               last_delivery_date: purchase.date || "Today",
               supplied_items: mergedGoods
             };
@@ -866,7 +873,7 @@ export default function App() {
           phone: purchase.supplierPhone || "0722 000 111",
           national_id: purchase.supplierNationalId || "ID-PENDING",
           category: (purchase as any).supplierCategory || "Wholesale Distributor",
-          total_orders_cost: purchase.amount,
+          total_orders_cost: cleanPurchaseAmt,
           last_delivery_date: purchase.date || "Today",
           payment_preference: purchase.payment_channel === "MPESA" ? "MPESA_TILL" : "NATIONAL_ID_DEPOSIT",
           supplied_items: purchasedGoodNames

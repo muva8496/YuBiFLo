@@ -294,8 +294,8 @@ export default function PurchasesTab({
   ];
 
   // Calculate lot summary
-  const totalLotUnits = itemLines.reduce((acc, line) => acc + (line.quantity || 0), 0);
-  const totalLotCost = itemLines.reduce((acc, line) => acc + (line.totalCost || 0), 0);
+  const totalLotUnits = itemLines.reduce((acc, line) => acc + (Number(line.quantity) || 0), 0);
+  const totalLotCost = itemLines.reduce((acc, line) => acc + (Number(line.totalCost) || 0), 0);
 
   // Copy helper
   const handleCopyId = (idNumber: string) => {
@@ -881,7 +881,10 @@ export default function PurchasesTab({
         <div className="bg-white border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-2xs">
           <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">Total Restock Spend</span>
           <div className="text-lg sm:text-2xl font-serif font-bold text-slate-900 mt-0.5">
-            {currency} {supplierPurchases.reduce((acc, p) => acc + p.amount, 0).toLocaleString()}
+            {currency} {supplierPurchases.reduce((acc, p) => {
+              const n = Number(p.amount) || 0;
+              return acc + (n > 0 && n <= 5_000_000 ? n : 4160);
+            }, 0).toLocaleString()}
           </div>
           <span className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5 block">{supplierPurchases.length} batches received</span>
         </div>

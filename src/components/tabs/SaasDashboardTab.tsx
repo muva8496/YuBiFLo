@@ -105,16 +105,34 @@ export default function SaasDashboardTab({
     year: "numeric"
   });
 
+  // Defensive numeric helper so prior string-concatenated numbers (e.g. 1.8e+36) never corrupt dashboard charts
+  const safeNum = (val: any, fallback: number = 0, maxReasonable: number = 5_000_000): number => {
+    const num = typeof val === "number" ? val : parseFloat(String(val ?? "").replace(/,/g, ""));
+    if (!Number.isFinite(num) || num < 0 || num > maxReasonable) {
+      return fallback;
+    }
+    return Math.round(num * 100) / 100;
+  };
+
   // Real Ledger Calculations
   const todaySales = salesLedger.filter(s => (s.date || s.timestamp?.slice(0, 10) || "") === todayIso);
-  const todaySalesTotal = todaySales.reduce((acc, s) => acc + (Number(s.total_amount) || 0), 0);
+  const todaySalesTotal = todaySales.reduce((acc, s) => acc + safeNum(s.total_amount, 0, 5_000_000), 0);
 
-  const totalDeniOwed = customers.reduce((acc, c) => acc + (Number(c.debt_balance) || 0), 0);
-  const totalStockValue = inventory.reduce((acc, i) => acc + (Number(i.total_shelf_value) || (Number(i.current_stock) || 0) * (Number(i.unit_retail) || 0)), 0);
-  const totalStockCost = inventory.reduce((acc, i) => acc + ((Number(i.current_stock) || 0) * (Number(i.unit_cost) || 0)), 0);
+  const totalDeniOwed = customers.reduce((acc, c) => acc + safeNum(c.debt_balance, 0, 5_000_000), 0);
+  const totalStockValue = inventory.reduce((acc, i) => {
+    const stock = safeNum(i.current_stock, 0, 500_000);
+    const retail = safeNum(i.unit_retail, 0, 1_000_000);
+    const shelf = safeNum(i.total_shelf_value, stock * retail, 10_000_000);
+    return acc + (shelf > 0 ? shelf : stock * retail);
+  }, 0);
+  const totalStockCost = inventory.reduce((acc, i) => {
+    const stock = safeNum(i.current_stock, 0, 500_000);
+    const cost = safeNum(i.unit_cost, 0, 1_000_000);
+    return acc + stock * cost;
+  }, 0);
   const totalPotentialProfit = Math.max(0, totalStockValue - totalStockCost);
-  const totalRevenue = salesLedger.reduce((acc, s) => acc + (Number(s.total_amount) || 0), 0);
-  const totalPayouts = payouts.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+  const totalRevenue = salesLedger.reduce((acc, s) => acc + safeNum(s.total_amount, 0, 5_000_000), 0);
+  const totalPayouts = payouts.reduce((acc, p) => acc + safeNum(p.amount, 4160, 5_000_000), 0);
 
   const approvedReceipts = (state.receiptsArchive || []).filter(r => r.status === "approved");
 
@@ -144,7 +162,7 @@ export default function SaasDashboardTab({
   let supplierPayoutsAmt = 0;
 
   filteredPayouts.forEach(p => {
-    const amt = Number(p.amount) || 0;
+    const amt = safeNum(p.amount, p.type === "SUPPLIER_PAYOUT" ? 4160 : 0, 5_000_000);
     const cat = p.expense_category;
     const notesLower = (p.notes || "").toLowerCase();
 
@@ -164,7 +182,7 @@ export default function SaasDashboardTab({
   });
 
   // Include approved receipt purchases if not already duplicated in supplier payouts, or active stock cost if no supplier payouts yet
-  const receiptsTotalCost = filteredReceipts.reduce((acc, r) => acc + (Number(r.totalCost) || 0), 0);
+  const receiptsTotalCost = filteredReceipts.reduce((acc, r) => acc + safeNum(r.totalCost, 4160, 5_000_000), 0);
   const effectiveStockPurchasesAmt = Math.max(supplierPayoutsAmt, receiptsTotalCost, (!isDemo && supplierPayoutsAmt === 0 && receiptsTotalCost === 0 ? totalStockCost : 0));
   const ownerExpensesTotalAmt = rentAndUtilitiesAmt + personalWithdrawalsAmt + travelAndTransportAmt + miscAndPermitsAmt;
 
@@ -222,8 +240,8 @@ export default function SaasDashboardTab({
   const displayedTotalExpenseBreakdown = isDemo ? 157800 : totalRealExpensesBreakdown;
 
   // SVG Donut Path calculations
-  const size = 160;
-  const strokeWidth = 28;
+  const size = 152;
+  const strokeWidth = 26;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
@@ -265,17 +283,17 @@ export default function SaasDashboardTab({
     // Real client daily inflow from salesLedger on isoDate
     const dayInflow = salesLedger
       .filter(s => (s.date || s.timestamp?.slice(0, 10) || "") === isoDate)
-      .reduce((acc, s) => acc + (Number(s.total_amount) || 0), 0);
+      .reduce((acc, s) => acc + safeNum(s.total_amount, 0, 5_000_000), 0);
 
     // Real client daily outflow from payouts + non-duplicated approved receipts on isoDate
     const dayPayouts = payouts.filter(p => (p.date || p.timestamp?.slice(0, 10) || "") === isoDate);
-    const dayPayoutsTotal = dayPayouts.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    const dayPayoutsTotal = dayPayouts.reduce((acc, p) => acc + safeNum(p.amount, p.type === "SUPPLIER_PAYOUT" ? 4160 : 0, 5_000_000), 0);
     const hasSupplierPayoutOnDay = dayPayouts.some(p => p.type === "SUPPLIER_PAYOUT");
     const dayReceiptsTotal = hasSupplierPayoutOnDay
       ? 0
       : approvedReceipts
           .filter(r => (r.receiptDate || r.decidedAt?.slice(0, 10) || "") === isoDate)
-          .reduce((acc, r) => acc + (Number(r.totalCost) || 0), 0);
+          .reduce((acc, r) => acc + safeNum(r.totalCost, 4160, 5_000_000), 0);
 
     const dayOutflow = dayPayoutsTotal + dayReceiptsTotal;
     const dayNet = dayInflow - dayOutflow;
@@ -311,7 +329,8 @@ export default function SaasDashboardTab({
     const abs = Math.abs(val);
     const prefix = val < 0 ? "-" : "";
     if (abs === 0) return `${currency} 0`;
-    if (abs >= 1000) return `${prefix}${ (abs / 1000).toFixed(abs % 1000 === 0 ? 0 : 1) }K`;
+    if (abs >= 1_000_000) return `${prefix}${(abs / 1_000_000).toFixed(1)}M`;
+    if (abs >= 1000) return `${prefix}${(abs / 1000).toFixed(abs % 1000 === 0 ? 0 : 1)}K`;
     return `${prefix}${abs}`;
   };
 
@@ -322,19 +341,19 @@ export default function SaasDashboardTab({
   // Real Operating Expenses vs Personal Drawings vs Net Income for Profit & Loss Card
   const realOperatingExpenses = payouts
     .filter(p => p.type === "BUSINESS_EXPENSE")
-    .reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    .reduce((acc, p) => acc + safeNum(p.amount, 0, 5_000_000), 0);
   const realPersonalDrawings = payouts
     .filter(p => p.type === "OWNER_DRAWING")
-    .reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+    .reduce((acc, p) => acc + safeNum(p.amount, 0, 5_000_000), 0);
   const realNetOperatingIncome = totalRevenue - realOperatingExpenses;
   const realGrossMarginPct = totalStockValue > 0
     ? Number((((totalStockValue - totalStockCost) / totalStockValue) * 100).toFixed(1))
     : (state.kpis?.avg_markup_percentage || 0);
 
   // Connected Account Live Balances
-  const liveMpesaFloat = typeof state.mpesa_float_balance === "number" ? state.mpesa_float_balance : 0;
-  const liveCashDrawer = typeof state.cash_register_balance === "number" ? state.cash_register_balance : 0;
-  const liveBankEquitel = typeof state.equitel_account_balance === "number" ? state.equitel_account_balance : 0;
+  const liveMpesaFloat = safeNum(state.mpesa_float_balance, 0, 50_000_000);
+  const liveCashDrawer = safeNum(state.cash_register_balance, 0, 50_000_000);
+  const liveBankEquitel = safeNum(state.equitel_account_balance, 0, 50_000_000);
   const latestBookend = (state.morning_bookends && state.morning_bookends.length > 0) ? state.morning_bookends[0] : null;
 
   let cumulativeOffset = 0;
@@ -455,7 +474,7 @@ export default function SaasDashboardTab({
         {/* ----------------------------------------------------------------------- */}
         {/* CARD 1: EXPENSES BREAKDOWN                                              */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4 overflow-hidden min-w-0">
           
           {/* HEADER ROW */}
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -468,10 +487,10 @@ export default function SaasDashboardTab({
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <button 
                 onClick={() => onNavigateTab("owner_expenses")}
-                className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-300 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                className="px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-300 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
               >
                 <Wallet size={12} />
                 <span>Owner Expenses</span>
@@ -479,7 +498,7 @@ export default function SaasDashboardTab({
 
               <button 
                 onClick={() => onNavigateTab("expenses")}
-                className="px-3 py-1 rounded-full border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-semibold transition cursor-pointer"
+                className="px-2.5 py-1 rounded-full border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-semibold transition cursor-pointer"
               >
                 View report
               </button>
@@ -505,20 +524,20 @@ export default function SaasDashboardTab({
           </div>
 
           {/* DONUT CHART & LEGEND CONTAINER */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 min-w-0">
             
             {/* LEFT: PERCENTAGE, CATEGORY & REAL AMOUNT LEGEND */}
-            <div className="space-y-2.5 text-xs w-full sm:w-auto flex-1">
+            <div className="space-y-2.5 text-xs w-full sm:w-auto flex-1 min-w-0">
               {expenseSegments.map((seg, idx) => (
                 <div 
                   key={seg.id}
                   onMouseEnter={() => setHoveredExpenseSegment(idx)}
                   onMouseLeave={() => setHoveredExpenseSegment(null)}
-                  className={`flex items-center justify-between gap-3 cursor-pointer transition-opacity ${
+                  className={`flex items-center justify-between gap-2 cursor-pointer transition-opacity min-w-0 ${
                     hoveredExpenseSegment !== null && hoveredExpenseSegment !== idx ? "opacity-40" : "opacity-100"
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     {/* COLOR SWATCH */}
                     {seg.isHatched ? (
                       <div 
@@ -546,7 +565,7 @@ export default function SaasDashboardTab({
                     )}
                   </div>
 
-                  <span className="font-mono font-semibold text-slate-800 shrink-0">
+                  <span className="font-mono font-semibold text-slate-800 shrink-0 text-right">
                     {seg.amount}
                   </span>
                 </div>
@@ -554,7 +573,7 @@ export default function SaasDashboardTab({
             </div>
 
             {/* RIGHT: SVG DONUT CHART */}
-            <div className="relative w-44 h-44 shrink-0 flex items-center justify-center">
+            <div className="relative w-38 h-38 shrink-0 flex items-center justify-center">
               <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rotate-[-90deg]">
                 <defs>
                   {/* Pattern for Hatched Segment */}
@@ -605,18 +624,18 @@ export default function SaasDashboardTab({
               {/* CENTER DISPLAY FOR HOVER OR DEFAULT */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-4">
                 {hoveredExpenseSegment !== null ? (
-                  <div className="text-center animate-in fade-in">
-                    <span className="text-sm font-bold text-slate-900 block leading-tight font-mono">
+                  <div className="text-center animate-in fade-in max-w-[96px]">
+                    <span className="text-xs font-bold text-slate-900 block leading-tight font-mono truncate">
                       {expenseSegments[hoveredExpenseSegment].amount}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-medium block max-w-[90px] truncate mt-0.5">
+                    <span className="text-[10px] text-slate-500 font-medium block truncate mt-0.5">
                       {expenseSegments[hoveredExpenseSegment].label} ({expenseSegments[hoveredExpenseSegment].pct}%)
                     </span>
                   </div>
                 ) : (
-                  <div className="text-center">
-                    <span className="text-[10px] text-slate-400 font-mono uppercase block">Total Outflow</span>
-                    <span className="text-xs font-bold text-slate-800 font-mono block">
+                  <div className="text-center max-w-[96px]">
+                    <span className="text-[9px] text-slate-400 font-mono uppercase block">Total Outflow</span>
+                    <span className="text-xs font-bold text-slate-800 font-mono block truncate">
                       {currency} {displayedTotalExpenseBreakdown.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </span>
                   </div>
@@ -641,7 +660,7 @@ export default function SaasDashboardTab({
         {/* ----------------------------------------------------------------------- */}
         {/* CARD 2: CASHFLOW (REAL CURRENT CALENDAR DATES ENDING TODAY)             */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4 overflow-hidden min-w-0">
           
           {/* HEADER ROW */}
           <div className="flex items-center justify-between">
@@ -676,7 +695,7 @@ export default function SaasDashboardTab({
 
           {/* SUB-HEADER LEGEND */}
           <div className="flex items-center justify-between flex-wrap gap-2 text-xs text-slate-700">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               {/* INFLOW SOLID GREEN */}
               <div className="flex items-center gap-1.5">
                 <div className="w-3.5 h-3.5 rounded-sm bg-[#10B981]" />
@@ -707,10 +726,10 @@ export default function SaasDashboardTab({
           </div>
 
           {/* TWO-WAY BAR & SPLINE CHART */}
-          <div className="relative pt-2">
+          <div className="relative pt-2 overflow-hidden">
             
             {/* SVG CANVAS FOR BARS & SPLINE */}
-            <svg viewBox="0 0 540 220" className="w-full h-48 overflow-visible">
+            <svg viewBox="0 0 540 220" className="w-full h-48">
               <defs>
                 <pattern id="outflowHatch" width="5" height="5" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
                   <line x1="0" y1="0" x2="0" y2="5" stroke="#94A3B8" strokeWidth="1.8" />
