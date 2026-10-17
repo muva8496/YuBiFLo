@@ -53,6 +53,8 @@ export interface DetailedPurchaseRecord {
 interface PurchasesTabProps {
   state: AlacioMasterState;
   onLogPurchase?: (purchase: {
+    receiptId?: string;
+    receiptNumber?: string;
     supplier: string;
     supplierPhone?: string;
     supplierNationalId?: string;
@@ -399,7 +401,12 @@ export default function PurchasesTab({
     setTimeout(() => {
       setScannedReceipt({
         ...sample.mockData,
-        items: sample.mockData.items.map((i) => ({ ...i, approved: true }))
+        id: `${sample.mockData.id}_${Date.now()}`,
+        items: sample.mockData.items.map((i, idx) => ({
+          ...i,
+          id: `${i.id}_${Date.now()}_${idx}`,
+          approved: true
+        }))
       });
       setIsScanningReceipt(false);
       setScannerFeedback(
@@ -578,9 +585,21 @@ export default function PurchasesTab({
       totalCost: Number(item.lineCost) || 0
     }));
 
+    // Determine receiptId: if an archived receipt was re-opened and given a different date,
+    // treat it as a new dated receipt so both dates are preserved and arranged chronologically
+    const existingWithSameId = receiptsArchive.find((r) => r.id === scannedReceipt.id);
+    const effectiveReceiptId =
+      existingWithSameId && existingWithSameId.receiptDate !== scannedReceipt.receiptDate
+        ? `rcpt_arch_${Date.now()}`
+        : scannedReceipt.id || `rcpt_arch_${Date.now()}`;
+    const effectiveReceiptNumber =
+      scannedReceipt.receiptNumber || `DN-${Math.floor(1000 + Math.random() * 9000)}`;
+
     // 1. Log purchase into inventory & master state
     if (onLogPurchase) {
       onLogPurchase({
+        receiptId: effectiveReceiptId,
+        receiptNumber: effectiveReceiptNumber,
         supplier: scannedReceipt.supplierName,
         supplierPhone: currentSupplier.phone,
         supplierNationalId: currentSupplier.national_id,
@@ -589,15 +608,15 @@ export default function PurchasesTab({
         amount: totalApprovedCost,
         payment_channel: scannedReceipt.paymentMode === "MPESA" ? "MPESA" : "CASH",
         date: scannedReceipt.receiptDate || new Date().toISOString().slice(0, 10),
-        notes: `Approved delivery receipt ${scannedReceipt.receiptNumber} (${approvedItems.length} goods approved)`,
+        notes: `Approved delivery receipt ${effectiveReceiptNumber} (${approvedItems.length} goods approved)`,
         receiptImageUrl: scannedReceiptImage || undefined
       });
     }
 
     // 2. Save worked-on receipt record to database archive
     const savedRecord: SavedReceiptRecord = {
-      id: scannedReceipt.id || `rcpt_arch_${Date.now()}`,
-      receiptNumber: scannedReceipt.receiptNumber || `DN-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: effectiveReceiptId,
+      receiptNumber: effectiveReceiptNumber,
       supplierName: scannedReceipt.supplierName,
       receiptDate: scannedReceipt.receiptDate,
       paymentMode: scannedReceipt.paymentMode,

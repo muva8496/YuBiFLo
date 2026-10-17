@@ -58,6 +58,11 @@ import ThreeFoldLedgersTab from "./components/tabs/ThreeFoldLedgersTab";
 import AnalyticsTab from "./components/tabs/AnalyticsTab";
 import OwnerExpensesTab from "./components/tabs/OwnerExpensesTab";
 import { VoiceDraftRecord } from "./components/tabs/PendingDraftsQueueTab";
+import {
+  reconcileChronologicalReceiptsAndSales,
+  normalizeIsoDate,
+  doProductsMatch
+} from "./utils/chronologicalReceiptSalesEngine";
 import TemplateInDevelopmentView from "./components/TemplateInDevelopmentView";
 import OneTapGapModal from "./components/OneTapGapModal";
 import MpesaImportModal from "./components/MpesaImportModal";
@@ -722,6 +727,8 @@ export default function App() {
   };
 
   const handleLogMultiItemPurchase = (purchase: {
+    receiptId?: string;
+    receiptNumber?: string;
     supplier: string;
     supplierPhone?: string;
     supplierNationalId?: string;
@@ -734,9 +741,12 @@ export default function App() {
     receiptImageUrl?: string;
   }) => {
     const cleanPurchaseAmt = Number(purchase.amount) || 0;
+    const normalizedDate = normalizeIsoDate(purchase.date);
+    const effectiveReceiptId = purchase.receiptId || `rcpt_lot_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
     const newPayout: PayoutOrDrawing = {
-      id: `payout_cargo_${Date.now()}`,
-      date: purchase.date,
+      id: `payout_cargo_${effectiveReceiptId}`,
+      date: normalizedDate,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       amount: cleanPurchaseAmt,
       type: "SUPPLIER_PAYOUT",
@@ -754,12 +764,10 @@ export default function App() {
           const lineUnitCost = Number(line.unitCost) || 0;
           const lineRetailPrice = Number(line.retailPrice) || 0;
 
-          const existingIdx = updatedInventory.findIndex(
-            (inv) => inv.name.toLowerCase().trim() === line.itemName.toLowerCase().trim()
+          const existingIdx = updatedInventory.findIndex((inv) =>
+            doProductsMatch(inv.name, line.itemName)
           );
 
-          // AUTO-GENERATE RESTOCK RECONCILIATION CARD:
-          // "whenever we record a purchase... bringing in that today means we have dealt with all those of yesterday, meaning they are sales"
           const prevBatchUnits = existingIdx >= 0 && Number(updatedInventory[existingIdx].current_stock) > 0
             ? Number(updatedInventory[existingIdx].current_stock)
             : lineQty;
@@ -781,7 +789,7 @@ export default function App() {
             previousBatchDate: "Previous Batch Recorded (Yesterday)",
             previousBatchCost: prevBatchUnits * unitWholesale,
             newBatchQty: lineQty,
-            newBatchDate: purchase.date || "Today Morning",
+            newBatchDate: normalizedDate,
             supplierName: purchase.supplier,
             deliveryNoteNumber: purchase.notes || "Inward Restock Delivery",
             remainsOnShelf: defaultRemains,
@@ -797,7 +805,7 @@ export default function App() {
             calculatedOwnerDrawing: defaultEaten * unitWholesale,
             calculatedSpoilageLoss: 0,
             status: "PENDING_AUTHORIZATION",
-            paymentMethod: "CASH",
+            paymentMethod: purchase.payment_channel === "MPESA" ? "MPESA" : "CASH",
             notes: `Auto-generated when ${lineQty} ${line.unit} of ${line.itemName} arrived from ${purchase.supplier}. Authorize yesterday's sales without typing.`
           };
           newlyGeneratedRestockCards.push(autoCard);
@@ -858,14 +866,13 @@ export default function App() {
             return {
               ...s,
               total_orders_cost: (Number(s.total_orders_cost) || 0) + cleanPurchaseAmt,
-              last_delivery_date: purchase.date || "Today",
+              last_delivery_date: normalizedDate,
               supplied_items: mergedGoods
             };
           }
           return s;
         });
       } else {
-        // Auto-create new supplier and record all supplied goods
         const newSupplier: SupplierProfile = {
           id: `supp_${Date.now()}`,
           name: purchase.supplier.trim(),
@@ -874,35 +881,104 @@ export default function App() {
           national_id: purchase.supplierNationalId || "ID-PENDING",
           category: (purchase as any).supplierCategory || "Wholesale Distributor",
           total_orders_cost: cleanPurchaseAmt,
-          last_delivery_date: purchase.date || "Today",
+          last_delivery_date: normalizedDate,
           payment_preference: purchase.payment_channel === "MPESA" ? "MPESA_TILL" : "NATIONAL_ID_DEPOSIT",
           supplied_items: purchasedGoodNames
         };
         updatedSuppliers = [newSupplier, ...(prev.suppliers || [])];
       }
 
-      return {
+      // Ensure every purchase with itemLines also has a matching receipt record in receiptsArchive
+      // so the chronological receipt sales engine can arrange dates and generate minute sales
+      let updatedArchive = [...(prev.receiptsArchive || [])];
+      if (purchase.itemLines && purchase.itemLines.length > 0) {
+        const totalRetailVal = purchase.itemLines.reduce((acc, l) => {
+          const qty = Number(l.quantity) || 1;
+          const uCost = Number(l.unitCost) || 0;
+          const rPrice = Number(l.retailPrice) || Math.round(uCost * 1.2 * 100) / 100;
+          return acc + qty * rPrice;
+        }, 0);
+        const profitVal = Math.max(0, totalRetailVal - cleanPurchaseAmt);
+        const markupVal = cleanPurchaseAmt > 0 ? Math.round((profitVal / cleanPurchaseAmt) * 1000) / 10 : 0;
+
+        const autoReceiptRecord: SavedReceiptRecord = {
+          id: effectiveReceiptId,
+          receiptNumber: purchase.receiptNumber || `DN-${Math.floor(1000 + Math.random() * 9000)}`,
+          supplierName: purchase.supplier.trim(),
+          receiptDate: normalizedDate,
+          paymentMode: purchase.payment_channel === "MPESA" ? "MPESA" : "CASH",
+          status: "approved",
+          totalCost: cleanPurchaseAmt,
+          totalRetailShelfValue: Math.round(totalRetailVal * 100) / 100,
+          totalPotentialProfit: Math.round(profitVal * 100) / 100,
+          markupPercentage: markupVal,
+          itemsCount: purchase.itemLines.length,
+          items: purchase.itemLines.map((l, idx) => {
+            const qty = Number(l.quantity) || 1;
+            const uCost = Number(l.unitCost) || 0;
+            const rPrice = Number(l.retailPrice) || Math.round(uCost * 1.2 * 100) / 100;
+            return {
+              id: l.id || `line_rcpt_${Date.now()}_${idx}`,
+              itemName: l.itemName,
+              supplyUnitsReceived: qty,
+              supplyUnit: l.unit || "Packets",
+              conversionRatio: 1,
+              retailUnitsAdded: qty,
+              retailUnit: l.unit || "Packets",
+              unitCostAtDelivery: uCost,
+              lineCost: Number(l.totalCost) || Math.round(qty * uCost * 100) / 100,
+              retailPrice: rPrice,
+              expectedMargin: Math.max(0, Math.round((rPrice - uCost) * 100) / 100),
+              approved: true
+            };
+          }),
+          imageUrl: purchase.receiptImageUrl,
+          processedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          decidedAt: new Date().toISOString(),
+          notes: purchase.notes
+        };
+
+        updatedArchive = [
+          autoReceiptRecord,
+          ...updatedArchive.filter((r) => r.id !== effectiveReceiptId)
+        ];
+      }
+
+      const existingPayouts = (prev.payouts || []).filter((p) => p.id !== newPayout.id);
+
+      const nextState: AlacioMasterState = {
         ...prev,
         inventory: updatedInventory,
-        payouts: [newPayout, ...(prev.payouts || [])],
+        payouts: [newPayout, ...existingPayouts],
         suppliers: updatedSuppliers,
+        receiptsArchive: updatedArchive,
         restockCards: [...newlyGeneratedRestockCards, ...(prev.restockCards || [])],
         kpis: calculateKpis(updatedInventory, prev.warehouse),
         last_updated: new Date().toISOString()
       };
+
+      return reconcileChronologicalReceiptsAndSales(nextState);
     });
   };
 
   // ARCHIVE WORKED-ON OR REJECTED RECEIPT IN DATABASE (GIVES SPACE FOR NEW UPLOADS)
   const handleSaveReceiptToDatabase = (receipt: SavedReceiptRecord) => {
     setMasterState((prev) => {
+      const normalizedReceipt: SavedReceiptRecord = {
+        ...receipt,
+        receiptDate: normalizeIsoDate(receipt.receiptDate)
+      };
       const existingArchive = prev.receiptsArchive || [];
-      const updatedArchive = [receipt, ...existingArchive.filter((r) => r.id !== receipt.id)];
-      return {
+      const updatedArchive = [
+        normalizedReceipt,
+        ...existingArchive.filter((r) => r.id !== normalizedReceipt.id)
+      ];
+      const nextState: AlacioMasterState = {
         ...prev,
         receiptsArchive: updatedArchive,
         last_updated: new Date().toISOString()
       };
+      return reconcileChronologicalReceiptsAndSales(nextState);
     });
   };
 

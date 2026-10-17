@@ -6,6 +6,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import adminDbRouter from "./src/services/adminDbApi";
 import coreEngineRouter from "./src/services/coreEngineApi";
+import { normalizeIsoDate } from "./src/utils/chronologicalReceiptSalesEngine";
 
 dotenv.config();
 
@@ -57,8 +58,9 @@ You process supplier invoices, cash sale receipts, handwritten shopkeeper chits,
 
 Carefully follow these extraction rules:
 1. SUPPLIER NAME: Read the exact name of the supplier / business from the top header or stamp of the receipt (for example: "THE PHIMAR TRADING CENTER").
-2. PAYMENT MODE: Read the payment mode from the receipt ("CASH", "MPESA", "CREDIT", or "EQUITEL"). If it is a Cash Sale receipt or says CASH, return "CASH".
-3. ITEMS & BUNDLE SPECIFICATIONS (even if handwritten or imperfectly specified on the receipt):
+2. RECEIPT DATE: Carefully read the date written on the receipt (e.g., "2nd of October", "8th of October", "5th of October", "02/10/2026", "05-10-2026") and return it in canonical YYYY-MM-DD format (e.g., "2026-10-02", "2026-10-08", "2026-10-05"; assume year 2026 if only day/month is written, and interpret DD/MM/YYYY in East African day-first order).
+3. PAYMENT MODE: Read the payment mode from the receipt ("CASH", "MPESA", "CREDIT", or "EQUITEL"). If it is a Cash Sale receipt or says CASH, return "CASH".
+4. ITEMS & BUNDLE SPECIFICATIONS (even if handwritten or imperfectly specified on the receipt):
    - Many wholesale receipts write items in shorthand where the pack size, packet count, and total line cost are on the same line without an explicit unit price.
    - Example from a receipt like THE PHIMAR TRADING CENTER:
      * Line 1: "Phimar Corn 25kg" with cost 1600 -> itemName: "Phimar Corn 25kg", rawSpecification: "Phimar Corn 25kg costs 1600", qtyPurchased: 1, unitOfMeasure: "Bag (25kg)", totalCost: 1600, unitCostPrice: 1600 (or 64 per kg).
@@ -247,7 +249,7 @@ ${textContent || "Please extract the supplier name, payment mode, all items (rec
         id: `rcpt_${Date.now()}`,
         receiptNumber: firstRcpt.receiptId || `PTC-${Math.floor(1000 + Math.random() * 9000)}`,
         supplierName: firstRcpt.supplierName || "THE PHIMAR TRADING CENTER",
-        receiptDate: firstRcpt.receiptDate || new Date().toISOString().slice(0, 10),
+        receiptDate: normalizeIsoDate(firstRcpt.receiptDate || req.body.file_name),
         paymentMode: normalizedPaymentMode,
         totalCost: totalCost,
         totalRetailShelfValue: totalRetail,

@@ -260,9 +260,39 @@ export default function SaasDashboardTab({
     { inflow: 39000, outflow: 27000, net: 12000 }
   ];
 
+  // Determine 11-day window: for real clients with historical receipt/sales dates (e.g. Oct 2, Oct 5, Oct 8),
+  // anchor the 11-day window so all arranged receipt and generated sales dates are visible in chronological order
+  const recordedIsoDates = !isDemo
+    ? Array.from(
+        new Set([
+          ...approvedReceipts.map((r) => (r.receiptDate || "").slice(0, 10)),
+          ...salesLedger.map((s) => (s.date || s.timestamp?.slice(0, 10) || "").slice(0, 10)),
+          ...payouts.map((p) => (p.date || p.timestamp?.slice(0, 10) || "").slice(0, 10))
+        ])
+      )
+        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+        .sort()
+    : [];
+
+  const defaultStartMs = now.getTime() - 10 * 86_400_000;
+  const earliestRecordedMs =
+    recordedIsoDates.length > 0
+      ? new Date(`${recordedIsoDates[0]}T00:00:00`).getTime()
+      : defaultStartMs;
+  const latestRecordedMs =
+    recordedIsoDates.length > 0
+      ? new Date(`${recordedIsoDates[recordedIsoDates.length - 1]}T00:00:00`).getTime()
+      : now.getTime();
+
+  const windowStartMs =
+    !isDemo && recordedIsoDates.length > 0 && earliestRecordedMs < defaultStartMs
+      ? Math.max(earliestRecordedMs, latestRecordedMs - 10 * 86_400_000)
+      : defaultStartMs;
+
   const cashflowDays = Array.from({ length: 11 }, (_, idx) => {
-    const daysAgo = 10 - idx;
-    const d = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+    const d = isDemo
+      ? new Date(now.getTime() - (10 - idx) * 86_400_000)
+      : new Date(windowStartMs + idx * 86_400_000);
     const isoDate = d.toISOString().slice(0, 10);
     const monthShort = d.toLocaleDateString("en-US", { month: "short" });
     const dayNum = d.getDate();
@@ -273,7 +303,7 @@ export default function SaasDashboardTab({
       return {
         isoDate,
         day: dayLabel,
-        isToday: daysAgo === 0,
+        isToday: idx === 10,
         inflow: pat.inflow,
         outflow: pat.outflow,
         net: pat.net
@@ -301,7 +331,7 @@ export default function SaasDashboardTab({
     return {
       isoDate,
       day: dayLabel,
-      isToday: daysAgo === 0,
+      isToday: isoDate === todayIso,
       inflow: Math.round(dayInflow * 100) / 100,
       outflow: Math.round(dayOutflow * 100) / 100,
       net: Math.round(dayNet * 100) / 100

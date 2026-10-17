@@ -15,6 +15,7 @@ import {
 } from "../types/alacio";
 import { deduplicateMorningBookends } from "../utils/morningBookendHelper";
 import { deduplicateSuppliers } from "../utils/supplierHelper";
+import { reconcileChronologicalReceiptsAndSales } from "../utils/chronologicalReceiptSalesEngine";
 import { db, handleFirestoreError, OperationType } from "./firebase";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -1301,7 +1302,7 @@ export function loadAlacioState(userEmail?: string): AlacioMasterState {
       kpis: calculateKpis(safeInventory, safeWarehouse)
     };
 
-    return hydratedState;
+    return reconcileChronologicalReceiptsAndSales(hydratedState);
   } catch (error) {
     console.warn("[YuBiFlo Storage] Error loading alacio state. Preserving state baseline:", error);
     return INITIAL_ALACIO_STATE;
@@ -1392,6 +1393,7 @@ export async function saveAlacioState(state: AlacioMasterState, userEmail?: stri
       floatDenominations: stateToPersist.floatDenominations || [],
       reconciliations: stateToPersist.reconciliations || [],
       restockCards: stateToPersist.restockCards || [],
+      receiptsArchive: stateToPersist.receiptsArchive || [],
       schema_version: SCHEMA_VERSION,
       last_updated: stateToPersist.last_persisted_at
     }, { merge: true });
@@ -1472,9 +1474,10 @@ export async function restoreUserStateFromCloud(userEmail: string): Promise<Alac
           kpis: calculateKpis(safeInv, data.warehouse || [])
         };
 
+        const reconciled = reconcileChronologicalReceiptsAndSales(restored);
         // Cache restored data to localStorage so offline access works immediately
-        saveAlacioState(restored, userEmail);
-        return restored;
+        saveAlacioState(reconciled, userEmail);
+        return reconciled;
       }
     }
     return null;
