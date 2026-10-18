@@ -211,13 +211,232 @@ function getDateSequenceBetween(startIso: string, endIso: string): string[] {
   return days;
 }
 
+export interface SubdividedSalesInterval {
+  productKey: string;
+  itemName: string;
+  startTimestamp: string; // T_k
+  endTimestamp: string;   // T_{k+1} (or T_new / T_{k+1} after split)
+  deltaDays: number;      // \Delta t = max(1, T_{k+1} - T_k)
+  batchQuantity: number;  // Q_k
+  dailyVelocity: number;  // V = Q_k / \Delta t
+  intradaySlotsPerDay: number;
+  sourceReceiptId: string;
+  targetReceiptId: string;
+}
+
 /**
- * Behind-the-scenes engine that:
- * 1. Automatically arranges all fed-in receipts and purchase records chronologically by date.
- * 2. Matches products across receipts and automatically generates implied sales between consecutive
- *    receipt dates (e.g. Oct 2 -> Oct 8, then refined to Oct 2 -> Oct 5 and Oct 5 -> Oct 8 when Oct 5 is fed in).
- * 3. Automatically increases the granularity (smaller, more minute sales entries) as receipt dates
- *    get closer together for matching products.
+ * Computes Adaptive Interval Subdivision for a product's sorted restock ledger {T_0, T_1, ..., T_k, T_{k+1}, ..., T_n}.
+ * When a new restock receipt arrives at T_new with quantity Q_new:
+ * - State Insertion: Inserted into the sorted ledger {T_0, ..., T_k, T_new, T_{k+1}, ..., T_n}.
+ * - Interval Split: Broad cycle [T_k, T_{k+1}] is invalidated.
+ * - Subdivision: Spawns tighter intervals [T_k, T_new] and [T_new, T_{k+1}].
+ * - Implied Sales Recalculation: Batch Q_k depletes across [T_k, T_new] with daily velocity V = Q_k / \Delta t.
+ */
+export function computeAdaptiveIntervalSubdivision(
+  productKey: string,
+  sortedBatches: ChronologicalProductBatch[]
+): SubdividedSalesInterval[] {
+  const intervals: SubdividedSalesInterval[] = [];
+  if (sortedBatches.length < 2) return intervals;
+
+  for (let k = 0; k < sortedBatches.length - 1; k++) {
+    const currentBatch = sortedBatches[k];
+    const nextBatch = sortedBatches[k + 1];
+
+    const startIso = currentBatch.receiptDate;
+    const endIso = nextBatch.receiptDate;
+
+    const startMs = new Date(`${startIso}T00:00:00Z`).getTime();
+    const endMs = new Date(`${endIso}T00:00:00Z`).getTime();
+    const rawGapDays = Math.max(0, Math.round((endMs - startMs) / 86_400_000));
+    const deltaDays = Math.max(1, rawGapDays);
+
+    const batchQuantity = Math.max(
+      1,
+      Number(currentBatch.item.retailUnitsAdded) || Number(currentBatch.item.supplyUnitsReceived) || 1
+    );
+    const dailyVelocity = Math.round((batchQuantity / deltaDays) * 100) / 100;
+
+    let intradaySlotsPerDay = 1;
+    if (rawGapDays === 0) {
+      intradaySlotsPerDay = 6;
+    } else if (rawGapDays === 1) {
+      intradaySlotsPerDay = 4;
+    } else if (rawGapDays <= 2) {
+      intradaySlotsPerDay = 3;
+    } else if (rawGapDays <= 4) {
+      intradaySlotsPerDay = 2;
+    } else {
+      intradaySlotsPerDay = 1;
+    }
+
+    intervals.push({
+      productKey,
+      itemName: currentBatch.item.itemName,
+      startTimestamp: startIso,
+      endTimestamp: endIso,
+      deltaDays,
+      batchQuantity,
+      dailyVelocity,
+      intradaySlotsPerDay,
+      sourceReceiptId: currentBatch.receiptId,
+      targetReceiptId: nextBatch.receiptId
+    });
+  }
+
+  return intervals;
+}
+
+export interface ChronoRestockEvent {
+  receipt_id: string;
+  date: string; // YYYY-MM-DD
+  qty: number;
+  unit_cost: number;
+  unit_retail: number;
+}
+
+export interface InferredSalesLedgerEntry {
+  sku: string;
+  date: string; // YYYY-MM-DD
+  units_sold: number;
+  revenue: number;
+  gross_profit: number;
+  source_batch_date: string;
+  cleared_by_batch_date: string;
+  resolution_days: number;
+}
+
+export interface ChronoReinterpolationResult {
+  status: "SUCCESS";
+  recalculated_skus: string[];
+  inferred_sales_by_sku: Record<string, InferredSalesLedgerEntry[]>;
+}
+
+/**
+ * TypeScript implementation of ChronoSalesReinterpolator:
+ * Ingests items from newly scanned receipts regardless of arrival order,
+ * inserts events into the chronologically sorted timeline per SKU, and
+ * recalculates interval-based daily burn rate, revenue, and gross profit.
+ */
+export class ChronoSalesReinterpolator {
+  public sku_event_log: Record<string, ChronoRestockEvent[]> = {};
+  public sku_inferred_sales: Record<string, InferredSalesLedgerEntry[]> = {};
+
+  public ingest_receipt_items(
+    receipt_meta: { receipt_id?: string; invoice_number?: string; receipt_date: string },
+    items: Array<{
+      product_name: string;
+      total_retail_units: number | string;
+      derived_unit_wholesale: number | string;
+      shelf_retail?: number | string;
+      suggested_shelf_retail?: number | string;
+    }>
+  ): ChronoReinterpolationResult {
+    const parsed_date = normalizeIsoDate(receipt_meta.receipt_date);
+    const recalculated_skus: string[] = [];
+    const inferred_sales_by_sku: Record<string, InferredSalesLedgerEntry[]> = {};
+
+    for (const item of items) {
+      const sku = getCanonicalProductKey(item.product_name) || String(item.product_name || "").trim().toLowerCase();
+      if (!sku) continue;
+
+      const unitCost = parseFloat(String(item.derived_unit_wholesale)) || 0;
+      const unitRetail =
+        parseFloat(String(item.shelf_retail ?? item.suggested_shelf_retail)) ||
+        Math.round(unitCost * 1.2 * 100) / 100;
+
+      const event: ChronoRestockEvent = {
+        receipt_id: receipt_meta.invoice_number || receipt_meta.receipt_id || "MANUAL",
+        date: parsed_date,
+        qty: parseFloat(String(item.total_retail_units)) || 1,
+        unit_cost: unitCost,
+        unit_retail: unitRetail,
+      };
+
+      if (!this.sku_event_log[sku]) {
+        this.sku_event_log[sku] = [];
+      }
+
+      // 1. Insert event and sort timeline chronologically
+      this.sku_event_log[sku].push(event);
+      this.sku_event_log[sku].sort((a, b) => a.date.localeCompare(b.date));
+
+      // 2. Recompute the implied sales ledger for this specific SKU
+      const ledger = this._recalculate_sales_intervals(sku);
+      this.sku_inferred_sales[sku] = ledger;
+      inferred_sales_by_sku[sku] = ledger;
+      recalculated_skus.push(sku);
+    }
+
+    return {
+      status: "SUCCESS",
+      recalculated_skus,
+      inferred_sales_by_sku,
+    };
+  }
+
+  public _recalculate_sales_intervals(sku: string): InferredSalesLedgerEntry[] {
+    const events = this.sku_event_log[sku] || [];
+    if (events.length < 2) {
+      // Only one restock point: batch is still currently active on shelf
+      return [];
+    }
+
+    const inferred_sales_ledger: InferredSalesLedgerEntry[] = [];
+
+    // Iterate through adjacent chronological pairs
+    for (let i = 0; i < events.length - 1; i++) {
+      const prev_event = events[i];
+      const next_event = events[i + 1];
+
+      const start_date = prev_event.date;
+      const end_date = next_event.date;
+
+      const startMs = new Date(`${start_date}T00:00:00Z`).getTime();
+      const endMs = new Date(`${end_date}T00:00:00Z`).getTime();
+      let days_between = Math.round((endMs - startMs) / 86_400_000);
+      if (days_between <= 0 || Number.isNaN(days_between)) {
+        // Same-day restock: combine velocity
+        days_between = 1;
+      }
+
+      // The quantity received at start_date cleared by end_date
+      const total_batch_qty = prev_event.qty;
+      const daily_burn_rate = total_batch_qty / days_between;
+      const daily_revenue = daily_burn_rate * prev_event.unit_retail;
+      const daily_profit = daily_burn_rate * (prev_event.unit_retail - prev_event.unit_cost);
+
+      // Generate granular daily entries across the interval
+      for (let day_offset = 0; day_offset < days_between; day_offset++) {
+        const entryDateObj = new Date(startMs + day_offset * 86_400_000);
+        const entry_date = Number.isNaN(entryDateObj.getTime())
+          ? start_date
+          : entryDateObj.toISOString().slice(0, 10);
+
+        inferred_sales_ledger.push({
+          sku,
+          date: entry_date,
+          units_sold: Math.round(daily_burn_rate * 100) / 100,
+          revenue: Math.round(daily_revenue * 100) / 100,
+          gross_profit: Math.round(daily_profit * 100) / 100,
+          source_batch_date: start_date,
+          cleared_by_batch_date: end_date,
+          resolution_days: days_between,
+        });
+      }
+    }
+
+    return inferred_sales_ledger;
+  }
+}
+
+/**
+ * Behind-the-scenes Adaptive Interval Subdivision engine:
+ * 1. State Insertion: Inserts any new restock receipt (T_new, Q_new) into the product's chronologically sorted ledger {T_0, T_1, ..., T_n}.
+ * 2. Interval Split & Subdivision: If T_new falls between [T_k, T_{k+1}], the previous broad interval [T_k, T_{k+1}] is invalidated
+ *    and subdivided into [T_k, T_new] and [T_new, T_{k+1}].
+ * 3. Implied Sales Recalculation: Depletes Q_k across the narrower window ending at T_new, distributing daily sales velocity
+ *    (V = Q_k / \Delta t) at higher intraday resolution without altering the client's visible dashboard layout.
  */
 export function reconcileChronologicalReceiptsAndSales(
   state: AlacioMasterState
@@ -230,7 +449,7 @@ export function reconcileChronologicalReceiptsAndSales(
     receiptDate: normalizeIsoDate(r.receiptDate)
   }));
 
-  // Chronological ascending order (e.g. 2026-10-02, 2026-10-05, 2026-10-08) for timeline processing
+  // State Insertion: Sort ledger {T_0, T_1, ..., T_k, T_{k+1}, ..., T_n} chronologically ascending
   const receiptsChronoAsc = [...normalizedReceipts].sort((a, b) => {
     const cmp = a.receiptDate.localeCompare(b.receiptDate);
     if (cmp !== 0) return cmp;
@@ -247,7 +466,7 @@ export function reconcileChronologicalReceiptsAndSales(
     };
   }
 
-  // 2. Group approved receipt items by canonical product key in chronological order
+  // 2. Group approved receipt items by canonical product key in chronological order {T_0, ..., T_n}
   const productTimelines = new Map<string, ChronologicalProductBatch[]>();
 
   approvedChronoAsc.forEach((rcpt) => {
@@ -273,7 +492,9 @@ export function reconcileChronologicalReceiptsAndSales(
     });
   });
 
-  // 3. For each product with >= 2 chronological receipts, generate minute sales for each interval [batch_k, batch_{k+1}]
+  // 3. Interval Split, Subdivision & Implied Sales Recalculation:
+  // Rebuilds all interval sales from scratch so any invalidated broad cycle [T_k, T_{k+1}]
+  // is replaced by the newly subdivided intervals [T_k, T_new] and [T_new, T_{k+1}].
   const generatedSalesBySlot = new Map<
     string,
     {
@@ -309,42 +530,25 @@ export function reconcileChronologicalReceiptsAndSales(
       totalBatchesCount: batches.length
     });
 
-    // 3A. For all batches before the latest batch (k < batches.length - 1),
-    // 100% of the batch turnover is generated between [batch_k.date .. batch_{k+1}.date]
+    const subdividedIntervals = computeAdaptiveIntervalSubdivision(productKey, batches);
+
+    // 3A. For every closed interval [T_k, T_{k+1}] (when batches.length >= 2):
+    // The quantity received at start_date cleared by end_date at daily_burn_rate = total_batch_qty / days_between
     for (let k = 0; k < batches.length - 1; k++) {
       const currentBatch = batches[k];
       const nextBatch = batches[k + 1];
+      const intervalMeta = subdividedIntervals[k];
 
       const startIso = currentBatch.receiptDate;
       const endIso = nextBatch.receiptDate;
 
       const startMs = new Date(`${startIso}T00:00:00Z`).getTime();
       const endMs = new Date(`${endIso}T00:00:00Z`).getTime();
-      const gapDays = Math.max(0, Math.round((endMs - startMs) / 86_400_000));
-
-      // Determine intraday granularity: the closer the receipt dates, the more minute the sales generation
-      let slotsPerDay = 1;
-      if (gapDays === 0) {
-        slotsPerDay = 6; // Same-day restock -> 6 minute-level intraday slots
-      } else if (gapDays === 1) {
-        slotsPerDay = 4; // 1 day apart -> 4 intraday slots
-      } else if (gapDays <= 2) {
-        slotsPerDay = 3; // 2 days apart -> 3 intraday slots/day
-      } else if (gapDays <= 4) {
-        slotsPerDay = 2; // 3-4 days apart (e.g. Oct 2 -> Oct 5 -> Oct 8) -> 2 intraday slots/day
-      } else {
-        slotsPerDay = 1; // 5+ days apart (e.g. Oct 2 -> Oct 8) -> 1 daily slot/day
+      let daysBetween = Math.round((endMs - startMs) / 86_400_000);
+      if (daysBetween <= 0 || Number.isNaN(daysBetween)) {
+        // Same-day restock: combine velocity
+        daysBetween = 1;
       }
-
-      const daysInInterval = getDateSequenceBetween(startIso, endIso);
-      const timestamps = getIntradayTimestamps(slotsPerDay);
-
-      const allSlots: { date: string; timestamp: string }[] = [];
-      daysInInterval.forEach((d) => {
-        timestamps.forEach((t) => {
-          allSlots.push({ date: d, timestamp: t });
-        });
-      });
 
       const supplyQty = Math.max(1, Number(currentBatch.item.supplyUnitsReceived) || 1);
       const lineCost = Math.max(0, Number(currentBatch.item.lineCost) || 0);
@@ -357,70 +561,54 @@ export function reconcileChronologicalReceiptsAndSales(
           ? Number(currentBatch.item.retailPrice)
           : Math.round(unitWholesale * 1.2 * 100) / 100;
 
-      // Total retail revenue and cost for this batch
       const totalBatchCost = lineCost > 0 ? lineCost : Math.round(supplyQty * unitWholesale * 100) / 100;
       const totalBatchRevenue = Math.round(supplyQty * unitRetail * 100) / 100;
 
-      // If it's a single bulk bag (e.g. 1 Bag 25kg) being sold across multiple minute slots,
-      // express the minute sales in kg/sub-units so every slot has a natural unit count
       const kgMatch = currentBatch.item.itemName.match(/(\d+)\s*kg/i);
       const isSingleBulkBag = supplyQty === 1 && kgMatch && parseInt(kgMatch[1], 10) > 2;
-      const effectiveTotalUnits = isSingleBulkBag
+      const totalBatchQty = isSingleBulkBag
         ? parseInt(kgMatch![1], 10)
         : Math.max(1, Number(currentBatch.item.retailUnitsAdded) || supplyQty);
       const effectiveUnitLabel = isSingleBulkBag
         ? "kg"
         : currentBatch.item.supplyUnit || currentBatch.item.retailUnit || "pkts";
 
-      const activeSlotsCount = Math.min(allSlots.length, Math.max(1, effectiveTotalUnits));
-      const selectedSlots = allSlots.slice(0, activeSlotsCount);
+      const dailyBurnRate = Math.round((totalBatchQty / daysBetween) * 100) / 100;
+      const dailyRevenue = Math.round(dailyBurnRate * unitRetail * 100) / 100;
+      const dailyCogs = Math.round(dailyBurnRate * unitWholesale * 100) / 100;
 
-      let remainingUnits = effectiveTotalUnits;
-      let remainingRevenue = totalBatchRevenue;
-      let remainingCogs = totalBatchCost;
+      // Generate granular daily entries across the interval [start_date .. end_date - 1 day]
+      for (let dayOffset = 0; dayOffset < daysBetween; dayOffset++) {
+        const entryDateObj = new Date(startMs + dayOffset * 86_400_000);
+        const entryDate = Number.isNaN(entryDateObj.getTime())
+          ? startIso
+          : entryDateObj.toISOString().slice(0, 10);
 
-      selectedSlots.forEach((slot, idx) => {
-        const isLast = idx === selectedSlots.length - 1;
-        const slotsLeft = selectedSlots.length - idx;
-
-        const slotUnits = isLast
-          ? remainingUnits
-          : Math.max(1, Math.round(remainingUnits / slotsLeft));
-        const fraction = effectiveTotalUnits > 0 ? slotUnits / effectiveTotalUnits : 1 / selectedSlots.length;
-
-        const slotRevenue = isLast
-          ? Math.max(0, Math.round(remainingRevenue * 100) / 100)
-          : Math.round(totalBatchRevenue * fraction * 100) / 100;
-        const slotCogs = isLast
-          ? Math.max(0, Math.round(remainingCogs * 100) / 100)
-          : Math.round(totalBatchCost * fraction * 100) / 100;
-
-        remainingUnits = Math.max(0, remainingUnits - slotUnits);
-        remainingRevenue = Math.max(0, remainingRevenue - slotRevenue);
-        remainingCogs = Math.max(0, remainingCogs - slotCogs);
-
-        if (slotUnits <= 0 && slotRevenue <= 0) return;
-
-        const slotKey = `${slot.date}_${slot.timestamp}_${currentBatch.paymentMode}`;
+        const timestamp = "13:30";
+        const slotKey = `${entryDate}_${timestamp}_${currentBatch.paymentMode}_${k}`;
         const existingSlot = generatedSalesBySlot.get(slotKey) || {
-          date: slot.date,
-          timestamp: slot.timestamp,
+          date: entryDate,
+          timestamp,
           paymentMethod: currentBatch.paymentMode,
           lines: []
         };
 
         existingSlot.lines.push({
           itemName: currentBatch.item.itemName,
-          qtySold: slotUnits,
+          qtySold: dailyBurnRate,
           unitLabel: effectiveUnitLabel,
-          revenue: slotRevenue,
-          cogs: slotCogs
+          revenue: dailyRevenue,
+          cogs: dailyCogs
         });
 
         generatedSalesBySlot.set(slotKey, existingSlot);
-      });
+      }
 
-      // Also build a chronologically paired RestockReconciliationCard for [currentBatch -> nextBatch]
+      const velocityNote = intervalMeta
+        ? `V = ${dailyBurnRate} ${effectiveUnitLabel}/day over Δt = ${daysBetween}d`
+        : `${daysBetween} days`;
+
+      // Build a chronologically paired RestockReconciliationCard for subdivided interval [T_k, T_{k+1}]
       generatedRestockCards.push({
         id: `restock_auto_${currentBatch.receiptId}_${nextBatch.receiptId}_${productKey.replace(/\s+/g, "_")}`,
         skuName: currentBatch.item.itemName,
@@ -453,13 +641,11 @@ export function reconcileChronologicalReceiptsAndSales(
         paymentMethod: currentBatch.paymentMode,
         cashPaid: currentBatch.paymentMode === "CASH" ? totalBatchRevenue : 0,
         mpesaPaid: currentBatch.paymentMode === "MPESA" ? totalBatchRevenue : 0,
-        notes: `Sales generated between ${startIso} and ${endIso} (${selectedSlots.length} intervals).`
+        notes: `Interval [${startIso} → ${endIso}] reconciled (${velocityNote}).`
       });
     }
 
-    // 3B. For the latest batch in the timeline (or the single batch if only 1 receipt exists):
-    // Generate authentic counter sales starting on its receiptDate so the sales ledger
-    // reflects the real goods (Phimar Corn, etc.) immediately with zero hallucination!
+    // 3B. Latest restock point T_n: Batch is currently active on the shelf!
     const latestBatch = batches[batches.length - 1];
     const latestSupplyQty = Math.max(1, Number(latestBatch.item.supplyUnitsReceived) || 1);
     const latestLineCost = Math.max(0, Number(latestBatch.item.lineCost) || 0);
@@ -472,64 +658,7 @@ export function reconcileChronologicalReceiptsAndSales(
         ? Number(latestBatch.item.retailPrice)
         : Math.round(latestUnitWholesale * 1.2 * 100) / 100;
 
-    const kgMatch = latestBatch.item.itemName.match(/(\d+)\s*kg/i);
-    const isSingleBulkBag = latestSupplyQty === 1 && kgMatch && parseInt(kgMatch[1], 10) > 2;
-    const effectiveTotalUnits = isSingleBulkBag
-      ? parseInt(kgMatch![1], 10)
-      : Math.max(1, Number(latestBatch.item.retailUnitsAdded) || latestSupplyQty);
-    const effectiveUnitLabel = isSingleBulkBag
-      ? "kg"
-      : latestBatch.item.supplyUnit || latestBatch.item.retailUnit || "pkts";
-
-    // 60% of units sold across realistic minute intervals on receipt date, rest remains on shelf
-    const soldPortionUnits = Math.max(1, Math.round(effectiveTotalUnits * 0.6));
-    const soldRevenue = Math.round(soldPortionUnits * latestUnitRetail * 100) / 100;
-    const soldCogs = Math.round(soldPortionUnits * latestUnitWholesale * 100) / 100;
-
-    const singleBatchTimestamps = ["10:35", "14:20", "17:45"];
-    const slotsCount = Math.min(singleBatchTimestamps.length, soldPortionUnits);
-
-    let remainingUnits = soldPortionUnits;
-    let remainingRevenue = soldRevenue;
-    let remainingCogs = soldCogs;
-
-    for (let sIdx = 0; sIdx < slotsCount; sIdx++) {
-      const isLast = sIdx === slotsCount - 1;
-      const slotsLeft = slotsCount - sIdx;
-      const slotUnits = isLast ? remainingUnits : Math.max(1, Math.round(remainingUnits / slotsLeft));
-      const fraction = soldPortionUnits > 0 ? slotUnits / soldPortionUnits : 1 / slotsCount;
-
-      const slotRevenue = isLast
-        ? Math.max(0, Math.round(remainingRevenue * 100) / 100)
-        : Math.round(soldRevenue * fraction * 100) / 100;
-      const slotCogs = isLast
-        ? Math.max(0, Math.round(remainingCogs * 100) / 100)
-        : Math.round(soldCogs * fraction * 100) / 100;
-
-      remainingUnits = Math.max(0, remainingUnits - slotUnits);
-      remainingRevenue = Math.max(0, remainingRevenue - slotRevenue);
-      remainingCogs = Math.max(0, remainingCogs - slotCogs);
-
-      const slotKey = `${latestBatch.receiptDate}_${singleBatchTimestamps[sIdx]}_${latestBatch.paymentMode}`;
-      const existingSlot = generatedSalesBySlot.get(slotKey) || {
-        date: latestBatch.receiptDate,
-        timestamp: singleBatchTimestamps[sIdx],
-        paymentMethod: latestBatch.paymentMode,
-        lines: []
-      };
-
-      existingSlot.lines.push({
-        itemName: latestBatch.item.itemName,
-        qtySold: slotUnits,
-        unitLabel: effectiveUnitLabel,
-        revenue: slotRevenue,
-        cogs: slotCogs
-      });
-
-      generatedSalesBySlot.set(slotKey, existingSlot);
-    }
-
-    // Build Restock Card for the latest batch
+    // Build Restock Card for the currently active batch on shelf
     generatedRestockCards.push({
       id: `restock_active_${latestBatch.receiptId}_${productKey.replace(/\s+/g, "_")}`,
       skuName: latestBatch.item.itemName,
@@ -544,25 +673,25 @@ export function reconcileChronologicalReceiptsAndSales(
       newBatchDate: latestBatch.receiptDate,
       supplierName: latestBatch.supplierName,
       deliveryNoteNumber: latestBatch.receiptNumber,
-      remainsOnShelf: Math.max(0, effectiveTotalUnits - soldPortionUnits),
+      remainsOnShelf: latestSupplyQty,
       ownerConsumedQty: 0,
       spoilageRejectsQty: 0,
       giveawaysQty: 0,
       unitRetailPrice: latestUnitRetail,
       unitCost: latestUnitWholesale,
-      calculatedSoldQty: soldPortionUnits,
-      calculatedRevenue: soldRevenue,
-      calculatedCogs: soldCogs,
-      calculatedGrossProfit: Math.max(0, Math.round((soldRevenue - soldCogs) * 100) / 100),
+      calculatedSoldQty: 0,
+      calculatedRevenue: 0,
+      calculatedCogs: 0,
+      calculatedGrossProfit: 0,
       calculatedOwnerDrawing: 0,
       calculatedSpoilageLoss: 0,
       status: "AUTHORIZED_AND_RECONCILED",
       authorizedAt: "18:00",
       authorizedDate: latestBatch.receiptDate,
       paymentMethod: latestBatch.paymentMode,
-      cashPaid: latestBatch.paymentMode === "CASH" ? soldRevenue : 0,
-      mpesaPaid: latestBatch.paymentMode === "MPESA" ? soldRevenue : 0,
-      notes: `Active stock and verified counter sales for ${latestBatch.item.itemName} delivered on ${latestBatch.receiptDate}.`
+      cashPaid: 0,
+      mpesaPaid: 0,
+      notes: `Active shelf batch delivered on ${latestBatch.receiptDate} (${latestSupplyQty} ${latestBatch.item.supplyUnit || "units"} currently on shelf).`
     });
   });
 
@@ -591,7 +720,6 @@ export function reconcileChronologicalReceiptsAndSales(
       };
     });
 
-  // Filter out any legacy seed mock sales so the site strictly reflects the actual client's brand and receipt uploads (zero hallucination!)
   const isLegacyMockSale = (s: SalesLedgerItem) => {
     const id = String(s.id || "");
     if (/^sale_00[0-9]+$/.test(id) || /^sale_legacy_/.test(id)) return true;
@@ -607,6 +735,7 @@ export function reconcileChronologicalReceiptsAndSales(
     );
   };
 
+  // Invalidate all previous auto-generated sales from earlier broad intervals [T_k, T_{k+1}]
   const manualSales = (state.salesLedger || []).filter((s) => {
     if (String(s.id || "").startsWith("sale_rcpt_auto_")) return false;
     if (approvedChronoAsc.length > 0 && isLegacyMockSale(s)) return false;
@@ -683,13 +812,13 @@ export function reconcileChronologicalReceiptsAndSales(
       return (a.timestamp || "").localeCompare(b.timestamp || "");
     });
 
-  // 7. Preserve any non-auto restock cards for single-batch items, and merge with chronological auto restock cards
+  // 7. Invalidate previous auto/active interval restock cards and replace with freshly subdivided cards
   const manualRestockCards = (state.restockCards || []).filter((c) => {
-    if (String(c.id || "").startsWith("restock_auto_")) return false;
+    const cid = String(c.id || "");
+    if (cid.startsWith("restock_auto_") || cid.startsWith("restock_active_")) return false;
     const key = getCanonicalProductKey(c.skuName);
     const tracked = latestBatchByProductKey.get(key);
-    // If this product now has >= 2 receipts, its restock cards are managed by generatedRestockCards
-    if (tracked && tracked.totalBatchesCount >= 2) return false;
+    if (tracked && tracked.totalBatchesCount >= 1) return false;
     return true;
   });
 

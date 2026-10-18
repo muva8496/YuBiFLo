@@ -573,6 +573,117 @@ ${textContent ? `Additional receipt text context:\n${textContent}` : ""}`;
   app.post("/api/gemini/parse-receipts", parseReceiptHandler);
   app.post("/api/v1/receipt-ocr", parseReceiptHandler);
 
+  // Server-side ChronoSalesReinterpolator instance (SKU -> List of Restock Events)
+  const skuEventLog: Record<
+    string,
+    Array<{
+      receipt_id: string;
+      date: string;
+      qty: number;
+      unit_cost: number;
+      unit_retail: number;
+    }>
+  > = {};
+
+  const recalculateSalesIntervals = (sku: string) => {
+    const events = skuEventLog[sku] || [];
+    if (events.length < 2) {
+      // Only one restock point: batch is still currently active on shelf
+      return [];
+    }
+
+    const inferredSalesLedger: Array<{
+      sku: string;
+      date: string;
+      units_sold: number;
+      revenue: number;
+      gross_profit: number;
+      source_batch_date: string;
+      cleared_by_batch_date: string;
+      resolution_days: number;
+    }> = [];
+
+    for (let i = 0; i < events.length - 1; i++) {
+      const prevEvent = events[i];
+      const nextEvent = events[i + 1];
+
+      const startMs = new Date(`${prevEvent.date}T00:00:00Z`).getTime();
+      const endMs = new Date(`${nextEvent.date}T00:00:00Z`).getTime();
+      let daysBetween = Math.round((endMs - startMs) / 86_400_000);
+      if (daysBetween <= 0 || Number.isNaN(daysBetween)) {
+        daysBetween = 1;
+      }
+
+      const totalBatchQty = prevEvent.qty;
+      const dailyBurnRate = totalBatchQty / daysBetween;
+      const dailyRevenue = dailyBurnRate * prevEvent.unit_retail;
+      const dailyProfit = dailyBurnRate * (prevEvent.unit_retail - prevEvent.unit_cost);
+
+      for (let dayOffset = 0; dayOffset < daysBetween; dayOffset++) {
+        const entryDateObj = new Date(startMs + dayOffset * 86_400_000);
+        const entryDate = Number.isNaN(entryDateObj.getTime())
+          ? prevEvent.date
+          : entryDateObj.toISOString().slice(0, 10);
+
+        inferredSalesLedger.push({
+          sku,
+          date: entryDate,
+          units_sold: Math.round(dailyBurnRate * 100) / 100,
+          revenue: Math.round(dailyRevenue * 100) / 100,
+          gross_profit: Math.round(dailyProfit * 100) / 100,
+          source_batch_date: prevEvent.date,
+          cleared_by_batch_date: nextEvent.date,
+          resolution_days: daysBetween,
+        });
+      }
+    }
+
+    return inferredSalesLedger;
+  };
+
+  app.post("/api/v1/reinterpolate-sales", (req, res) => {
+    try {
+      const { receipt_meta = {}, items = [] } = req.body || {};
+      const parsedDate = extractExplicitDate(receipt_meta.receipt_date) || "2026-10-16";
+      const recalculatedSkus: string[] = [];
+      const inferredSalesBySku: Record<string, any[]> = {};
+
+      for (const item of items) {
+        const sku = String(item.product_name || item.itemName || "").trim().toLowerCase();
+        if (!sku) continue;
+
+        const event = {
+          receipt_id: receipt_meta.invoice_number || receipt_meta.receipt_id || "MANUAL",
+          date: parsedDate,
+          qty: parseFloat(String(item.total_retail_units ?? item.supplyUnitsReceived ?? 1)) || 1,
+          unit_cost: parseFloat(String(item.derived_unit_wholesale ?? item.unitCostAtDelivery ?? 0)) || 0,
+          unit_retail: parseFloat(String(item.shelf_retail ?? item.suggested_shelf_retail ?? item.retailPrice ?? 0)) || 0,
+        };
+
+        if (!skuEventLog[sku]) {
+          skuEventLog[sku] = [];
+        }
+        skuEventLog[sku].push(event);
+        skuEventLog[sku].sort((a, b) => a.date.localeCompare(b.date));
+
+        const inferred = recalculateSalesIntervals(sku);
+        inferredSalesBySku[sku] = inferred;
+        recalculatedSkus.push(sku);
+      }
+
+      return res.json({
+        status: "SUCCESS",
+        recalculated_skus: recalculatedSkus,
+        inferred_sales_by_sku: inferredSalesBySku,
+      });
+    } catch (err: any) {
+      return res.status(500).json({
+        status: "ERROR",
+        error: err.message || "Failed to reinterpolate sales intervals",
+      });
+    }
+  });
+
   // Gemini Leakage Detective & Reconcile AI Advisor
   app.post("/api/gemini/analyze-leakage", async (req, res) => {
     try {
