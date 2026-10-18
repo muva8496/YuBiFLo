@@ -1286,10 +1286,11 @@ export default function App() {
         )}
 
         {/* TAB 4: PURCHASES (MULTI-GOODS RESTOCK & RECEIPT OCR) */}
-        {(activeTab === "purchases" || activeTab === "receipt_ocr") && (
+        {(activeTab === "purchases" || activeTab === "purchases_cargo" || activeTab === "receipt_ocr") && (
           <PurchasesTab
             state={currentMasterState}
             initialSupplier={preselectedSupplier}
+            initialView={activeTab === "receipt_ocr" ? "upload" : activeTab === "purchases_cargo" ? "cargo" : "all"}
             onNavigateTab={setActiveTab}
             onLogPurchase={handleLogMultiItemPurchase}
             onAuthorizeRestockSale={handleAuthorizeRestockSale}

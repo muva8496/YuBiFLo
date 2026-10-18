@@ -68,6 +68,7 @@ interface PurchasesTabProps {
   }) => void;
   onNavigateTab?: (tabId: string) => void;
   initialSupplier?: string;
+  initialView?: "all" | "cargo" | "upload" | "archive";
   onAuthorizeRestockSale?: (payload: any) => void;
   onDismissRestockCard?: (cardId: string) => void;
   onSaveReceiptToDatabase?: (receipt: SavedReceiptRecord) => void;
@@ -81,6 +82,7 @@ export default function PurchasesTab({
   onLogPurchase,
   onNavigateTab,
   initialSupplier,
+  initialView,
   onAuthorizeRestockSale,
   onDismissRestockCard,
   onSaveReceiptToDatabase,
@@ -91,6 +93,20 @@ export default function PurchasesTab({
   const { currency, inventory = [], suppliers = [], payouts = [], restockCards = [], receiptsArchive = [] } = state;
   const [showAllRestockCards, setShowAllRestockCards] = useState<boolean>(false);
   const [activeSubSection, setActiveSubSection] = useState<"ALL" | "EXPENSES_ONLY">("ALL");
+
+  // Sub-view switcher for Purchases module: Cargo Lot entry vs Upload Receipts (OCR) vs Database Archive
+  const [activeSubView, setActiveSubView] = useState<"all" | "cargo" | "upload" | "archive">(() => {
+    if (initialView === "upload") return "upload";
+    if (initialView === "cargo") return "cargo";
+    if (initialView === "archive") return "archive";
+    return "all";
+  });
+
+  useEffect(() => {
+    if (initialView) {
+      setActiveSubView(initialView);
+    }
+  }, [initialView]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const purchaseFormRef = useRef<HTMLDivElement>(null);
@@ -874,6 +890,7 @@ export default function PurchasesTab({
 
           <button
             onClick={() => {
+              setActiveSubView("upload");
               fileInputRef.current?.click();
             }}
             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
@@ -884,6 +901,7 @@ export default function PurchasesTab({
 
           <button
             onClick={() => {
+              setActiveSubView("cargo");
               setIsAddingPurchase(true);
               if (purchaseFormRef.current) {
                 purchaseFormRef.current.scrollIntoView({ behavior: "smooth" });
@@ -944,8 +962,79 @@ export default function PurchasesTab({
       </div>
 
       {/* ========================================================================= */}
+      {/* PURCHASES SUB-NAVIGATION: CARGO LOTS VS UPLOAD RECEIPTS (OCR) VS ARCHIVE   */}
+      {/* "The upload receipts module should not be a module on its own, it should   */}
+      {/* remain under purchases"                                                    */}
+      {/* ========================================================================= */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-2 flex items-center justify-between gap-2 flex-wrap shadow-2xs">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setActiveSubView("all")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              activeSubView === "all"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "bg-slate-50 hover:bg-slate-100 text-slate-700"
+            }`}
+          >
+            <span>All Purchases</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubView("upload")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              activeSubView === "upload"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200"
+            }`}
+          >
+            <Camera size={14} />
+            <span>Upload Receipts (OCR)</span>
+            <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-white/20 text-white">
+              White Paper
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveSubView("cargo");
+              setIsAddingPurchase(true);
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              activeSubView === "cargo"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
+            }`}
+          >
+            <Layers size={14} />
+            <span>Inbound Cargo &amp; Lots</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubView("archive")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              activeSubView === "archive"
+                ? "bg-slate-800 text-white shadow-xs"
+                : "bg-slate-50 hover:bg-slate-100 text-slate-700"
+            }`}
+          >
+            <History size={14} />
+            <span>Receipts Archive ({receiptsArchive.length})</span>
+          </button>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-500 font-mono">
+          <span>Mode: <strong className="text-slate-800">{activeSubView === "upload" ? "Receipts Under Purchases" : activeSubView === "cargo" ? "Cargo Shipments" : activeSubView === "archive" ? "Database Archive" : "Full Purchases View"}</strong></span>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
       {/* 1B. RESTOCK AUTO-SALES RECONCILIATION CARDS (COLLAPSIBLE / COMPACT)       */}
       {/* ========================================================================= */}
+      {(activeSubView === "all" || activeSubView === "cargo") && (
       <div className="bg-[#0b131e] border-2 border-amber-500/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-lg space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-800 pb-2.5">
           <div className="flex items-center gap-2.5">
@@ -1104,7 +1193,7 @@ export default function PurchasesTab({
           const overallMarkup = approvedTotalCost > 0 ? ((potentialProfit / approvedTotalCost) * 100).toFixed(1) : "0.0";
 
           return (
-            <div className="bg-slate-50 border-2 border-blue-200/90 rounded-2xl p-3.5 sm:p-5 space-y-4">
+            <div className="bg-white border-2 border-slate-200 rounded-3xl p-4 sm:p-6 space-y-5 shadow-sm">
               
               {/* TOP BANNER: EDITABLE RECEIPT METADATA & ACTIONS */}
               <div className="flex flex-col gap-3 border-b border-slate-200 pb-3">
@@ -1225,40 +1314,48 @@ export default function PurchasesTab({
               {/* TWO-COLUMN LAYOUT: PHOTO THUMBNAIL (LEFT) + INTERACTIVE GOODS APPROVAL TABLE (RIGHT) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
                 
-                {/* PHOTO PREVIEW (LEFT) */}
-                <div className="lg:col-span-4 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                      Physical Receipt Photo
+                {/* PHOTO PREVIEW (LEFT) - PURE WHITE BACKGROUND PHYSICAL RECEIPT */}
+                <div className="lg:col-span-5 bg-white p-4 rounded-2xl border-2 border-slate-200 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block flex items-center gap-1.5">
+                      <FileText size={15} className="text-blue-600" />
+                      Physical Receipt &bull; White Background
                     </span>
-                    <span className="text-[10px] text-emerald-600 font-mono font-bold">
-                      OCR Confidence: {((scannedReceipt.confidenceScore || 0.98) * 100).toFixed(0)}%
+                    <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-mono font-bold">
+                      Confidence: {((scannedReceipt.confidenceScore || 0.98) * 100).toFixed(0)}%
                     </span>
                   </div>
 
-                  <div className="max-h-64 overflow-hidden rounded-xl border border-slate-100 flex items-center justify-center bg-slate-100 relative group">
+                  {/* PURE WHITE RECEIPT PAPER DISPLAY (ZERO GRAY TINT) */}
+                  <div 
+                    className="min-h-[320px] overflow-hidden rounded-xl border-2 border-slate-200 flex items-center justify-center bg-white p-3 shadow-sm relative group"
+                    style={{ backgroundColor: "#ffffff" }}
+                  >
                     {scannedReceiptImage ? (
-                      <img
-                        src={scannedReceiptImage}
-                        alt="Scanned Supplier Receipt"
-                        className="w-full h-auto object-contain max-h-64 rounded-lg"
-                      />
+                      <div className="w-full flex justify-center bg-white" style={{ backgroundColor: "#ffffff" }}>
+                        <img
+                          src={scannedReceiptImage}
+                          alt="Scanned Supplier Receipt"
+                          className="w-full h-auto object-contain max-h-[460px] rounded shadow-xs bg-white"
+                          style={{ backgroundColor: "#ffffff" }}
+                        />
+                      </div>
                     ) : (
-                      <div className="p-8 text-center text-slate-400 text-xs">
+                      <div className="p-8 text-center text-slate-400 text-xs bg-white" style={{ backgroundColor: "#ffffff" }}>
                         <Camera size={32} className="mx-auto mb-1 text-slate-400" />
                         No photo attached
                       </div>
                     )}
                   </div>
 
-                  <div className="pt-1 text-[11px] text-slate-500 flex items-center justify-between">
+                  <div className="pt-1 text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100">
                     <span>Payment: <strong className="text-slate-800">{scannedReceipt.paymentMode}</strong></span>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer underline text-[11px]"
                     >
-                      Change Photo
+                      Change Photo / Upload
                     </button>
                   </div>
                 </div>
@@ -1875,13 +1972,17 @@ export default function PurchasesTab({
               </button>
             </div>
 
-            {/* RECEIPT IMAGE IF AVAILABLE */}
+            {/* RECEIPT IMAGE IF AVAILABLE - PURE WHITE BACKGROUND */}
             {inspectingReceipt.imageUrl && (
-              <div className="p-2 bg-slate-100 rounded-2xl flex items-center justify-center max-h-56 overflow-hidden border border-slate-200">
+              <div 
+                className="p-3 bg-white rounded-2xl flex items-center justify-center max-h-72 overflow-hidden border-2 border-slate-200 shadow-sm"
+                style={{ backgroundColor: "#ffffff" }}
+              >
                 <img
                   src={inspectingReceipt.imageUrl}
                   alt="Receipt full image"
-                  className="max-h-56 object-contain rounded-lg"
+                  className="max-h-72 object-contain rounded-lg bg-white"
+                  style={{ backgroundColor: "#ffffff" }}
                 />
               </div>
             )}

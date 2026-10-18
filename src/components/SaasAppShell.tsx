@@ -79,7 +79,15 @@ export default function SaasAppShell({
     { id: "launchpad", name: "Launchpad", icon: <Rocket size={17} /> },
     { id: "dashboard", name: "Dashboard", icon: <LayoutDashboard size={17} /> },
     { id: "supply_sales", name: "Sales & Payments", icon: <TrendingUp size={17} /> },
-    { id: "purchases", name: "Purchases", icon: <ShoppingBag size={17} /> },
+    {
+      id: "purchases",
+      name: "Purchases",
+      icon: <ShoppingBag size={17} />,
+      children: [
+        { id: "purchases_cargo", name: "Inbound Cargo" },
+        { id: "receipt_ocr", name: "Upload Receipts" }
+      ]
+    },
     { id: "suppliers", name: "Suppliers", icon: <Truck size={17} /> },
     {
       id: "expenses",
