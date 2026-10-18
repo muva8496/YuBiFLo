@@ -639,7 +639,8 @@ export function reconcileChronologicalReceiptsAndSales(
         ? Number(latestItem.retailPrice)
         : Math.round(latestUnitCost * 1.2 * 100) / 100;
 
-    const shelfStock = tracked.totalBatchesCount >= 2 ? latestQty : Math.max(1, Math.round(latestQty * 0.4));
+    const existingStock = existingIdx >= 0 ? Number(updatedInventory[existingIdx].current_stock) || 0 : 0;
+    const shelfStock = Math.max(latestQty, existingStock);
 
     if (existingIdx >= 0) {
       updatedInventory[existingIdx] = {

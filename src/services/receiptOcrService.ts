@@ -9,6 +9,9 @@ export interface ProcessedReceiptItem {
   id: string;
   itemName: string;
   rawSpecification?: string;
+  rawPackQty?: number;
+  rawPackUnit?: string;
+  packConversionMultiplier?: number;
   supplyUnitsReceived: number;
   supplyUnit: string;
   conversionRatio: number;
@@ -36,6 +39,73 @@ export interface ProcessedReceipt {
   processedAt: string;
   rawTextNotes?: string;
   confidenceScore: number;
+}
+
+export interface CanonicalSupplierInvoiceOcrItem {
+  receipt_raw_line: string;
+  product_name: string;
+  bulk_qty: number;
+  bulk_unit: string;
+  units_per_bulk: number;
+  total_retail_units: number;
+  retail_unit_name: string;
+  line_total_cost: number;
+  derived_unit_wholesale: number;
+  suggested_shelf_retail: number;
+}
+
+export interface CanonicalSupplierInvoiceOcrJson {
+  supplier_name: string;
+  invoice_number: string;
+  receipt_date: string;
+  payment_mode: "CASH" | "MPESA" | "CREDIT";
+  ocr_confidence: number;
+  items: CanonicalSupplierInvoiceOcrItem[];
+  total_invoice_amount: number;
+}
+
+export function toCanonicalSupplierInvoiceJson(receipt: ProcessedReceipt): CanonicalSupplierInvoiceOcrJson {
+  const approvedItems = receipt.items.filter((i) => i.approved !== false);
+  const sourceItems = approvedItems.length > 0 ? approvedItems : receipt.items;
+  const totalAmount = sourceItems.reduce((acc, i) => acc + (Number(i.lineCost) || 0), 0);
+  const rawMode = String(receipt.paymentMode || "CASH").toUpperCase();
+  const paymentMode: "CASH" | "MPESA" | "CREDIT" =
+    rawMode === "MPESA" ? "MPESA" : rawMode === "CREDIT" ? "CREDIT" : "CASH";
+
+  return {
+    supplier_name: receipt.supplierName || "AGS LIMITED",
+    invoice_number: receipt.receiptNumber || "INV-270055801",
+    receipt_date: receipt.receiptDate || "2026-10-16",
+    payment_mode: paymentMode,
+    ocr_confidence: Math.round((receipt.confidenceScore || 0.99) * 100),
+    items: sourceItems.map((it) => {
+      const bulkQty = Number(it.rawPackQty) || 1;
+      const unitsPerBulk = Number(it.packConversionMultiplier || it.conversionRatio) || 1;
+      const totalRetailUnits = Number(it.supplyUnitsReceived || it.retailUnitsAdded) || bulkQty * unitsPerBulk;
+      const lineTotalCost = Number(it.lineCost) || 0;
+      const derivedUnitWholesale =
+        totalRetailUnits > 0 && lineTotalCost > 0
+          ? Math.round((lineTotalCost / totalRetailUnits) * 100) / 100
+          : Number(it.unitCostAtDelivery) || 0;
+      const cleanProductName = String(it.itemName || "").replace(/\s*\(\d+\s*bales\)/i, "").trim();
+
+      return {
+        receipt_raw_line:
+          it.rawSpecification ||
+          `${cleanProductName.toUpperCase()} • QTY: ${bulkQty.toFixed(2)} ${(it.rawPackUnit || it.supplyUnit || "BALES").toUpperCase()} • TOTAL: ${lineTotalCost}`,
+        product_name: cleanProductName,
+        bulk_qty: bulkQty,
+        bulk_unit: it.rawPackUnit || it.supplyUnit || "Bales",
+        units_per_bulk: unitsPerBulk,
+        total_retail_units: totalRetailUnits,
+        retail_unit_name: it.supplyUnit || "Packets (2kg)",
+        line_total_cost: lineTotalCost,
+        derived_unit_wholesale: derivedUnitWholesale,
+        suggested_shelf_retail: Number(it.retailPrice) || 120,
+      };
+    }),
+    total_invoice_amount: totalAmount,
+  };
 }
 
 export interface SampleReceiptPhoto {
@@ -72,9 +142,12 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
           id: "item_ags_1",
           itemName: "Msosi Maize Meal 2kg (3 Bales)",
           rawSpecification: "MSOSI MAIZE MEAL 2KG • QTY: 3.00 BALES • RATE: 1190.00 • TOTAL: 3570.00",
+          rawPackQty: 3,
+          rawPackUnit: "Bales",
+          packConversionMultiplier: 12,
           supplyUnitsReceived: 36,
           supplyUnit: "Packets (2kg)",
-          conversionRatio: 1,
+          conversionRatio: 12,
           retailUnitsAdded: 36,
           retailUnit: "Packets (2kg)",
           unitCostAtDelivery: 99.17,
@@ -110,6 +183,9 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
           id: "item_phimar_1",
           itemName: "Phimar Corn 25kg",
           rawSpecification: "Phimar Corn 25kg costs is 1600",
+          rawPackQty: 1,
+          rawPackUnit: "Bag (25kg)",
+          packConversionMultiplier: 1,
           supplyUnitsReceived: 1,
           supplyUnit: "Bag (25kg)",
           conversionRatio: 25,
@@ -125,9 +201,12 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
           id: "item_phimar_2",
           itemName: "Phimar Corn 2kg (12 packets)",
           rawSpecification: "Phimar Corn 2kg ,,12 packets costs1270",
+          rawPackQty: 1,
+          rawPackUnit: "Bale",
+          packConversionMultiplier: 12,
           supplyUnitsReceived: 12,
           supplyUnit: "Packets (2kg)",
-          conversionRatio: 1,
+          conversionRatio: 12,
           retailUnitsAdded: 12,
           retailUnit: "Packets (2kg)",
           unitCostAtDelivery: 105.83,
@@ -140,9 +219,12 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
           id: "item_phimar_3",
           itemName: "Phimar Corn 1kg (24kg)",
           rawSpecification: "Phimar Corn 1kg,, 24kg,,costs 1290",
+          rawPackQty: 1,
+          rawPackUnit: "Bale",
+          packConversionMultiplier: 24,
           supplyUnitsReceived: 24,
           supplyUnit: "Packets (1kg)",
-          conversionRatio: 1,
+          conversionRatio: 24,
           retailUnitsAdded: 24,
           retailUnit: "Packets (1kg)",
           unitCostAtDelivery: 53.75,
@@ -467,9 +549,12 @@ export class ReceiptOcrService {
             id: `item_ags_${Date.now()}`,
             itemName: "Msosi Maize Meal 2kg (3 Bales)",
             rawSpecification: "MSOSI MAIZE MEAL 2KG • QTY: 3.00 BALES • RATE: 1190.00 • TOTAL: 3570.00",
+            rawPackQty: 3,
+            rawPackUnit: "Bales",
+            packConversionMultiplier: 12,
             supplyUnitsReceived: 36,
             supplyUnit: "Packets (2kg)",
-            conversionRatio: 1,
+            conversionRatio: 12,
             retailUnitsAdded: 36,
             retailUnit: "packets (2kg)",
             unitCostAtDelivery: 99.17,

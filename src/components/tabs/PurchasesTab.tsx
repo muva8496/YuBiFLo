@@ -283,6 +283,17 @@ export default function PurchasesTab({
   });
   const [scannedReceiptImage, setScannedReceiptImage] = useState<string>(SAMPLE_SUPPLIER_RECEIPTS[0].previewUrl);
   const [scannerFeedback, setScannerFeedback] = useState<string | null>(null);
+  const [showStructuredJson, setShowStructuredJson] = useState(false);
+  const [lastCoreDatabaseUpdate, setLastCoreDatabaseUpdate] = useState<{
+    receiptNumber: string;
+    supplierName: string;
+    receiptDate: string;
+    paymentMode: string;
+    totalUnitsAdded: number;
+    itemsSummary: string;
+    totalCost: number;
+    markupPercentage: string;
+  } | null>(null);
 
   // Receipts Database Archive state
   const [archiveFilter, setArchiveFilter] = useState<"all" | "approved" | "rejected">("all");
@@ -513,11 +524,35 @@ export default function PurchasesTab({
 
       const updated = { ...item };
 
-      if (field === "itemName" || field === "supplyUnit" || field === "retailUnit" || field === "rawSpecification") {
+      if (
+        field === "itemName" ||
+        field === "supplyUnit" ||
+        field === "retailUnit" ||
+        field === "rawSpecification" ||
+        field === "rawPackUnit"
+      ) {
         (updated as any)[field] = value;
       } else {
         const numVal = value === "" ? 0 : Number(value) || 0;
         (updated as any)[field] = numVal;
+
+        if (field === "rawPackQty" || field === "packConversionMultiplier") {
+          const packQty = field === "rawPackQty" ? Math.max(1, numVal) : Math.max(1, Number(item.rawPackQty) || 1);
+          const mult =
+            field === "packConversionMultiplier"
+              ? Math.max(1, numVal)
+              : Math.max(1, Number(item.packConversionMultiplier || item.conversionRatio) || 1);
+          const derivedUnits = Math.max(1, Math.round(packQty * mult * 100) / 100);
+          updated.rawPackQty = packQty;
+          updated.packConversionMultiplier = mult;
+          updated.conversionRatio = mult;
+          updated.supplyUnitsReceived = derivedUnits;
+          updated.retailUnitsAdded = derivedUnits;
+          const currentLineCost = Number(item.lineCost) || 0;
+          if (currentLineCost > 0) {
+            updated.unitCostAtDelivery = Math.round((currentLineCost / derivedUnits) * 100) / 100;
+          }
+        }
 
         if (field === "supplyUnitsReceived") {
           const qty = numVal > 0 ? numVal : 1;
@@ -543,7 +578,14 @@ export default function PurchasesTab({
           updated.lineCost = Math.round(qty * numVal * 100) / 100;
         }
 
-        if (field === "retailPrice" || field === "unitCostAtDelivery" || field === "lineCost" || field === "supplyUnitsReceived") {
+        if (
+          field === "retailPrice" ||
+          field === "unitCostAtDelivery" ||
+          field === "lineCost" ||
+          field === "supplyUnitsReceived" ||
+          field === "rawPackQty" ||
+          field === "packConversionMultiplier"
+        ) {
           const rPrice = field === "retailPrice" ? numVal : Number(item.retailPrice) || 0;
           const uCost = Number(updated.unitCostAtDelivery) || 0;
           updated.expectedMargin = Math.max(0, Math.round((rPrice - uCost) * 100) / 100);
@@ -669,6 +711,25 @@ export default function PurchasesTab({
       onSaveReceiptToDatabase(savedRecord);
     }
 
+    const totalUnitsAdded = approvedItems.reduce(
+      (acc, i) => acc + (Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 0),
+      0
+    );
+    const itemsSummaryText = approvedItems
+      .map((i) => `+${i.supplyUnitsReceived} ${i.supplyUnit} ${i.itemName}`)
+      .join(", ");
+
+    setLastCoreDatabaseUpdate({
+      receiptNumber: effectiveReceiptNumber,
+      supplierName: scannedReceipt.supplierName,
+      receiptDate: scannedReceipt.receiptDate || new Date().toISOString().slice(0, 10),
+      paymentMode: scannedReceipt.paymentMode,
+      totalUnitsAdded,
+      itemsSummary: itemsSummaryText,
+      totalCost: totalApprovedCost,
+      markupPercentage: markup.toFixed(1)
+    });
+
     // 3. Clear active scanner to give space for new uploads
     const clearedNumber = scannedReceipt.receiptNumber;
     const clearedSupplier = scannedReceipt.supplierName;
@@ -676,9 +737,9 @@ export default function PurchasesTab({
     setScannedReceiptImage("");
 
     setSuccessNote(
-      `✓ Worked-on receipt ${clearedNumber} (${clearedSupplier}) approved! Added ${currency} ${totalApprovedCost.toLocaleString()} to database and active inventory. Scanner cleared for next upload.`
+      `✓ 1-Click "Approve & Ingest" Complete for ${clearedNumber} (${clearedSupplier})! 1. Stock increased (+${totalUnitsAdded} units), 2. Cost outflow (${currency} ${totalApprovedCost.toLocaleString()}) logged in ${scannedReceipt.paymentMode} Ledger, 3. Restock-Trigger closed previous batch!`
     );
-    setTimeout(() => setSuccessNote(null), 7000);
+    setTimeout(() => setSuccessNote(null), 8000);
   };
 
   // Reject receipt: save to database with rejection reason and clear scanner to give space for new uploads
@@ -1198,6 +1259,97 @@ export default function PurchasesTab({
           </div>
         )}
 
+        {/* 5-STAGE MULTIMODAL OCR & BREAK-BULK INGESTION PIPELINE BANNER */}
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 grid grid-cols-1 sm:grid-cols-5 gap-2 text-[11px]">
+          <div className="bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between">
+            <span className="text-[9px] font-mono uppercase font-bold text-slate-400">01. Capture</span>
+            <strong className="text-slate-900 font-semibold block mt-0.5">Snap Physical Invoice / Slip</strong>
+            <span className="text-[10px] text-slate-500 font-mono mt-0.5">Base64 White-Paper Image</span>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between">
+            <span className="text-[9px] font-mono uppercase font-bold text-blue-600">02. Gemini Vision OCR</span>
+            <strong className="text-slate-900 font-semibold block mt-0.5">Structured JSON Extraction</strong>
+            <span className="text-[10px] text-slate-500 font-mono mt-0.5">Supplier, Inv #, Date, Mode, Items</span>
+          </div>
+          <div className="bg-white border border-blue-200 rounded-xl p-2.5 flex flex-col justify-between">
+            <span className="text-[9px] font-mono uppercase font-bold text-blue-700">03. Break-Bulk Logic</span>
+            <strong className="text-slate-900 font-semibold block mt-0.5">Pack &rarr; Unit Derivation</strong>
+            <span className="text-[10px] text-blue-700 font-mono mt-0.5">e.g. 3 Bales &rarr; 36 Pkts @ 99.17</span>
+          </div>
+          <div className="bg-white border border-emerald-200 rounded-xl p-2.5 flex flex-col justify-between">
+            <span className="text-[9px] font-mono uppercase font-bold text-emerald-700">04. Human-in-the-Loop</span>
+            <strong className="text-slate-900 font-semibold block mt-0.5">Shopkeeper Review Screen</strong>
+            <span className="text-[10px] text-emerald-700 font-mono mt-0.5">Audit, Adjust &amp; Approve Items</span>
+          </div>
+          <div className="bg-emerald-50/70 border border-emerald-300 rounded-xl p-2.5 flex flex-col justify-between">
+            <span className="text-[9px] font-mono uppercase font-bold text-emerald-800">05. 1-Click Ingest</span>
+            <strong className="text-emerald-950 font-bold block mt-0.5">YuBiFlo Core DB Updates</strong>
+            <span className="text-[10px] text-emerald-800 font-mono mt-0.5">+Stock &bull; Cash Outflow &bull; Restock Close</span>
+          </div>
+        </div>
+
+        {/* LIVE YUBIFLO CORE DATABASE UPDATES REPORT CARD (SHOWN AFTER 1-CLICK "APPROVE & INGEST") */}
+        {lastCoreDatabaseUpdate && (
+          <div className="bg-emerald-50/90 border-2 border-emerald-400 rounded-2xl p-4 space-y-3 shadow-xs animate-in fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200 pb-2.5">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={18} className="text-emerald-700 shrink-0" />
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-emerald-950">
+                    YuBiFlo Core Database Updates Executed &bull; {lastCoreDatabaseUpdate.receiptNumber} ({lastCoreDatabaseUpdate.supplierName})
+                  </h4>
+                  <span className="text-[11px] text-emerald-800 font-mono">
+                    Obtained Receipt Date: {lastCoreDatabaseUpdate.receiptDate} &bull; Payment Mode: {lastCoreDatabaseUpdate.paymentMode}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLastCoreDatabaseUpdate(null)}
+                className="text-[11px] text-emerald-800 hover:text-emerald-950 font-bold px-2 py-0.5 rounded bg-white/80 border border-emerald-300 cursor-pointer self-start sm:self-auto"
+              >
+                Dismiss
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+              <div className="bg-white p-3 rounded-xl border border-emerald-200 space-y-1">
+                <span className="text-[10px] font-mono uppercase font-bold text-emerald-700 block">
+                  1. Stock Increases (+{lastCoreDatabaseUpdate.totalUnitsAdded} Packets)
+                </span>
+                <p className="font-bold text-slate-900">{lastCoreDatabaseUpdate.itemsSummary}</p>
+                <span className="text-[11px] text-slate-500 block">
+                  Break-bulk retail units added to active shelf stock (Margin: {lastCoreDatabaseUpdate.markupPercentage}%).
+                </span>
+              </div>
+
+              <div className="bg-white p-3 rounded-xl border border-emerald-200 space-y-1">
+                <span className="text-[10px] font-mono uppercase font-bold text-amber-700 block">
+                  2. Cost Outflows Logged in Cash/Till Ledger
+                </span>
+                <p className="font-bold text-slate-900 font-mono">
+                  -{currency} {lastCoreDatabaseUpdate.totalCost.toLocaleString()} ({lastCoreDatabaseUpdate.paymentMode})
+                </p>
+                <span className="text-[11px] text-slate-500 block">
+                  Wholesale payout deducted and logged in {lastCoreDatabaseUpdate.paymentMode} Ledger on {lastCoreDatabaseUpdate.receiptDate}.
+                </span>
+              </div>
+
+              <div className="bg-white p-3 rounded-xl border border-emerald-200 space-y-1">
+                <span className="text-[10px] font-mono uppercase font-bold text-blue-700 block">
+                  3. Restock-Trigger Closes Previous Batch!
+                </span>
+                <p className="font-bold text-slate-900">
+                  Previous Batch Reconciled &amp; Closed
+                </p>
+                <span className="text-[11px] text-slate-500 block">
+                  Earlier batch stock turnover automatically reconciled into verified counter sales.
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ========================================================================= */}
         {/* STATE A: ACTIVE RECEIPT IN REVIEW (ITEM-BY-ITEM CLIENT APPROVAL)          */}
         {/* ========================================================================= */}
@@ -1213,442 +1365,491 @@ export default function PurchasesTab({
           const overallMarkup = approvedTotalCost > 0 ? ((potentialProfit / approvedTotalCost) * 100).toFixed(1) : "0.0";
 
           return (
-            <div className="bg-white border-2 border-slate-200 rounded-3xl p-4 sm:p-6 space-y-5 shadow-sm">
+            <div className="bg-[#f8fafc] text-slate-800 rounded-2xl border border-slate-200 p-4 sm:p-6 font-sans shadow-lg space-y-6">
               
-              {/* TOP BANNER: EDITABLE RECEIPT METADATA & ACTIONS */}
-              <div className="flex flex-col gap-3 border-b border-slate-200 pb-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] font-mono uppercase font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full inline-block">
-                      Receipt Under Review &bull; {approvedItems.length} of {scannedReceipt.items.length} Goods Approved
-                    </span>
-                    <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
-                      <Calendar size={11} className="text-emerald-700" />
-                      <span>Obtained Date: {scannedReceipt.receiptDate || "2026-10-16"}</span>
-                    </span>
-                  </div>
-
-                  {/* APPROVAL TOGGLES & TOP BUTTONS */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newItem: ProcessedReceiptItem = {
-                          id: `item_manual_${Date.now()}`,
-                          itemName: "New Receipt Item",
-                          supplyUnitsReceived: 1,
-                          supplyUnit: "Packets",
-                          conversionRatio: 1,
-                          retailUnitsAdded: 1,
-                          retailUnit: "packets",
-                          unitCostAtDelivery: 100,
-                          lineCost: 100,
-                          retailPrice: 125,
-                          expectedMargin: 25,
-                          approved: true
-                        };
-                        const nextItems = [...scannedReceipt.items, newItem];
-                        const nextApproved = nextItems.filter((i) => i.approved !== false);
-                        const nextCost = nextApproved.reduce((a, i) => a + (Number(i.lineCost) || 0), 0);
-                        const nextRetail = nextApproved.reduce((a, i) => a + ((Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 0) * (Number(i.retailPrice) || 0)), 0);
-                        setScannedReceipt({
-                          ...scannedReceipt,
-                          items: nextItems,
-                          totalCost: nextCost,
-                          totalRetailShelfValue: nextRetail,
-                          totalPotentialProfit: Math.max(0, nextRetail - nextCost)
-                        });
-                      }}
-                      className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold rounded-lg transition flex items-center gap-1 cursor-pointer"
-                    >
-                      <Plus size={13} />
-                      <span>+ Add Good</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleApproveAllItems}
-                      className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold rounded-lg transition flex items-center gap-1 cursor-pointer"
-                    >
-                      <CheckSquare size={13} className="text-emerald-600" />
-                      <span>Approve All</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleRejectAllItems}
-                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition flex items-center gap-1 cursor-pointer"
-                    >
-                      <Square size={13} className="text-slate-500" />
-                      <span>Exclude All</span>
-                    </button>
-                  </div>
+              {/* 1. TOP STATUS BAR & GLOBAL ACTIONS */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-[11px] font-bold tracking-wider uppercase rounded-md">
+                    Receipt Under Review
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500">
+                    &bull; {approvedItems.length} of {scannedReceipt.items.length} Goods Approved
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowStructuredJson(!showStructuredJson)}
+                    className="text-[10px] font-mono font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-md cursor-pointer transition"
+                  >
+                    {showStructuredJson ? "Hide Structured JSON" : "{ } View Structured JSON"}
+                  </button>
                 </div>
 
-                {/* EDITABLE SUPPLIER, INVOICE NO, DATE, PAYMENT MODE */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200">
-                  <div>
-                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Supplier Name</label>
-                    <input
-                      type="text"
-                      list="receipt-suppliers-datalist"
-                      value={scannedReceipt.supplierName}
-                      onChange={(e) => setScannedReceipt({ ...scannedReceipt, supplierName: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-900"
-                      placeholder="Supplier or distributor"
-                    />
-                    <datalist id="receipt-suppliers-datalist">
-                      {suppliers.map((s) => (
-                        <option key={s.id} value={s.name} />
-                      ))}
-                    </datalist>
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Receipt / Invoice #</label>
-                    <input
-                      type="text"
-                      value={scannedReceipt.receiptNumber}
-                      onChange={(e) => setScannedReceipt({ ...scannedReceipt, receiptNumber: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-0.5">
-                      <label className="text-[9px] font-bold uppercase text-emerald-700 flex items-center gap-1">
-                        <Calendar size={10} />
-                        <span>Receipt Date (Obtained)</span>
-                      </label>
-                      <span className="text-[8px] font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">
-                        Auto-Read ✓
-                      </span>
-                    </div>
-                    <input
-                      type="date"
-                      value={scannedReceipt.receiptDate || "2026-10-16"}
-                      onChange={(e) => setScannedReceipt({ ...scannedReceipt, receiptDate: e.target.value })}
-                      className="w-full bg-emerald-50/50 border border-emerald-300 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Payment Mode</label>
-                    <select
-                      value={scannedReceipt.paymentMode}
-                      onChange={(e) => setScannedReceipt({ ...scannedReceipt, paymentMode: e.target.value as any })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-900"
-                    >
-                      <option value="CASH">CASH</option>
-                      <option value="MPESA">MPESA</option>
-                      <option value="CREDIT">SUPPLIER CREDIT</option>
-                      <option value="EQUITEL">EQUITEL / BANK</option>
-                    </select>
-                  </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newItem: ProcessedReceiptItem = {
+                        id: `item_manual_${Date.now()}`,
+                        itemName: "New Receipt Item",
+                        rawPackQty: 1,
+                        rawPackUnit: "Bale",
+                        packConversionMultiplier: 12,
+                        supplyUnitsReceived: 12,
+                        supplyUnit: "Packets (2kg)",
+                        conversionRatio: 12,
+                        retailUnitsAdded: 12,
+                        retailUnit: "packets (2kg)",
+                        unitCostAtDelivery: 100,
+                        lineCost: 1200,
+                        retailPrice: 125,
+                        expectedMargin: 25,
+                        approved: true
+                      };
+                      const nextItems = [...scannedReceipt.items, newItem];
+                      const nextApproved = nextItems.filter((i) => i.approved !== false);
+                      const nextCost = nextApproved.reduce((a, i) => a + (Number(i.lineCost) || 0), 0);
+                      const nextRetail = nextApproved.reduce((a, i) => a + ((Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 0) * (Number(i.retailPrice) || 0)), 0);
+                      setScannedReceipt({
+                        ...scannedReceipt,
+                        items: nextItems,
+                        totalCost: nextCost,
+                        totalRetailShelfValue: nextRetail,
+                        totalPotentialProfit: Math.max(0, nextRetail - nextCost)
+                      });
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition cursor-pointer"
+                  >
+                    <Plus size={14} /> Add Good
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApproveAllItems}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-slate-700 hover:bg-slate-100 border border-slate-300 rounded-lg text-xs font-semibold transition cursor-pointer"
+                  >
+                    <Check size={14} /> Approve All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRejectAllItems}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-slate-700 hover:bg-slate-100 border border-slate-300 rounded-lg text-xs font-semibold transition cursor-pointer"
+                  >
+                    <X size={14} /> Exclude All
+                  </button>
                 </div>
               </div>
 
-              {/* TWO-COLUMN LAYOUT: PHOTO THUMBNAIL (LEFT) + INTERACTIVE GOODS APPROVAL TABLE (RIGHT) */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+              {/* 2. RECEIPT METADATA GRID */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white p-4 rounded-xl border border-slate-200 text-xs">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    Supplier Name
+                  </label>
+                  <input
+                    type="text"
+                    list="receipt-suppliers-datalist"
+                    value={scannedReceipt.supplierName}
+                    onChange={(e) => setScannedReceipt({ ...scannedReceipt, supplierName: e.target.value })}
+                    className="w-full font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-md p-2 focus:outline-blue-500"
+                    placeholder="Supplier or distributor"
+                  />
+                  <datalist id="receipt-suppliers-datalist">
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={s.name} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    Receipt / Invoice #
+                  </label>
+                  <input
+                    type="text"
+                    value={scannedReceipt.receiptNumber}
+                    onChange={(e) => setScannedReceipt({ ...scannedReceipt, receiptNumber: e.target.value })}
+                    className="w-full font-mono font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-md p-2 focus:outline-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    Receipt Date
+                  </label>
+                  <input
+                    type="date"
+                    value={scannedReceipt.receiptDate || "2026-10-16"}
+                    onChange={(e) => setScannedReceipt({ ...scannedReceipt, receiptDate: e.target.value })}
+                    className="w-full font-mono text-slate-800 bg-slate-50 border border-slate-200 rounded-md p-2 focus:outline-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    Payment Mode
+                  </label>
+                  <select
+                    value={scannedReceipt.paymentMode}
+                    onChange={(e) => setScannedReceipt({ ...scannedReceipt, paymentMode: e.target.value as any })}
+                    className="w-full font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-md p-2 focus:outline-blue-500 cursor-pointer"
+                  >
+                    <option value="CASH">CASH</option>
+                    <option value="MPESA">M-PESA</option>
+                    <option value="CREDIT">SUPPLIER CREDIT</option>
+                    <option value="EQUITEL">EQUITEL / BANK</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* STRUCTURED JSON EXTRACTION DRAWER (GEMINI VISION ENGINE OUTPUT) */}
+              {showStructuredJson && (
+                <div className="bg-slate-900 text-emerald-300 p-3.5 rounded-2xl font-mono text-[11px] overflow-x-auto border border-slate-700 space-y-1.5">
+                  <div className="flex items-center justify-between text-slate-400 text-[10px] border-b border-slate-800 pb-1.5">
+                    <span>YUBIFLO SUPPLIER INVOICE OCR ENGINE &rarr; EXACT JSON SCHEMA</span>
+                    <div className="flex items-center gap-2">
+                      <span>Confidence: {Math.round((scannedReceipt.confidenceScore || 0.99) * 100)}%</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const jsonStr = JSON.stringify(
+                            {
+                              supplier_name: scannedReceipt.supplierName,
+                              invoice_number: scannedReceipt.receiptNumber,
+                              receipt_date: scannedReceipt.receiptDate || "2026-10-16",
+                              payment_mode:
+                                scannedReceipt.paymentMode === "MPESA"
+                                  ? "MPESA"
+                                  : scannedReceipt.paymentMode === "CREDIT"
+                                  ? "CREDIT"
+                                  : "CASH",
+                              ocr_confidence: Math.round((scannedReceipt.confidenceScore || 0.99) * 100),
+                              items: scannedReceipt.items.map((it) => ({
+                                receipt_raw_line:
+                                  it.rawSpecification ||
+                                  `${it.itemName.toUpperCase()} • QTY: ${(it.rawPackQty || 1).toFixed(2)} ${(it.rawPackUnit || it.supplyUnit).toUpperCase()} • TOTAL: ${it.lineCost}`,
+                                product_name: it.itemName.replace(/\s*\(\d+\s*bales\)/i, "").trim(),
+                                bulk_qty: it.rawPackQty || 1,
+                                bulk_unit: it.rawPackUnit || it.supplyUnit,
+                                units_per_bulk: it.packConversionMultiplier || it.conversionRatio || 1,
+                                total_retail_units: it.supplyUnitsReceived,
+                                retail_unit_name: it.supplyUnit,
+                                line_total_cost: it.lineCost,
+                                derived_unit_wholesale: it.unitCostAtDelivery,
+                                suggested_shelf_retail: it.retailPrice,
+                              })),
+                              total_invoice_amount: approvedTotalCost,
+                            },
+                            null,
+                            2
+                          );
+                          navigator.clipboard?.writeText(jsonStr);
+                          setSuccessNote("Copied Supplier Invoice OCR JSON to clipboard.");
+                          setTimeout(() => setSuccessNote(null), 2500);
+                        }}
+                        className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-600 cursor-pointer"
+                      >
+                        Copy JSON
+                      </button>
+                    </div>
+                  </div>
+                  <pre className="text-[11px] leading-relaxed">
+                    {JSON.stringify(
+                      {
+                        supplier_name: scannedReceipt.supplierName,
+                        invoice_number: scannedReceipt.receiptNumber,
+                        receipt_date: scannedReceipt.receiptDate || "2026-10-16",
+                        payment_mode:
+                          scannedReceipt.paymentMode === "MPESA"
+                            ? "MPESA"
+                            : scannedReceipt.paymentMode === "CREDIT"
+                            ? "CREDIT"
+                            : "CASH",
+                        ocr_confidence: Math.round((scannedReceipt.confidenceScore || 0.99) * 100),
+                        items: scannedReceipt.items.map((it) => ({
+                          receipt_raw_line:
+                            it.rawSpecification ||
+                            `${it.itemName.toUpperCase()} • QTY: ${(it.rawPackQty || 1).toFixed(2)} ${(it.rawPackUnit || it.supplyUnit).toUpperCase()} • TOTAL: ${it.lineCost}`,
+                          product_name: it.itemName.replace(/\s*\(\d+\s*bales\)/i, "").trim(),
+                          bulk_qty: it.rawPackQty || 1,
+                          bulk_unit: it.rawPackUnit || it.supplyUnit,
+                          units_per_bulk: it.packConversionMultiplier || it.conversionRatio || 1,
+                          total_retail_units: it.supplyUnitsReceived,
+                          retail_unit_name: it.supplyUnit,
+                          line_total_cost: it.lineCost,
+                          derived_unit_wholesale: it.unitCostAtDelivery,
+                          suggested_shelf_retail: it.retailPrice,
+                        })),
+                        total_invoice_amount: approvedTotalCost,
+                      },
+                      null,
+                      2
+                    )}
+                  </pre>
+                </div>
+              )}
+
+              {/* 3. TWO-COLUMN REVIEW: PHOTO ON LEFT, DECIPHERED FORM ON RIGHT */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
-                {/* PHOTO PREVIEW (LEFT) - PURE WHITE BACKGROUND PHYSICAL RECEIPT */}
-                <div className="lg:col-span-5 bg-white p-4 rounded-2xl border-2 border-slate-200 shadow-sm space-y-3" style={{ backgroundColor: "#ffffff" }}>
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block flex items-center gap-1.5">
-                      <FileText size={15} className="text-blue-600" />
-                      Physical Receipt &bull; White Background
-                    </span>
-                    <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-mono font-bold">
-                      Date: {scannedReceipt.receiptDate || "2026-10-16"}
+                {/* LEFT COLUMN: RECEIPT PHOTO & CONFIDENCE (PURE WHITE RECEIPT BACKGROUND) */}
+                <div className="lg:col-span-4 bg-white p-4 rounded-xl border border-slate-200 space-y-3" style={{ backgroundColor: "#ffffff" }}>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-700 uppercase text-[11px]">Physical Receipt Photo</span>
+                    <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      OCR Confidence: {Math.round((scannedReceipt.confidenceScore || 0.99) * 100)}%
                     </span>
                   </div>
 
-                  {/* PURE WHITE RECEIPT PAPER DISPLAY (ZERO GRAY TINT) */}
-                  <div 
-                    className="min-h-[320px] overflow-hidden rounded-xl border-2 border-slate-200 flex items-center justify-center bg-white p-3 shadow-sm relative group"
+                  <div
+                    className="relative border border-slate-200 rounded-lg overflow-hidden bg-white group aspect-[3/4] flex items-center justify-center p-2"
                     style={{ backgroundColor: "#ffffff" }}
                   >
                     {scannedReceiptImage ? (
-                      <div className="w-full flex justify-center bg-white" style={{ backgroundColor: "#ffffff" }}>
-                        <img
-                          src={scannedReceiptImage}
-                          alt="Scanned Supplier Receipt"
-                          className="w-full h-auto object-contain max-h-[460px] rounded shadow-xs bg-white"
-                          style={{ backgroundColor: "#ffffff" }}
-                        />
-                      </div>
+                      <img
+                        src={scannedReceiptImage}
+                        alt="Uploaded physical slip"
+                        className="w-full h-full object-contain object-center bg-white group-hover:scale-105 transition duration-300"
+                        style={{ backgroundColor: "#ffffff" }}
+                      />
                     ) : (
                       <div className="p-8 text-center text-slate-400 text-xs bg-white" style={{ backgroundColor: "#ffffff" }}>
                         <Camera size={32} className="mx-auto mb-1 text-slate-400" />
                         No photo attached
                       </div>
                     )}
+                    <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur text-white text-[10px] px-2 py-1 rounded">
+                      Payment: {scannedReceipt.paymentMode} &bull; Date: {scannedReceipt.receiptDate || "2026-10-16"}
+                    </div>
                   </div>
 
-                  <div className="pt-1 text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 flex-wrap gap-2">
-                    <div className="flex items-center gap-3">
-                      <span>Date: <strong className="text-slate-800 font-mono">{scannedReceipt.receiptDate || "2026-10-16"}</strong></span>
-                      <span>Payment: <strong className="text-slate-800">{scannedReceipt.paymentMode}</strong></span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer underline text-[11px]"
-                    >
-                      Change Photo / Upload
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition text-center cursor-pointer"
+                  >
+                    Change Photo
+                  </button>
                 </div>
 
-                {/* INTERACTIVE GOODS LIST WITH ITEM-LEVEL APPROVAL (RIGHT) */}
-                <div className="lg:col-span-7 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-100 pb-2">
-                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <Layers size={14} className="text-blue-600" />
-                      Approve &amp; Ensure Correct Details for Each Good:
+                {/* RIGHT COLUMN: DECIPHERED LINE ITEMS & BREAK-BULK CONVERSIONS */}
+                <div className="lg:col-span-8 space-y-4">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-blue-500" /> Approve &amp; Ensure Correct Details for Each Good:
                     </span>
-                    <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                      Approved Total: {currency} {approvedTotalCost.toLocaleString()}
+                    <span className="font-mono font-bold text-slate-700">
+                      Approved Total: <strong className="text-slate-900">{currency} {approvedTotalCost.toLocaleString()}</strong>
                     </span>
                   </div>
 
-                  {/* ITEM CARDS / ROWS */}
-                  <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
-                    {scannedReceipt.items.map((item, idx) => {
-                      const isApproved = item.approved !== false;
-                      const lineTotal = Number(item.lineCost) || 0;
-                      const qty = Number(item.supplyUnitsReceived) > 0 ? Number(item.supplyUnitsReceived) : 1;
-                      const derivedUnitCost = Math.round((lineTotal / qty) * 100) / 100;
-                      const unitCost = Number(item.unitCostAtDelivery) || derivedUnitCost;
-                      const retailPrice = Number(item.retailPrice) || 0;
-                      const is25kgBag = item.itemName.toLowerCase().includes("25kg") && qty === 1;
+                  {/* ITEM CARD (REPRESENTING THE DECIPHERED GOODS) */}
+                  {scannedReceipt.items.map((item, idx) => {
+                    const isApproved = item.approved !== false;
+                    const lineTotal = Number(item.lineCost) || 0;
+                    const qty = Number(item.supplyUnitsReceived) > 0 ? Number(item.supplyUnitsReceived) : 1;
+                    const derivedUnitCost = Math.round((lineTotal / qty) * 100) / 100;
+                    const unitCost = Number(item.unitCostAtDelivery) || derivedUnitCost;
+                    const retailPrice = Number(item.retailPrice) || 0;
+                    const rawBulkQty = item.rawPackQty ?? (item.conversionRatio > 1 ? Math.max(1, Math.round(qty / item.conversionRatio)) : 1);
+                    const rawBulkUnit = item.rawPackUnit ?? (item.conversionRatio > 1 ? "Bales" : item.supplyUnit);
+                    const cleanTitle = item.itemName.replace(/\s*\(\d+\s*bales\)/i, "").trim();
+                    const bulkLabel = rawBulkQty > 1 || String(rawBulkUnit).toLowerCase().includes("bale") ? `${rawBulkQty} ${rawBulkUnit}` : `${qty} ${item.supplyUnit}`;
 
-                      return (
-                        <div
-                          key={item.id || idx}
-                          className={`p-3 rounded-xl border transition-all text-xs ${
-                            isApproved 
-                              ? "bg-emerald-50/40 border-emerald-300 ring-1 ring-emerald-500/10" 
-                              : "bg-slate-50/70 border-slate-200 opacity-60"
-                          }`}
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200/60">
-                            
-                            {/* APPROVE TOGGLE BUTTON */}
-                            <div className="flex items-center gap-2 flex-1">
-                              <button
-                                type="button"
-                                onClick={() => handleToggleItemApproval(item.id)}
-                                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
-                                  isApproved
-                                    ? "bg-emerald-600 text-white shadow-xs"
-                                    : "bg-slate-200 hover:bg-slate-300 text-slate-700"
-                                }`}
-                              >
-                                {isApproved ? (
-                                  <>
-                                    <Check size={13} className="text-white" />
-                                    <span>Approved ✓</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Square size={13} className="text-slate-500" />
-                                    <span>Click to Approve</span>
-                                  </>
-                                )}
-                              </button>
+                    return (
+                      <div
+                        key={item.id || idx}
+                        className={`p-5 rounded-xl border transition-all space-y-4 ${
+                          isApproved
+                            ? "bg-white border-blue-200 shadow-sm"
+                            : "bg-slate-50 border-slate-200 opacity-60"
+                        }`}
+                      >
+                        {/* ITEM TOP BAR */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleItemApproval(item.id)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer ${
+                                isApproved
+                                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                  : "bg-slate-200 hover:bg-slate-300 text-slate-600"
+                              }`}
+                            >
+                              {isApproved ? <Check size={14} /> : null} {isApproved ? "Approved ✓" : "Excluded"}
+                            </button>
 
-                              {/* EDITABLE ITEM NAME */}
-                              <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <input
                                   type="text"
                                   value={item.itemName}
                                   onChange={(e) => handleUpdateScannedItem(item.id, "itemName", e.target.value)}
-                                  className="font-bold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none w-full text-xs"
-                                  placeholder="Good description"
+                                  className="font-black text-sm text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none"
                                 />
-                                {item.rawSpecification && (
-                                  <div className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
-                                    Receipt Line: {item.rawSpecification}
-                                  </div>
+                                {!item.itemName.toLowerCase().includes("bale") && (
+                                  <span className="font-black text-sm text-slate-900">({bulkLabel})</span>
                                 )}
                               </div>
-                            </div>
-
-                            {/* DERIVED WHOLESALE FORMULA PILL & DELETE BUTTON */}
-                            <div className="flex items-center gap-2 self-end sm:self-auto font-mono flex-wrap">
-                              <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-[10px] font-bold">
-                                Derived Wholesale: {currency} {lineTotal.toLocaleString()} &divide; {qty} = {currency} {unitCost.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}/{item.supplyUnit || "unit"}
-                                {is25kgBag ? ` (${currency} ${(lineTotal / 25).toFixed(2)}/kg)` : ""}
-                              </span>
-                              {scannedReceipt.items.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const nextItems = scannedReceipt.items.filter((i) => i.id !== item.id);
-                                    const nextApproved = nextItems.filter((i) => i.approved !== false);
-                                    const nextCost = nextApproved.reduce((a, i) => a + (Number(i.lineCost) || 0), 0);
-                                    const nextRetail = nextApproved.reduce((a, i) => a + ((Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 0) * (Number(i.retailPrice) || 0)), 0);
-                                    setScannedReceipt({
-                                      ...scannedReceipt,
-                                      items: nextItems,
-                                      totalCost: nextCost,
-                                      totalRetailShelfValue: nextRetail,
-                                      totalPotentialProfit: Math.max(0, nextRetail - nextCost)
-                                    });
-                                  }}
-                                  className="p-1 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer"
-                                  title="Remove item from receipt"
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              )}
+                              <p className="text-[11px] font-mono text-slate-400 mt-0.5 truncate">
+                                Receipt Line: {item.rawSpecification || `${cleanTitle.toUpperCase()} • QTY: ${rawBulkQty}.00 ${String(rawBulkUnit).toUpperCase()} • TOTAL: ${lineTotal}`}
+                              </p>
                             </div>
                           </div>
 
-                          {/* EDITABLE NUMERICAL FIELDS: QTY & UNIT, LINE TOTAL (FROM RECEIPT), DERIVED UNIT WHOLESALE COST, RETAIL PRICE */}
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 text-[11px]">
-                            
-                            {/* 1. WHOLESALE QUANTITY / PACKETS & UNIT */}
-                            <div>
-                              <label className="text-[9px] text-slate-500 uppercase font-semibold block mb-0.5">
-                                Packets / Qty &amp; Unit
-                              </label>
-                              <div className="flex items-center gap-1 font-mono">
-                                <input
-                                  type="number"
-                                  step="any"
-                                  min={0}
-                                  value={item.supplyUnitsReceived}
-                                  onChange={(e) => handleUpdateScannedItem(item.id, "supplyUnitsReceived", e.target.value)}
-                                  className="w-16 bg-white border border-slate-200 rounded-md p-1 text-center font-bold text-slate-800 text-xs"
-                                />
-                                <input
-                                  type="text"
-                                  value={item.supplyUnit}
-                                  onChange={(e) => handleUpdateScannedItem(item.id, "supplyUnit", e.target.value)}
-                                  className="w-full bg-white border border-slate-200 rounded-md p-1 text-[10px] text-slate-700 font-sans"
-                                  placeholder="Packets / Bag"
-                                />
-                              </div>
+                          {/* BREAK-BULK MATH DERIVATION CALLOUT */}
+                          <div className="flex items-start gap-2 shrink-0">
+                            <div className="hidden sm:block text-right bg-blue-50/70 border border-blue-100 p-2.5 rounded-lg text-[11px] font-mono leading-tight">
+                              <span className="text-blue-600 font-bold block mb-0.5">Derived Wholesale:</span>
+                              <span className="text-slate-700">
+                                {currency} {lineTotal} &divide; {qty} = <strong className="text-blue-700 font-bold">{currency} {unitCost}/unit</strong>
+                              </span>
                             </div>
-
-                            {/* 2. EXACT LINE TOTAL COST FROM RECEIPT (E.G. 1600, 1270, 1290) */}
-                            <div>
-                              <label className="text-[9px] text-amber-800 uppercase font-bold block mb-0.5">
-                                Receipt Line Cost ({currency}) *
-                              </label>
-                              <input
-                                type="number"
-                                step="any"
-                                min={0}
-                                value={lineTotal}
-                                onChange={(e) => handleUpdateScannedItem(item.id, "lineCost", e.target.value)}
-                                className="w-full bg-white border-2 border-amber-300 rounded-md p-1 font-mono font-bold text-amber-900 text-xs text-right focus:border-amber-500"
-                              />
-                            </div>
-
-                            {/* 3. DERIVED UNIT WHOLESALE COST (LINE COST ÷ QTY) */}
-                            <div>
-                              <label className="text-[9px] text-blue-700 uppercase font-bold block mb-0.5">
-                                Derived Unit Wholesale ({currency})
-                              </label>
-                              <input
-                                type="number"
-                                step="any"
-                                min={0}
-                                value={unitCost}
-                                onChange={(e) => handleUpdateScannedItem(item.id, "unitCostAtDelivery", e.target.value)}
-                                className="w-full bg-blue-50/60 border border-blue-300 rounded-md p-1 font-mono font-bold text-blue-900 text-xs text-right"
-                              />
-                            </div>
-
-                            {/* 4. RETAIL SELLING PRICE */}
-                            <div>
-                              <label className="text-[9px] text-emerald-800 uppercase font-semibold block mb-0.5">
-                                Shelf Retail ({currency})
-                              </label>
-                              <input
-                                type="number"
-                                step="any"
-                                min={0}
-                                value={retailPrice}
-                                onChange={(e) => handleUpdateScannedItem(item.id, "retailPrice", e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-md p-1 font-mono font-bold text-emerald-700 text-xs text-right"
-                              />
-                            </div>
-
+                            {scannedReceipt.items.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const nextItems = scannedReceipt.items.filter((i) => i.id !== item.id);
+                                  const nextApproved = nextItems.filter((i) => i.approved !== false);
+                                  const nextCost = nextApproved.reduce((a, i) => a + (Number(i.lineCost) || 0), 0);
+                                  const nextRetail = nextApproved.reduce((a, i) => a + ((Number(i.retailUnitsAdded || i.supplyUnitsReceived) || 0) * (Number(i.retailPrice) || 0)), 0);
+                                  setScannedReceipt({
+                                    ...scannedReceipt,
+                                    items: nextItems,
+                                    totalCost: nextCost,
+                                    totalRetailShelfValue: nextRetail,
+                                    totalPotentialProfit: Math.max(0, nextRetail - nextCost)
+                                  });
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer"
+                                title="Remove item from receipt"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
                           </div>
                         </div>
-                      );
-                    })}
+
+                        {/* INPUT FIELDS: BREAKING BALES INTO PACKETS */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                              Packets / Qty &amp; Unit
+                            </label>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="any"
+                                min={0}
+                                value={item.supplyUnitsReceived}
+                                onChange={(e) => handleUpdateScannedItem(item.id, "supplyUnitsReceived", e.target.value)}
+                                className="w-16 p-2 bg-slate-50 border border-slate-200 rounded-md font-mono font-bold text-slate-800"
+                              />
+                              <input
+                                type="text"
+                                value={item.supplyUnit}
+                                onChange={(e) => handleUpdateScannedItem(item.id, "supplyUnit", e.target.value)}
+                                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md text-[11px] text-slate-600"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                              Receipt Line Cost ({currency}) *
+                            </label>
+                            <input
+                              type="number"
+                              step="any"
+                              min={0}
+                              value={lineTotal}
+                              onChange={(e) => handleUpdateScannedItem(item.id, "lineCost", e.target.value)}
+                              className="w-full p-2 bg-amber-50/50 border border-amber-300 rounded-md font-mono font-bold text-slate-800"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-1">
+                              Derived Unit Wholesale ({currency})
+                            </label>
+                            <input
+                              type="text"
+                              readOnly
+                              value={unitCost}
+                              className="w-full p-2 bg-blue-50/40 border border-blue-200 rounded-md font-mono font-black text-blue-900"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                              Shelf Retail ({currency})
+                            </label>
+                            <input
+                              type="number"
+                              step="any"
+                              min={0}
+                              value={retailPrice}
+                              onChange={(e) => handleUpdateScannedItem(item.id, "retailPrice", e.target.value)}
+                              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md font-mono font-bold text-emerald-600"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* 4. FINANCIAL SUMMARY CARDS */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-4 rounded-xl border border-slate-200 text-xs font-mono">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-sans font-bold block">Approved Items</span>
+                      <span className="text-sm font-bold text-slate-800">{approvedItems.length} Products</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-sans font-bold block">Total Approved Cost</span>
+                      <span className="text-sm font-black text-slate-900">{currency} {approvedTotalCost.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-sans font-bold block">Retail Shelf Value</span>
+                      <span className="text-sm font-black text-blue-600">{currency} {approvedTotalRetail.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-sans font-bold block">Batch Margin</span>
+                      <span className="text-sm font-black text-emerald-600">+{currency} {potentialProfit.toLocaleString()} ({overallMarkup}%)</span>
+                    </div>
                   </div>
 
-                  {/* FINANCIAL IMPACT BANNER: STRICT ADDITION (140 + 280 = 420) */}
-                  <div className="p-3 bg-slate-100/80 rounded-xl grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono border border-slate-200">
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase block">Approved Items</span>
-                      <strong className="text-slate-900">{approvedItems.length} Products</strong>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase block">Total Approved Cost</span>
-                      <strong className="text-emerald-700 text-sm">
-                        {currency} {approvedTotalCost.toLocaleString()}
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase block">Retail Shelf Value</span>
-                      <strong className="text-blue-700">
-                        {currency} {approvedTotalRetail.toLocaleString()}
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase block">Batch Margin</span>
-                      <strong className="text-slate-800">
-                        +{currency} {potentialProfit.toLocaleString()} ({overallMarkup}%)
-                      </strong>
-                    </div>
-                  </div>
-
-                  {/* PRIMARY ACTION BUTTONS */}
-                  <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-                    
-                    {/* REJECT RECEIPT (GOES TO DATABASE & CLEARS SCANNER) */}
+                  {/* 5. BOTTOM SUBMIT & REJECT ACTIONS */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3">
                     <button
                       type="button"
                       onClick={() => setIsRejectModalOpen(true)}
-                      className="w-full sm:w-auto px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="text-xs font-bold text-red-600 hover:text-red-700 p-2 transition flex items-center gap-1 cursor-pointer"
                     >
-                      <XCircle size={15} className="text-rose-600" />
-                      <span>Reject Receipt &amp; Save to Database</span>
+                      <X size={15} /> Reject Receipt &amp; Save to Database
                     </button>
 
                     <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
-                      {/* APPLY TO PURCHASE FORM (OPTIONAL) */}
                       <button
                         type="button"
                         onClick={handleApplyScannedReceipt}
-                        className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer"
+                        className="px-3.5 py-3 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer"
                         title="Copy into purchase form below for manual editing"
                       >
                         Populate Into Form Below &darr;
                       </button>
 
-                      {/* COMMIT APPROVED RECEIPT TO DATABASE & ACTIVE INVENTORY */}
                       <button
                         type="button"
                         onClick={handleCommitApprovedReceipt}
-                        className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                        disabled={approvedItems.length === 0}
+                        className="w-full sm:w-auto px-6 py-3.5 bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-300 text-white font-black text-xs uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/10 cursor-pointer"
                       >
-                        <Check size={16} />
-                        <span>
-                          Approve &amp; Ingest to Database ({approvedItems.length} Goods &rarr; {currency} {approvedTotalCost.toLocaleString()})
-                        </span>
+                        <Check size={16} /> Approve &amp; Ingest to Database ({approvedItems.length} Goods &rarr; {currency} {approvedTotalCost.toLocaleString()})
                       </button>
                     </div>
-
                   </div>
 
                 </div>
-
               </div>
 
             </div>

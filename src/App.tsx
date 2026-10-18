@@ -946,13 +946,37 @@ export default function App() {
 
       const existingPayouts = (prev.payouts || []).filter((p) => p.id !== newPayout.id);
 
+      // Close any previous pending restock cards for the newly restocked items (Restock-Trigger closes previous batch!)
+      const closedPreviousCards = (prev.restockCards || []).map((card) => {
+        const isRestockedItem = (purchase.itemLines || []).some((l) => doProductsMatch(card.skuName, l.itemName));
+        if (isRestockedItem && card.status === "PENDING_AUTHORIZATION") {
+          return {
+            ...card,
+            status: "AUTHORIZED_AND_RECONCILED" as const,
+            authorizedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            authorizedDate: normalizedDate,
+            notes: `${card.notes || ""} • Closed automatically by Restock-Trigger on ${normalizedDate}.`
+          };
+        }
+        return card;
+      });
+
+      const isCashOutflow = purchase.payment_channel === "CASH";
+      const isMpesaOutflow = purchase.payment_channel === "MPESA";
+
       const nextState: AlacioMasterState = {
         ...prev,
         inventory: updatedInventory,
         payouts: [newPayout, ...existingPayouts],
+        cash_register_balance: isCashOutflow
+          ? Math.max(0, Math.round(((Number(prev.cash_register_balance) || 0) - cleanPurchaseAmt) * 100) / 100)
+          : prev.cash_register_balance,
+        mpesa_float_balance: isMpesaOutflow
+          ? Math.max(0, Math.round(((Number(prev.mpesa_float_balance) || 0) - cleanPurchaseAmt) * 100) / 100)
+          : prev.mpesa_float_balance,
         suppliers: updatedSuppliers,
         receiptsArchive: updatedArchive,
-        restockCards: [...newlyGeneratedRestockCards, ...(prev.restockCards || [])],
+        restockCards: [...newlyGeneratedRestockCards, ...closedPreviousCards],
         kpis: calculateKpis(updatedInventory, prev.warehouse),
         last_updated: new Date().toISOString()
       };
