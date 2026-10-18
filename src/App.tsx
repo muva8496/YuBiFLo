@@ -49,6 +49,8 @@ import SaasDashboardTab from "./components/tabs/SaasDashboardTab";
 import LaunchpadTab, { LaunchpadProgress } from "./components/tabs/LaunchpadTab";
 import SupplyDrivenSalesTab from "./components/tabs/SupplyDrivenSalesTab";
 import PurchasesTab, { PurchaseItemLine } from "./components/tabs/PurchasesTab";
+import ReceiptUploadScannerTab from "./components/tabs/ReceiptUploadScannerTab";
+import { ProcessedReceipt } from "./services/receiptOcrService";
 import SuppliersTab from "./components/tabs/SuppliersTab";
 import StockVaultSuppliersTab from "./components/tabs/StockVaultSuppliersTab";
 import DawnLockTab from "./components/tabs/DawnLockTab";
@@ -982,6 +984,35 @@ export default function App() {
     });
   };
 
+  // HANDLE WORKED-ON RECEIPT COMMIT FROM THE RECEIPT SCANNER TAB
+  const handleCommitProcessedReceipt = (receipt: ProcessedReceipt) => {
+    const purchaseLines: PurchaseItemLine[] = (receipt.items || [])
+      .filter((i) => i.approved !== false)
+      .map((i, idx) => ({
+        id: i.id || `line_rcpt_${Date.now()}_${idx}`,
+        itemName: i.itemName,
+        category: "Wholesale Supply",
+        quantity: Number(i.supplyUnitsReceived) || 1,
+        unit: i.supplyUnit || "Packets",
+        unitCost: Number(i.unitCostAtDelivery) || 0,
+        retailPrice: Number(i.retailPrice) || 0,
+        totalCost: Number(i.lineCost) || 0
+      }));
+
+    handleLogMultiItemPurchase({
+      receiptId: receipt.id,
+      receiptNumber: receipt.receiptNumber,
+      supplier: receipt.supplierName,
+      items: purchaseLines.map((l) => `${l.quantity} ${l.unit} ${l.itemName}`).join(", "),
+      itemLines: purchaseLines,
+      amount: receipt.totalCost,
+      payment_channel: receipt.paymentMode === "MPESA" ? "MPESA" : "CASH",
+      date: receipt.receiptDate || new Date().toISOString().slice(0, 10),
+      notes: `Approved delivery receipt ${receipt.receiptNumber} (${purchaseLines.length} goods approved)`,
+      receiptImageUrl: receipt.imageUrl
+    });
+  };
+
   // AUTHORIZE RESTOCK TURNOVER AS RECONCILED SALE
   const handleAuthorizeRestockSale = (payload: {
     cardId: string;
@@ -1298,6 +1329,15 @@ export default function App() {
             onAddExpense={handleAddExpense}
             onEditExpense={handleEditExpense}
             onDeleteExpense={handleDeleteExpense}
+          />
+        )}
+
+        {/* TAB 4A: UPLOAD RECEIPTS SCANNER */}
+        {activeTab === "receipt_ocr" && (
+          <ReceiptUploadScannerTab
+            state={currentMasterState}
+            onCommitProcessedReceipt={handleCommitProcessedReceipt}
+            onSaveReceiptToDatabase={handleSaveReceiptToDatabase}
           />
         )}
 

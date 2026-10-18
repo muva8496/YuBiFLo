@@ -4,7 +4,7 @@ import {
   Sun, Mic, Users, BookOpen, BarChart2, ChevronDown, HelpCircle, 
   LogOut, Settings, Building2, Menu, X, ArrowRight, Shield, 
   CheckCircle2, AlertCircle, Phone, Lock, Globe, Check, Sparkles,
-  Plus, Play, FileText, Bookmark, Truck, ShieldCheck, Wallet
+  Plus, Play, FileText, Bookmark, Truck, ShieldCheck, Wallet, Camera
 } from "lucide-react";
 import { UserProfile, signOut, signOutAllDevices } from "../services/authSessionService";
 import VideoFactorModal from "./VideoFactorModal";
@@ -80,6 +80,7 @@ export default function SaasAppShell({
     { id: "dashboard", name: "Dashboard", icon: <LayoutDashboard size={17} /> },
     { id: "supply_sales", name: "Sales & Payments", icon: <TrendingUp size={17} /> },
     { id: "purchases", name: "Purchases", icon: <ShoppingBag size={17} /> },
+    { id: "receipt_ocr", name: "Upload Receipts", icon: <Camera size={17} /> },
     { id: "suppliers", name: "Suppliers", icon: <Truck size={17} /> },
     {
       id: "expenses",

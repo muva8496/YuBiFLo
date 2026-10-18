@@ -54,78 +54,103 @@ export default function SupplyDrivenSalesTab({
   const { currency, inventory, salesLedger, payouts, cash_register_balance, mpesa_float_balance, restockCards = [] } = state;
   const [showAllRestockCards, setShowAllRestockCards] = useState<boolean>(false);
 
-  // Preset fast-moving capacity-based SKUs
-  const capacityPresets: SkuCapacityRule[] = [
-    {
-      id: "preset_mt_kenya",
-      name: "Mt Kenya Fresh Milk 500ml",
-      category: "Dairy",
-      boxCapacity: 21, // 21 packets box capacity as requested by user
-      reorderThreshold: 5, // Order when majority (16) sold, 5 remaining
-      unitType: "packets",
-      unitCost: 50,
-      unitRetail: 65,
-      typicalOwnerConsumption: 2 // Owner drank 2 pieces
-    },
-    {
-      id: "preset_brookside",
-      name: "Brookside Fresh Milk 500ml",
-      category: "Dairy",
-      boxCapacity: 24, // 24 packets crate
-      reorderThreshold: 6,
-      unitType: "packets",
-      unitCost: 52,
-      unitRetail: 65,
-      typicalOwnerConsumption: 1
-    },
-    {
-      id: "preset_unga_jogoo",
-      name: "Unga Jogoo 2kg",
-      category: "Flour",
-      boxCapacity: 12, // 12 packets bale
-      reorderThreshold: 3,
-      unitType: "packets",
-      unitCost: 175,
-      unitRetail: 210,
-      typicalOwnerConsumption: 1
-    },
-    {
-      id: "preset_broadways",
-      name: "Broadways White Bread 400g",
-      category: "Bakery",
-      boxCapacity: 20, // 20 loaves crate
-      reorderThreshold: 4,
-      unitType: "loaves",
-      unitCost: 54,
-      unitRetail: 65,
-      typicalOwnerConsumption: 1
-    },
-    {
-      id: "preset_rina_oil",
-      name: "Rina Vegetable Oil 1L",
-      category: "Cooking & Oils",
-      boxCapacity: 12, // 12 bottles carton
-      reorderThreshold: 3,
-      unitType: "bottles",
-      unitCost: 275,
-      unitRetail: 330,
-      typicalOwnerConsumption: 0
-    },
-    {
-      id: "preset_mumias_sugar",
-      name: "Mumias Sugar 1kg",
-      category: "Sugar",
-      boxCapacity: 20, // 20 packets bale
-      reorderThreshold: 4,
-      unitType: "packets",
-      unitCost: 140,
-      unitRetail: 165,
-      typicalOwnerConsumption: 0
-    }
-  ];
+  // Dynamically build fast-moving capacity-based SKUs from live inventory and uploaded receipts
+  // so the user's actual brand and goods (e.g. Phimar Corn 25kg, 2kg, 1kg) are the primary presets!
+  const capacityPresets: SkuCapacityRule[] = React.useMemo(() => {
+    const list: SkuCapacityRule[] = [];
+    const seen = new Set<string>();
+
+    // 1. From live inventory
+    (inventory || []).forEach((inv) => {
+      const key = inv.name.toLowerCase().trim();
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      const kgMatch = inv.name.match(/(\d+)\s*kg/i);
+      const isBulkBag = kgMatch && parseInt(kgMatch[1], 10) >= 10;
+      const cap = isBulkBag ? 1 : (inv.bulk_pack_size || (inv.name.includes("12") ? 12 : inv.name.includes("24") ? 24 : 12));
+
+      list.push({
+        id: `preset_inv_${inv.id}`,
+        name: inv.name,
+        category: inv.category || "Wholesale Supply",
+        boxCapacity: cap,
+        reorderThreshold: Math.max(1, Math.round(cap * 0.25)),
+        unitType: inv.unit_type || "pkts",
+        unitCost: Number(inv.unit_cost) || 50,
+        unitRetail: Number(inv.unit_retail) || Math.round((Number(inv.unit_cost) || 50) * 1.2),
+        typicalOwnerConsumption: 0
+      });
+    });
+
+    // 2. From approved receipts
+    (state.receiptsArchive || []).forEach((rcpt) => {
+      if (rcpt.status === "rejected") return;
+      (rcpt.items || []).forEach((item) => {
+        const key = item.itemName.toLowerCase().trim();
+        if (seen.has(key)) return;
+        seen.add(key);
+
+        const qty = Number(item.supplyUnitsReceived) || 1;
+        const uCost = Number(item.unitCostAtDelivery) > 0 ? Number(item.unitCostAtDelivery) : Math.round((Number(item.lineCost) / (qty || 1)) * 100) / 100;
+        const uRetail = Number(item.retailPrice) > 0 ? Number(item.retailPrice) : Math.round(uCost * 1.2 * 100) / 100;
+
+        list.push({
+          id: `preset_rcpt_${item.id}`,
+          name: item.itemName,
+          category: "Wholesale Delivery",
+          boxCapacity: qty > 1 ? qty : 1,
+          reorderThreshold: Math.max(1, Math.round((qty > 1 ? qty : 1) * 0.25)),
+          unitType: item.retailUnit || item.supplyUnit || "pkts",
+          unitCost: uCost,
+          unitRetail: uRetail,
+          typicalOwnerConsumption: 0
+        });
+      });
+    });
+
+    if (list.length > 0) return list;
+
+    // Fallback default
+    return [
+      {
+        id: "preset_phimar_2kg",
+        name: "Phimar Corn 2kg (12 packets)",
+        category: "Maize & Corn Flour",
+        boxCapacity: 12,
+        reorderThreshold: 3,
+        unitType: "packets",
+        unitCost: 105.83,
+        unitRetail: 130,
+        typicalOwnerConsumption: 0
+      },
+      {
+        id: "preset_phimar_1kg",
+        name: "Phimar Corn 1kg (24kg)",
+        category: "Maize & Corn Flour",
+        boxCapacity: 24,
+        reorderThreshold: 5,
+        unitType: "packets",
+        unitCost: 53.75,
+        unitRetail: 70,
+        typicalOwnerConsumption: 0
+      },
+      {
+        id: "preset_phimar_25kg",
+        name: "Phimar Corn 25kg",
+        category: "Maize & Corn Flour",
+        boxCapacity: 1,
+        reorderThreshold: 1,
+        unitType: "bags",
+        unitCost: 1600,
+        unitRetail: 1850,
+        typicalOwnerConsumption: 0
+      }
+    ];
+  }, [inventory, state.receiptsArchive]);
 
   // Active form state for logging supply arrival sales crystallization
-  const [selectedPresetId, setSelectedPresetId] = useState<string>("preset_mt_kenya");
+  const [selectedPresetId, setSelectedPresetId] = useState<string>(() => String(capacityPresets[0]?.id || "preset_phimar_2kg"));
   const selectedPreset = capacityPresets.find((p) => String(p.id) === selectedPresetId) || capacityPresets[0];
 
   // Match with live inventory if available
@@ -197,8 +222,17 @@ export default function SupplyDrivenSalesTab({
     setTimeout(() => setSuccessToast(null), 8000);
   };
 
-  // Filter supply-driven sales from sales ledger
-  const supplyDrivenSales = salesLedger.filter((s) => s.items_summary.toLowerCase().includes("supply-driven") || s.items_summary.toLowerCase().includes("arrival"));
+  // Include auto-crystallized chronological receipt sales and supply-driven arrival transactions
+  const supplyDrivenSales = salesLedger.filter((s) => 
+    s.id.startsWith("sale_rcpt_auto_") ||
+    s.id.startsWith("sale_restock_") ||
+    s.items_summary.toLowerCase().includes("supply-driven") || 
+    s.items_summary.toLowerCase().includes("arrival") ||
+    s.items_summary.toLowerCase().includes("phimar") ||
+    s.items_summary.toLowerCase().includes("msosi") ||
+    s.customer_name.toLowerCase().includes("counter")
+  );
+  const displaySales = supplyDrivenSales.length > 0 ? supplyDrivenSales : salesLedger;
 
   return (
     <div className="space-y-6 max-w-6xl font-sans">
@@ -215,7 +249,7 @@ export default function SupplyDrivenSalesTab({
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Cold Kenyan retail reality: <em>"A new box arriving means sales happened!"</em> When a new 21-pack box arrives, implied sales are automatically calculated from remaining stock and owner consumption. Zero rush-hour typing.
+            Kenya retail reality: <em>&quot;A new delivery arriving means sales happened!&quot;</em> When goods arrive, implied counter sales are automatically calculated from remaining stock and minute chronological gaps between receipts. Zero rush-hour typing.
           </p>
         </div>
       </div>
@@ -684,18 +718,14 @@ export default function SupplyDrivenSalesTab({
           <div className="bg-[#111113] border border-slate-800 rounded-2xl p-4 space-y-2 text-xs font-mono">
             <span className="text-[10px] text-slate-400 uppercase font-bold block">Fast Replenishment Gauge</span>
             <div className="space-y-2">
-              <div className="p-2 bg-[#09090b] rounded-lg border border-slate-800 flex justify-between items-center">
-                <span>Mt Kenya 500ml: 21 box capacity</span>
-                <span className="text-emerald-400 font-bold">Ready for drop</span>
-              </div>
-              <div className="p-2 bg-[#09090b] rounded-lg border border-slate-800 flex justify-between items-center">
-                <span>Unga Jogoo 2kg: 12 bale capacity</span>
-                <span className="text-amber-400 font-bold">60% sold</span>
-              </div>
-              <div className="p-2 bg-[#09090b] rounded-lg border border-slate-800 flex justify-between items-center">
-                <span>Broadways 400g: 20 crate capacity</span>
-                <span className="text-cyan-400 font-bold">75% sold</span>
-              </div>
+              {(inventory.slice(0, 3).length > 0 ? inventory.slice(0, 3) : capacityPresets.slice(0, 3)).map((item: any, idx: number) => (
+                <div key={item.id || idx} className="p-2 bg-[#09090b] rounded-lg border border-slate-800 flex justify-between items-center">
+                  <span className="truncate max-w-[200px] text-slate-200">{item.name}: {item.current_stock ?? item.boxCapacity} {item.unit_type || "pkts"} on shelf</span>
+                  <span className={idx === 0 ? "text-emerald-400 font-bold shrink-0" : idx === 1 ? "text-amber-400 font-bold shrink-0" : "text-cyan-400 font-bold shrink-0"}>
+                    {idx === 0 ? "Verified Stock" : idx === 1 ? "Fast-Mover" : "Active Flow"}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -706,22 +736,22 @@ export default function SupplyDrivenSalesTab({
       <div className="bg-[#0b1410] border border-slate-800 rounded-2xl p-5 space-y-3 font-mono">
         <div className="flex items-center justify-between border-b border-slate-800 pb-2">
           <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 font-mono">
-            <TrendingUp size={14} className="text-emerald-400" /> Recent Supply-Triggered Sales Cycles ({supplyDrivenSales.length})
+            <TrendingUp size={14} className="text-emerald-400" /> Recent Supply-Triggered Sales Cycles ({displaySales.length})
           </h3>
           <span className="text-[10px] text-slate-500">Auto-crystallized transactions</span>
         </div>
 
-        {supplyDrivenSales.length === 0 ? (
+        {displaySales.length === 0 ? (
           <div className="p-6 text-center text-slate-500 text-xs">
-            No supply-triggered sales logged yet. Use the workbench above to execute your first box arrival cycle (e.g. Mt Kenya Milk 21 pkts).
+            No supply-triggered sales logged yet. Upload or log an approved supplier receipt above to automatically crystallize sales.
           </div>
         ) : (
           <div className="space-y-2">
-            {supplyDrivenSales.slice(0, 5).map((sale) => (
+            {displaySales.slice(0, 8).map((sale) => (
               <div key={sale.id} className="p-3 bg-[#09090b] rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                 <div>
                   <div className="text-white font-bold">{sale.items_summary}</div>
-                  <div className="text-[10px] text-slate-500">{sale.timestamp} &bull; Paid via {sale.payment_method}</div>
+                  <div className="text-[10px] text-slate-500">{sale.date || "Today"} &bull; {sale.timestamp} &bull; Paid via {sale.payment_method}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-emerald-400 font-bold text-sm">{currency} {sale.total_amount.toLocaleString()}</div>

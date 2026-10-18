@@ -285,6 +285,7 @@ export interface AlacioMasterState {
 export interface SavedReceiptItem {
   id: string;
   itemName: string;
+  rawSpecification?: string;
   supplyUnitsReceived: number;
   supplyUnit: string;
   conversionRatio?: number;
