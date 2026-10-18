@@ -536,34 +536,36 @@ export default function ReceiptUploadScannerTab({
       {activeReceipt ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           
-          {/* LEFT COLUMN: RECEIPT PHOTO PREVIEW */}
-          <div className="lg:col-span-5 bg-[#121214] border-2 border-emerald-950 rounded-2xl p-4 shadow-xl space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
-                <ImageIcon size={14} className="text-cyan-400" /> Physical Receipt Photo
+          {/* LEFT COLUMN: RECEIPT PHOTO PREVIEW - PURE WHITE BACKGROUND */}
+          <div className="lg:col-span-5 bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-xl space-y-3" style={{ backgroundColor: "#ffffff" }}>
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <span className="text-xs font-bold text-slate-900 uppercase font-mono tracking-wider flex items-center gap-2">
+                <ImageIcon size={14} className="text-blue-600" /> Physical Receipt Photo
               </span>
-              {isScanning && (
-                <span className="text-[10px] font-mono text-amber-400 animate-pulse flex items-center gap-1">
-                  <RefreshCw size={11} className="animate-spin" /> Scanning OCR...
-                </span>
-              )}
+              <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                Date: {activeReceipt?.receiptDate || "2026-10-16"}
+              </span>
             </div>
 
-            {/* Receipt Image Display */}
-            <div className="relative bg-[#09090b] border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center min-h-[320px] p-2">
+            {/* Receipt Image Display - Pure White Paper Background */}
+            <div
+              className="relative bg-white border-2 border-slate-200 rounded-xl overflow-hidden flex items-center justify-center min-h-[320px] p-3"
+              style={{ backgroundColor: "#ffffff" }}
+            >
               {activeReceiptImage ? (
                 <img
                   src={activeReceiptImage}
                   alt="Uploaded Supplier Receipt"
-                  className="max-h-[420px] w-auto object-contain rounded-lg shadow-md"
+                  className="max-h-[420px] w-auto object-contain rounded-lg shadow-sm bg-white"
+                  style={{ backgroundColor: "#ffffff" }}
                 />
               ) : (
-                <div className="text-center p-6 text-slate-500 space-y-2">
-                  <Camera size={32} className="mx-auto text-slate-600" />
+                <div className="text-center p-6 text-slate-500 space-y-2 bg-white" style={{ backgroundColor: "#ffffff" }}>
+                  <Camera size={32} className="mx-auto text-slate-400" />
                   <p className="text-xs">No receipt photo uploaded yet</p>
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-1.5 bg-slate-800 text-slate-200 rounded-lg text-xs font-mono cursor-pointer"
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-mono cursor-pointer"
                   >
                     Upload Receipt
                   </button>
@@ -571,23 +573,23 @@ export default function ReceiptUploadScannerTab({
               )}
 
               {isScanning && (
-                <div className="absolute inset-0 bg-emerald-950/70 backdrop-blur-xs flex flex-col items-center justify-center text-white space-y-2">
-                  <Scan size={32} className="text-emerald-400 animate-pulse" />
-                  <span className="text-xs font-mono font-bold text-emerald-300">
+                <div className="absolute inset-0 bg-white/90 backdrop-blur-xs flex flex-col items-center justify-center text-slate-900 space-y-2">
+                  <Scan size={32} className="text-blue-600 animate-pulse" />
+                  <span className="text-xs font-mono font-bold text-blue-700">
                     Multimodal Receipt Scanner Running...
                   </span>
-                  <span className="text-[10px] text-slate-300">
-                    Extracting goods, lots, and prices
+                  <span className="text-[10px] text-slate-600">
+                    Extracting receipt date, goods, lots, and prices
                   </span>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-              <span>OCR Accuracy: {((activeReceipt?.confidenceScore || 0.99) * 100).toFixed(0)}%</span>
+            <div className="flex items-center justify-between text-[11px] font-mono text-slate-600">
+              <span>Obtained Date: <strong>{activeReceipt?.receiptDate || "2026-10-16"}</strong> &bull; Accuracy: {((activeReceipt?.confidenceScore || 0.99) * 100).toFixed(0)}%</span>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="text-emerald-400 hover:text-emerald-300 underline cursor-pointer text-xs"
+                className="text-blue-600 hover:text-blue-800 underline cursor-pointer text-xs font-semibold"
               >
                 Upload Different Pic
               </button>

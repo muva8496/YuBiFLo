@@ -6,7 +6,7 @@ import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import adminDbRouter from "./src/services/adminDbApi";
 import coreEngineRouter from "./src/services/coreEngineApi";
-import { normalizeIsoDate } from "./src/utils/chronologicalReceiptSalesEngine";
+import { extractExplicitDate, normalizeIsoDate } from "./src/utils/chronologicalReceiptSalesEngine";
 
 dotenv.config();
 
@@ -47,7 +47,16 @@ async function startServer() {
       const textContent = req.body.textContent || req.body.text_content || "";
       const rawImage = req.body.image_data || req.body.imageBase64 || req.body.image || "";
       const rawFileName = String(req.body.file_name || "").toLowerCase();
-      const detectedDateFromInput = normalizeIsoDate(req.body.receipt_date || req.body.date || textContent || rawFileName) || "2026-10-16";
+      const svgText = typeof rawImage === "string" && rawImage.startsWith("data:image/svg+xml")
+        ? decodeURIComponent(rawImage)
+        : "";
+      const detectedDateFromInput =
+        extractExplicitDate(req.body.receipt_date) ||
+        extractExplicitDate(req.body.date) ||
+        extractExplicitDate(textContent) ||
+        extractExplicitDate(svgText) ||
+        extractExplicitDate(rawFileName) ||
+        "2026-10-16";
       const headerMatch = typeof rawImage === "string" ? rawImage.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/) : null;
       const mimeType = headerMatch ? headerMatch[1] : (req.body.mimeType || "image/jpeg");
 
@@ -59,7 +68,7 @@ async function startServer() {
 
 Extract:
 1. SUPPLIER NAME: Exact business name at top (e.g. THE PHIMAR TRADING CENTER, AGS LIMITED, BROOKSIDE DAIRY, KHETIAS).
-2. RECEIPT DATE: Date formatted as YYYY-MM-DD (e.g. "2026-10-16", "2026-10-02", "2026-10-05", "2026-10-08").
+2. RECEIPT DATE: Carefully locate and read the exact date printed on the receipt (e.g. "Date: 16/Oct/2026", "Date: 16/10/2026", "2026-10-02", "2026-10-05", "2026-10-08", "2nd of October") and format as YYYY-MM-DD (e.g. "2026-10-16").
 3. INVOICE/RECEIPT NO: (e.g. "INV No: 270055801", "PTC-4160").
 4. PAYMENT MODE: "CASH", "MPESA", "CREDIT", or "EQUITEL".
 5. ITEMS & BUNDLES:
@@ -320,8 +329,13 @@ ${textContent || "Extract supplier, date, payment mode, items with derived unit 
 
       // Format canonical receipt object for client consumption
       const firstRcpt = parsed.extractedReceipts[0];
+      const extractedDate =
+        extractExplicitDate(firstRcpt?.receiptDate) ||
+        extractExplicitDate(firstRcpt?.notes) ||
+        detectedDateFromInput ||
+        "2026-10-16";
       if (firstRcpt) {
-        firstRcpt.receiptDate = normalizeIsoDate(firstRcpt.receiptDate || detectedDateFromInput);
+        firstRcpt.receiptDate = extractedDate;
       }
       const isAgsReceipt = 
         String(firstRcpt.supplierName || "").toUpperCase().includes("AGS") ||
@@ -410,8 +424,7 @@ ${textContent || "Extract supplier, date, payment mode, items with derived unit 
         rawMode.includes("CREDIT") || rawMode.includes("DENI") ? "CREDIT" :
         rawMode.includes("EQUITEL") || rawMode.includes("BANK") ? "EQUITEL" : "CASH";
 
-      const rawDateStr = firstRcpt.receiptDate || req.body.file_name;
-      const finalReceiptDate = rawDateStr ? normalizeIsoDate(rawDateStr) : "2026-10-16";
+      const finalReceiptDate = extractedDate;
 
       const structuredReceipt = {
         id: `rcpt_${Date.now()}`,

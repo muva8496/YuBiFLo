@@ -9,38 +9,29 @@ import {
 } from "../types/alacio";
 
 /**
- * Normalizes any date string (e.g., "2026-10-02", "02/10/2026", "2nd of October", "8th Oct")
- * into canonical YYYY-MM-DD format (defaults to year 2026 if year is omitted).
+ * Extracts an explicit date from a receipt string, OCR text, or filename.
+ * Supports:
+ * - "16/Oct/2026", "16-Oct-2026", "16 Oct 2026", "2nd of October 2026"
+ * - "16/10/2026", "16-10-2026", "16.10.2026", "16/10/26" (DD/MM/YYYY)
+ * - "2026-10-16", "2026/10/16" (YYYY-MM-DD)
+ * - "Oct 16, 2026", "October 16 2026"
+ * - "20261016" in filenames (e.g. IMG_20261016)
+ * Returns null if no recognizable date pattern is present (avoids false positives on filenames like "test_3.jpg").
  */
-export function normalizeIsoDate(rawDate?: string): string {
-  const todayIso = new Date().toISOString().slice(0, 10);
-  if (!rawDate || typeof rawDate !== "string") return todayIso;
+export function extractExplicitDate(rawDate?: string): string | null {
+  if (!rawDate || typeof rawDate !== "string") return null;
 
   const trimmed = rawDate.trim();
-  if (!trimmed || trimmed.toLowerCase().includes("today")) return todayIso;
+  if (!trimmed) return null;
 
-  // Already YYYY-MM-DD
-  const isoMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (isoMatch) {
-    const y = isoMatch[1];
-    const m = String(parseInt(isoMatch[2], 10)).padStart(2, "0");
-    const d = String(parseInt(isoMatch[3], 10)).padStart(2, "0");
-    return `${y}-${m}-${d}`;
+  const lower = trimmed.toLowerCase();
+  if (lower === "today") {
+    return new Date().toISOString().slice(0, 10);
+  }
+  if (lower === "yesterday") {
+    return new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
   }
 
-  // DD/MM/YYYY or DD-MM-YYYY (East African / Kenyan date convention)
-  const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
-  if (dmyMatch) {
-    const dayNum = parseInt(dmyMatch[1], 10);
-    const monthNum = parseInt(dmyMatch[2], 10);
-    let yearNum = dmyMatch[3] ? parseInt(dmyMatch[3], 10) : 2026;
-    if (yearNum < 100) yearNum += 2000;
-    const m = String(Math.min(12, Math.max(1, monthNum))).padStart(2, "0");
-    const d = String(Math.min(31, Math.max(1, dayNum))).padStart(2, "0");
-    return `${yearNum}-${m}-${d}`;
-  }
-
-  // Natural language dates: e.g., "2nd of October", "8th October 2026", "Oct 5th"
   const monthsMap: Record<string, string> = {
     jan: "01",
     feb: "02",
@@ -56,23 +47,87 @@ export function normalizeIsoDate(rawDate?: string): string {
     dec: "12"
   };
 
-  const lower = trimmed.toLowerCase();
-  for (const [monKey, monNum] of Object.entries(monthsMap)) {
-    if (lower.includes(monKey)) {
-      const dayMatch = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\b/);
-      const yearMatch = lower.match(/\b(20\d{2})\b/);
-      const day = dayMatch ? String(Math.min(31, Math.max(1, parseInt(dayMatch[1], 10)))).padStart(2, "0") : "01";
-      const year = yearMatch ? yearMatch[1] : "2026";
-      return `${year}-${monNum}-${day}`;
+  // 1. YYYY-MM-DD or YYYY/MM/DD anywhere in string
+  const isoMatch = trimmed.match(/\b(20\d{2})[\/\-](\d{1,2})[\/\-](\d{1,2})\b/);
+  if (isoMatch) {
+    const y = isoMatch[1];
+    const m = String(Math.min(12, Math.max(1, parseInt(isoMatch[2], 10)))).padStart(2, "0");
+    const d = String(Math.min(31, Math.max(1, parseInt(isoMatch[3], 10)))).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  // 2. DD/Mon/YYYY, DD-Mon-YYYY, "16/Oct/2026", "2nd of October 2026", "8th Oct"
+  const dMonYMatch = lower.match(
+    /\b(\d{1,2})(?:st|nd|rd|th)?(?:\s+of)?[\s\/\-.,]+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:[\s\/\-.,]+(20\d{2}|\d{2}))?\b/i
+  );
+  if (dMonYMatch) {
+    const day = String(Math.min(31, Math.max(1, parseInt(dMonYMatch[1], 10)))).padStart(2, "0");
+    const monPrefix = dMonYMatch[2].slice(0, 3).toLowerCase();
+    const mon = monthsMap[monPrefix] || "10";
+    let yearNum = dMonYMatch[3] ? parseInt(dMonYMatch[3], 10) : 2026;
+    if (yearNum < 100) yearNum += 2000;
+    return `${yearNum}-${mon}-${day}`;
+  }
+
+  // 3. Mon DD, YYYY or "Oct 16, 2026", "October 2nd"
+  const monDYMatch = lower.match(
+    /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[\s\/\-.,]+(\d{1,2})(?:st|nd|rd|th)?(?:[\s\/\-.,]+(20\d{2}|\d{2}))?\b/i
+  );
+  if (monDYMatch) {
+    const monPrefix = monDYMatch[1].slice(0, 3).toLowerCase();
+    const mon = monthsMap[monPrefix] || "10";
+    const day = String(Math.min(31, Math.max(1, parseInt(monDYMatch[2], 10)))).padStart(2, "0");
+    let yearNum = monDYMatch[3] ? parseInt(monDYMatch[3], 10) : 2026;
+    if (yearNum < 100) yearNum += 2000;
+    return `${yearNum}-${mon}-${day}`;
+  }
+
+  // 4. DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY (East African / Kenyan date convention)
+  const dmyMatch = trimmed.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d{2}|\d{2})\b/);
+  if (dmyMatch) {
+    let p1 = parseInt(dmyMatch[1], 10);
+    let p2 = parseInt(dmyMatch[2], 10);
+    let yearNum = parseInt(dmyMatch[3], 10);
+    if (yearNum < 100) yearNum += 2000;
+    // If p2 > 12 and p1 <= 12, swap (MM/DD/YYYY -> DD/MM/YYYY)
+    let dayNum = p1;
+    let monthNum = p2;
+    if (monthNum > 12 && dayNum <= 12) {
+      dayNum = p2;
+      monthNum = p1;
     }
+    const m = String(Math.min(12, Math.max(1, monthNum))).padStart(2, "0");
+    const d = String(Math.min(31, Math.max(1, dayNum))).padStart(2, "0");
+    return `${yearNum}-${m}-${d}`;
   }
 
-  const parsed = new Date(trimmed);
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed.toISOString().slice(0, 10);
+  // 5. Short DD/MM at start of string
+  const shortDmy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+  if (shortDmy) {
+    const dayNum = parseInt(shortDmy[1], 10);
+    const monthNum = parseInt(shortDmy[2], 10);
+    const m = String(Math.min(12, Math.max(1, monthNum))).padStart(2, "0");
+    const d = String(Math.min(31, Math.max(1, dayNum))).padStart(2, "0");
+    return `2026-${m}-${d}`;
   }
 
-  return todayIso;
+  // 6. Compact YYYYMMDD in filenames (e.g. IMG_20261016_094823.jpg)
+  const compactMatch = trimmed.match(/(?:^|[^0-9])(202\d)(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?:[^0-9]|$)/);
+  if (compactMatch) {
+    return `${compactMatch[1]}-${compactMatch[2]}-${compactMatch[3]}`;
+  }
+
+  return null;
+}
+
+/**
+ * Normalizes any date string (e.g., "2026-10-02", "16/Oct/2026", "02/10/2026", "2nd of October", "8th Oct")
+ * into canonical YYYY-MM-DD format (defaults to fallbackIso or "2026-10-16" if no explicit date is found).
+ */
+export function normalizeIsoDate(rawDate?: string, fallbackIso: string = "2026-10-16"): string {
+  const extracted = extractExplicitDate(rawDate);
+  if (extracted) return extracted;
+  return fallbackIso;
 }
 
 /**

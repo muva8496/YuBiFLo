@@ -156,15 +156,15 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
   },
   {
     id: "sample_brookside",
-    label: "Brookside Dairy Delivery Slip (Milk & Lala)",
+    label: "Brookside Dairy Delivery Slip (Milk & Lala • 03/10/2026)",
     supplier: "Brookside Dairy Kenya Ltd",
-    date: "Today, 08:15 AM",
+    date: "03/10/2026, 08:15 AM",
     previewUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='550' viewBox='0 0 400 550'><rect width='400' height='550' fill='%23ffffff' stroke='%23cbd5e1' stroke-width='1.5'/><text x='200' y='45' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='18' fill='%23111827'>BROOKSIDE DAIRY KENYA LTD</text><text x='200' y='68' text-anchor='middle' font-family='monospace' font-size='11' fill='%234b5563'>P.O. Box 2390-00100 Nairobi &bull; Ruiru Plant</text><text x='200' y='88' text-anchor='middle' font-family='monospace' font-size='12' fill='%23111827'>DELIVERY NOTE / TAX INVOICE</text><line x1='25' y1='100' x2='375' y2='100' stroke='%23374151' stroke-width='1.5' stroke-dasharray='4'/><text x='30' y='125' font-family='monospace' font-size='11' fill='%23111827'>INV NO: BK-8841</text><text x='270' y='125' font-family='monospace' font-size='11' fill='%23111827'>DATE: 2026-10-03</text><text x='30' y='145' font-family='monospace' font-size='11' fill='%23111827'>CLIENT: ALACIO MINI SHOP</text><text x='270' y='145' font-family='monospace' font-size='11' fill='%23111827'>VAN: KBZ 119Q</text><line x1='25' y1='160' x2='375' y2='160' stroke='%239ca3af' stroke-width='1'/><text x='30' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%23111827'>ITEM DESCRIPTION</text><text x='230' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%23111827'>QTY</text><text x='310' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%23111827'>KSH</text><line x1='25' y1='190' x2='375' y2='190' stroke='%239ca3af' stroke-width='1'/><text x='30' y='215' font-family='monospace' font-size='11' fill='%23111827'>FRESH MILK 500ML</text><text x='230' y='215' font-family='monospace' font-size='11' fill='%23111827'>2 CRATES</text><text x='310' y='215' font-family='monospace' font-size='11' fill='%23111827'>2,640.00</text><text x='30' y='232' font-family='monospace' font-size='9' fill='%236b7280'>24 pkts / crate &bull; KSh 55/pkt</text><text x='30' y='260' font-family='monospace' font-size='11' fill='%23111827'>MALA / LALA 500ML</text><text x='230' y='260' font-family='monospace' font-size='11' fill='%23111827'>1 CRATE</text><text x='310' y='260' font-family='monospace' font-size='11' fill='%23111827'>1,560.00</text><text x='30' y='277' font-family='monospace' font-size='9' fill='%236b7280'>24 pkts / crate &bull; KSh 65/pkt</text><text x='30' y='305' font-family='monospace' font-size='11' fill='%23111827'>CUP YOGHURT 250ML</text><text x='230' y='305' font-family='monospace' font-size='11' fill='%23111827'>1 TRAY</text><text x='310' y='305' font-family='monospace' font-size='11' fill='%23111827'>840.00</text><text x='30' y='322' font-family='monospace' font-size='9' fill='%236b7280'>12 cups / tray &bull; KSh 70/cup</text><line x1='25' y1='345' x2='375' y2='345' stroke='%23374151' stroke-width='1.5' stroke-dasharray='4'/><text x='30' y='375' font-family='monospace' font-weight='bold' font-size='13' fill='%23111827'>TOTAL INVOICE (KSH):</text><text x='300' y='375' font-family='monospace' font-weight='bold' font-size='14' fill='%23059669'>5,040.00</text><text x='30' y='405' font-family='monospace' font-size='11' fill='%23111827'>PAID VIA: M-PESA TILL 982310</text><text x='30' y='425' font-family='monospace' font-size='10' fill='%234b5563'>RECEIVED IN GOOD CONDITION BY: J. ALACIO</text><rect x='110' y='455' width='180' height='55' rx='8' fill='%23ffffff' stroke='%23059669' stroke-width='1.5'/><text x='200' y='488' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='14' fill='%23047857'>PAID &amp; RECEIVED</text></svg>",
     mockData: {
       id: "rcpt_brookside_01",
       receiptNumber: "BK-8841",
       supplierName: "Brookside Dairy Kenya Ltd",
-      receiptDate: new Date().toISOString().slice(0, 10),
+      receiptDate: "2026-10-03",
       paymentMode: "MPESA",
       totalCost: 5040,
       totalRetailShelfValue: 6060,
@@ -172,7 +172,7 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
       markupPercentage: 20.2,
       confidenceScore: 0.98,
       processedAt: "Just now",
-      rawTextNotes: "OCR read Brookside official delivery slip. 2 crates milk, 1 crate mala, 1 tray yoghurt.",
+      rawTextNotes: "OCR read Brookside official delivery slip (Date: 2026-10-03). 2 crates milk, 1 crate mala, 1 tray yoghurt.",
       items: [
         {
           id: "item_b1",
@@ -218,15 +218,15 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
   },
   {
     id: "sample_broadway",
-    label: "Broadway Bakeries Invoice (White & Brown Loaves)",
+    label: "Broadway Bakeries Invoice (White & Brown Loaves • 03/10/2026)",
     supplier: "Broadway Bakeries Ltd",
-    date: "Today, 06:45 AM",
+    date: "03/10/2026, 06:45 AM",
     previewUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='550' viewBox='0 0 400 550'><rect width='400' height='550' fill='%23ffffff' stroke='%23cbd5e1' stroke-width='1.5'/><text x='200' y='45' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='18' fill='%2392400e'>BROADWAY BAKERIES LTD</text><text x='200' y='68' text-anchor='middle' font-family='monospace' font-size='11' fill='%23b45309'>Thika Industrial Area &bull; Nairobi Branch</text><text x='200' y='88' text-anchor='middle' font-family='monospace' font-size='12' fill='%23111827'>OFFICIAL DELIVERY INVOICE</text><line x1='25' y1='100' x2='375' y2='100' stroke='%23b45309' stroke-width='1.5' stroke-dasharray='4'/><text x='30' y='125' font-family='monospace' font-size='11' fill='%23111827'>INVOICE: BW-2041</text><text x='270' y='125' font-family='monospace' font-size='11' fill='%23111827'>DATE: 2026-10-03</text><text x='30' y='145' font-family='monospace' font-size='11' fill='%23111827'>CUSTOMER: ALACIO MINI SHOP</text><line x1='25' y1='160' x2='375' y2='160' stroke='%23cbd5e1' stroke-width='1'/><text x='30' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%23111827'>BAKERY ITEM</text><text x='240' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%23111827'>QTY</text><text x='310' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%23111827'>TOTAL</text><line x1='25' y1='190' x2='375' y2='190' stroke='%23cbd5e1' stroke-width='1'/><text x='30' y='215' font-family='monospace' font-size='11' fill='%23111827'>BROADWAYS WHITE 400G</text><text x='240' y='215' font-family='monospace' font-size='11' fill='%23111827'>25 LOAVES</text><text x='310' y='215' font-family='monospace' font-size='11' fill='%23111827'>1,500.00</text><text x='30' y='250' font-family='monospace' font-size='11' fill='%23111827'>BROADWAYS BROWN 400G</text><text x='240' y='250' font-family='monospace' font-size='11' fill='%23111827'>10 LOAVES</text><text x='310' y='250' font-family='monospace' font-size='11' fill='%23111827'>650.00</text><text x='30' y='285' font-family='monospace' font-size='11' fill='%23111827'>SWEET BUNS &amp; SCONES</text><text x='240' y='285' font-family='monospace' font-size='11' fill='%23111827'>15 PACKS</text><text x='310' y='285' font-family='monospace' font-size='11' fill='%23111827'>600.00</text><line x1='25' y1='320' x2='375' y2='320' stroke='%23b45309' stroke-width='1.5' stroke-dasharray='4'/><text x='30' y='350' font-family='monospace' font-weight='bold' font-size='13' fill='%23111827'>TOTAL AMOUNT DUE:</text><text x='295' y='350' font-family='monospace' font-weight='bold' font-size='14' fill='%23b45309'>KSH 2,750.00</text><text x='30' y='380' font-family='monospace' font-size='11' fill='%23111827'>PAYMENT MODE: CASH DRAWER</text><rect x='110' y='440' width='180' height='55' rx='8' fill='%23ffffff' stroke='%23d97706' stroke-width='1.5'/><text x='200' y='473' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='14' fill='%23b45309'>DELIVERED &amp; CASH PAID</text></svg>",
     mockData: {
       id: "rcpt_broadway_02",
       receiptNumber: "BW-2041",
       supplierName: "Broadway Bakeries Ltd",
-      receiptDate: new Date().toISOString().slice(0, 10),
+      receiptDate: "2026-10-03",
       paymentMode: "CASH",
       totalCost: 2750,
       totalRetailShelfValue: 3250,
@@ -234,7 +234,7 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
       markupPercentage: 18.2,
       confidenceScore: 0.97,
       processedAt: "Just now",
-      rawTextNotes: "OCR read Broadway Bakeries van invoice. 25 white loaves, 10 brown loaves, 15 sweet buns.",
+      rawTextNotes: "OCR read Broadway Bakeries van invoice (Date: 2026-10-03). 25 white loaves, 10 brown loaves, 15 sweet buns.",
       items: [
         {
           id: "item_bw1",
@@ -280,15 +280,15 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
   },
   {
     id: "sample_wholesaler",
-    label: "Mega Wholesaler Commodities (Sugar, Unga, Oil)",
+    label: "Mega Wholesaler Commodities (Sugar, Unga, Oil • 02/10/2026)",
     supplier: "Nairobi Mega Wholesalers & Distributors",
-    date: "Yesterday, 04:30 PM",
+    date: "02/10/2026, 04:30 PM",
     previewUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='550' viewBox='0 0 400 550'><rect width='400' height='550' fill='%23ffffff' stroke='%23cbd5e1' stroke-width='1.5'/><text x='200' y='45' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='16' fill='%230f172a'>NAIROBI MEGA WHOLESALERS</text><text x='200' y='68' text-anchor='middle' font-family='monospace' font-size='11' fill='%23475569'>Gikomba Commercial Hub &bull; Stall B-44</text><text x='200' y='88' text-anchor='middle' font-family='monospace' font-size='12' fill='%230f172a'>COMMODITIES DISPATCH RECEIPT</text><line x1='25' y1='100' x2='375' y2='100' stroke='%23334155' stroke-width='1.5' stroke-dasharray='4'/><text x='30' y='125' font-family='monospace' font-size='11' fill='%230f172a'>RC NO: NW-9921</text><text x='270' y='125' font-family='monospace' font-size='11' fill='%230f172a'>DATE: 2026-10-02</text><text x='30' y='145' font-family='monospace' font-size='11' fill='%230f172a'>BUYER: ALACIO MINI SHOP</text><line x1='25' y1='160' x2='375' y2='160' stroke='%23cbd5e1' stroke-width='1'/><text x='30' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%230f172a'>BULK COMMODITY</text><text x='240' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%230f172a'>QTY</text><text x='310' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%230f172a'>TOTAL</text><line x1='25' y1='190' x2='375' y2='190' stroke='%23cbd5e1' stroke-width='1'/><text x='30' y='215' font-family='monospace' font-size='11' fill='%230f172a'>MUMIAS SUGAR 50KG BAG</text><text x='240' y='215' font-family='monospace' font-size='11' fill='%230f172a'>1 BAG</text><text x='310' y='215' font-family='monospace' font-size='11' fill='%230f172a'>6,800.00</text><text x='30' y='232' font-family='monospace' font-size='9' fill='%2364748b'>Splits to 200 quarter-kgs &bull; KSh 34/unit</text><text x='30' y='260' font-family='monospace' font-size='11' fill='%230f172a'>UNGA JOGOO 2KG BALE</text><text x='240' y='260' font-family='monospace' font-size='11' fill='%230f172a'>4 BALES</text><text x='310' y='260' font-family='monospace' font-size='11' fill='%230f172a'>6,000.00</text><text x='30' y='277' font-family='monospace' font-size='9' fill='%2364748b'>12 pkts/bale = 48 pkts &bull; KSh 125/pkt</text><text x='30' y='305' font-family='monospace' font-size='11' fill='%230f172a'>GOLDEN FRY OIL 1L CTN</text><text x='240' y='305' font-family='monospace' font-size='11' fill='%230f172a'>2 CTNS</text><text x='310' y='305' font-family='monospace' font-size='11' fill='%230f172a'>6,000.00</text><text x='30' y='322' font-family='monospace' font-size='9' fill='%2364748b'>12 btls/ctn = 24 btls &bull; KSh 250/btl</text><line x1='25' y1='345' x2='375' y2='345' stroke='%23334155' stroke-width='1.5' stroke-dasharray='4'/><text x='30' y='375' font-family='monospace' font-weight='bold' font-size='13' fill='%230f172a'>TOTAL PAID (KSH):</text><text x='290' y='375' font-family='monospace' font-weight='bold' font-size='14' fill='%230284c7'>18,800.00</text><text x='30' y='405' font-family='monospace' font-size='11' fill='%230f172a'>SETTLED VIA: MPESA BUSINESS TILL</text><rect x='110' y='445' width='180' height='55' rx='8' fill='%23ffffff' stroke='%230284c7' stroke-width='1.5'/><text x='200' y='478' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='14' fill='%230369a1'>VERIFIED &amp; CLEARED</text></svg>",
     mockData: {
       id: "rcpt_wholesaler_03",
       receiptNumber: "NW-9921",
       supplierName: "Nairobi Mega Wholesalers & Distributors",
-      receiptDate: new Date().toISOString().slice(0, 10),
+      receiptDate: "2026-10-02",
       paymentMode: "MPESA",
       totalCost: 18800,
       totalRetailShelfValue: 21800,
@@ -296,7 +296,7 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
       markupPercentage: 16.0,
       confidenceScore: 0.99,
       processedAt: "Just now",
-      rawTextNotes: "OCR read Gikomba wholesale dispatch receipt: 1x 50kg sugar, 4x unga bales, 2x oil cartons.",
+      rawTextNotes: "OCR read Gikomba wholesale dispatch receipt (Date: 2026-10-02): 1x 50kg sugar, 4x unga bales, 2x oil cartons.",
       items: [
         {
           id: "item_mw1",
@@ -343,15 +343,15 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
   },
   {
     id: "sample_combo_420",
-    label: "Delivery Chit (140 Sugar + 280 Oil = 420 Total)",
+    label: "Delivery Chit (140 Sugar + 280 Oil = 420 Total • 04/10/2026)",
     supplier: "Khetias Wholesalers Eldoret & Nairobi",
-    date: "Today, 09:10 AM",
+    date: "04/10/2026, 09:10 AM",
     previewUrl: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='550' viewBox='0 0 400 550'><rect width='400' height='550' fill='%23ffffff' stroke='%23cbd5e1' stroke-width='1.5'/><text x='200' y='45' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='16' fill='%231c1917'>KHETIAS WHOLESALE MERCHANTS</text><text x='200' y='68' text-anchor='middle' font-family='monospace' font-size='11' fill='%2357534e'>Depot Dispatch &bull; Delivery Van 04</text><text x='200' y='88' text-anchor='middle' font-family='monospace' font-size='12' fill='%231c1917'>OFFICIAL DELIVERY INVOICE</text><line x1='25' y1='100' x2='375' y2='100' stroke='%2344403c' stroke-width='1.5' stroke-dasharray='4'/><text x='30' y='125' font-family='monospace' font-size='11' fill='%231c1917'>INV NO: KH-4201</text><text x='270' y='125' font-family='monospace' font-size='11' fill='%231c1917'>DATE: 2026-10-04</text><text x='30' y='145' font-family='monospace' font-size='11' fill='%231c1917'>CLIENT: ALACIO MINI SHOP</text><line x1='25' y1='160' x2='375' y2='160' stroke='%23d6d3d1' stroke-width='1'/><text x='30' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%231c1917'>ITEM DESCRIPTION</text><text x='240' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%231c1917'>QTY</text><text x='310' y='180' font-family='monospace' font-weight='bold' font-size='11' fill='%231c1917'>TOTAL</text><line x1='25' y1='190' x2='375' y2='190' stroke='%23d6d3d1' stroke-width='1'/><text x='30' y='215' font-family='monospace' font-size='11' fill='%231c1917'>MUMIAS SUGAR 1KG</text><text x='240' y='215' font-family='monospace' font-size='11' fill='%231c1917'>1 PKT</text><text x='310' y='215' font-family='monospace' font-size='11' fill='%231c1917'>140.00</text><text x='30' y='232' font-family='monospace' font-size='9' fill='%2378716c'>Wholesale cost: 140 &bull; Retail: 165</text><text x='30' y='265' font-family='monospace' font-size='11' fill='%231c1917'>COOKING OIL 1L</text><text x='240' y='265' font-family='monospace' font-size='11' fill='%231c1917'>1 BTL</text><text x='310' y='265' font-family='monospace' font-size='11' fill='%231c1917'>280.00</text><text x='30' y='282' font-family='monospace' font-size='9' fill='%2378716c'>Wholesale cost: 280 &bull; Retail: 330</text><line x1='25' y1='320' x2='375' y2='320' stroke='%2344403c' stroke-width='1.5' stroke-dasharray='4'/><text x='30' y='350' font-family='monospace' font-weight='bold' font-size='13' fill='%231c1917'>TOTAL (140 + 280):</text><text x='295' y='350' font-family='monospace' font-weight='bold' font-size='15' fill='%23059669'>KSH 420.00</text><text x='30' y='380' font-family='monospace' font-size='11' fill='%231c1917'>PAYMENT MODE: CASH DRAWER</text><rect x='110' y='440' width='180' height='55' rx='8' fill='%23ffffff' stroke='%23059669' stroke-width='1.5'/><text x='200' y='473' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='14' fill='%23047857'>VERIFIED: KSH 420</text></svg>",
     mockData: {
       id: "rcpt_khetias_420",
       receiptNumber: "KH-4201",
       supplierName: "Khetias Wholesalers",
-      receiptDate: new Date().toISOString().slice(0, 10),
+      receiptDate: "2026-10-04",
       paymentMode: "CASH",
       totalCost: 420,
       totalRetailShelfValue: 495,
@@ -359,7 +359,7 @@ export const SAMPLE_SUPPLIER_RECEIPTS: SampleReceiptPhoto[] = [
       markupPercentage: 17.9,
       confidenceScore: 0.99,
       processedAt: "Just now",
-      rawTextNotes: "Inbound supply: 1x Mumias Sugar 1kg (140) + 1x Cooking Oil 1L (280) = KSh 420 total invoice. Approved items add strictly without string concatenation.",
+      rawTextNotes: "Inbound supply (Date: 2026-10-04): 1x Mumias Sugar 1kg (140) + 1x Cooking Oil 1L (280) = KSh 420 total invoice. Approved items add strictly without string concatenation.",
       items: [
         {
           id: "item_k1",
@@ -402,11 +402,13 @@ export class ReceiptOcrService {
     imageDataUrl: string, 
     fileName?: string
   ): Promise<ProcessedReceipt> {
-    // If the image matches one of our samples, return the sample's rich structure
+    // If the image matches one of our samples, return the sample's rich structure with its exact receipt date
     const matchedSample = SAMPLE_SUPPLIER_RECEIPTS.find((s) => s.id === fileName || s.previewUrl === imageDataUrl);
     if (matchedSample) {
+      const sampleDate = normalizeIsoDate(matchedSample.mockData.receiptDate || matchedSample.date, "2026-10-16");
       return {
         ...matchedSample.mockData,
+        receiptDate: sampleDate,
         imageUrl: imageDataUrl,
         processedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       };
@@ -428,8 +430,10 @@ export class ReceiptOcrService {
       if (response.ok) {
         const data = await response.json();
         if (data.receipt) {
+          const resolvedDate = normalizeIsoDate(data.receipt.receiptDate || fileName, "2026-10-16");
           return {
             ...data.receipt,
+            receiptDate: resolvedDate,
             imageUrl: imageDataUrl,
             processedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           };
@@ -440,7 +444,7 @@ export class ReceiptOcrService {
     }
 
     const lowerName = String(fileName || "").toLowerCase();
-    const detectedDate = normalizeIsoDate(fileName || "") || "2026-10-16";
+    const detectedDate = normalizeIsoDate(fileName || "", "2026-10-16");
     const isAgs = lowerName.includes("test_3") || lowerName.includes("ags") || lowerName.includes("msosi") || lowerName.includes("270055801");
 
     if (isAgs) {
