@@ -1028,7 +1028,7 @@ export default function PurchasesTab({
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Review and approve each good individually before ingesting to inventory. Worked-on and rejected receipts go to the database to give space for new uploads.
+                Reads supplier name (e.g. <strong>THE PHIMAR TRADING CENTER</strong>), payment mode (<strong>CASH</strong>), totals (<strong>Ksh 4,160</strong>), and derives unit wholesale costs for packet &amp; bag bundles even when receipt lines are printed in shorthand.
               </p>
             </div>
           </div>
