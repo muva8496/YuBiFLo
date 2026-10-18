@@ -874,6 +874,16 @@ export default function PurchasesTab({
 
           <button
             onClick={() => {
+              fileInputRef.current?.click();
+            }}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+          >
+            <Camera size={15} />
+            <span>Upload Receipt</span>
+          </button>
+
+          <button
+            onClick={() => {
               setIsAddingPurchase(true);
               if (purchaseFormRef.current) {
                 purchaseFormRef.current.scrollIntoView({ behavior: "smooth" });
