@@ -16,6 +16,7 @@ import {
 import { deduplicateMorningBookends } from "../utils/morningBookendHelper";
 import { deduplicateSuppliers } from "../utils/supplierHelper";
 import { reconcileChronologicalReceiptsAndSales } from "../utils/chronologicalReceiptSalesEngine";
+import { getSupplyUnitMultiplier } from "./bulkConversionEngine";
 import { db, handleFirestoreError, OperationType } from "./firebase";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -989,8 +990,20 @@ export function sanitizeNumericValue(val: any, fallback: number = 0, maxReasonab
  * never break calculations or corrupt merchant goods.
  */
 function sanitizeInventoryItem(item: any, idx: number): InventoryItem {
-  const cost = sanitizeNumericValue(item.unit_cost, 100, 1_000_000);
-  const retail = sanitizeNumericValue(item.unit_retail, Math.round(cost * 1.25 * 100) / 100, 1_000_000);
+  let cost = sanitizeNumericValue(item.unit_cost, 100, 1_000_000);
+  const packUnit = String(item.bulk_pack_name || item.unit_type || "");
+  const packMult = getSupplyUnitMultiplier(packUnit);
+  const rawRetail = sanitizeNumericValue(item.unit_retail, 0, 1_000_000);
+
+  // If an item was saved with a bulk pack unit (e.g. "Bale (12pkts)") and its unit_cost was stored as the full bale price (e.g. 2080), divide by packMult (2080 / 12 = 173.33)
+  if (packMult > 1 && cost >= 600 && (rawRetail === 0 || cost > rawRetail * 1.8 || Math.abs(rawRetail - cost * 1.25) < 2)) {
+    cost = Math.round((cost / packMult) * 100) / 100;
+  }
+
+  const retail =
+    rawRetail > 0 && rawRetail <= cost * 4
+      ? rawRetail
+      : Math.round(cost * 1.2 * 100) / 100;
   const stock = sanitizeNumericValue(item.current_stock, 1, 500_000);
   const margin = Math.round((retail - cost) * 100) / 100;
   const shelfVal = Math.round(stock * retail * 100) / 100;

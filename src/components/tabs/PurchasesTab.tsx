@@ -22,6 +22,11 @@ import {
   ProcessedReceipt, 
   ProcessedReceiptItem 
 } from "../../services/receiptOcrService";
+import {
+  KENYA_SUPPLY_UNIT_OPTIONS,
+  getSupplyUnitMultiplier,
+  deriveUnitWholesaleCost
+} from "../../services/bulkConversionEngine";
 
 export interface PurchaseItemLine {
   id: string;
@@ -150,12 +155,22 @@ export default function PurchasesTab({
   // Multiple item lines in a lot of goods (Suppliers supply 1 to many goods)
   const [itemLines, setItemLines] = useState<PurchaseItemLine[]>([
     {
+      id: "line_ngano",
+      itemName: "Ngano Swan 2kg",
+      category: "Flour & Cereals",
+      quantity: 1,
+      unit: "Bale (12pkts)",
+      unitCost: 173.33,
+      retailPrice: 200,
+      totalCost: 2080
+    },
+    {
       id: "line_1",
       itemName: "Brookside Fresh Milk 500ml",
       category: "Dairy & Chilled",
       quantity: 2,
       unit: "Crate (24pkts)",
-      unitCost: 1320,
+      unitCost: 55,
       retailPrice: 65,
       totalCost: 2640
     },
@@ -165,19 +180,9 @@ export default function PurchasesTab({
       category: "Dairy & Chilled",
       quantity: 1,
       unit: "Crate (24pkts)",
-      unitCost: 1560,
+      unitCost: 65,
       retailPrice: 80,
       totalCost: 1560
-    },
-    {
-      id: "line_3",
-      itemName: "Brookside Cup Yoghurt 250ml",
-      category: "Dairy & Chilled",
-      quantity: 1,
-      unit: "Tray (12cups)",
-      unitCost: 840,
-      retailPrice: 85,
-      totalCost: 840
     }
   ]);
 
@@ -214,16 +219,19 @@ export default function PurchasesTab({
   const handleAddSuppliedItemToBatch = (goodName: string) => {
     const existingInv = inventory.find((i) => i.name.toLowerCase().trim() === goodName.toLowerCase().trim());
     const emptyIdx = itemLines.findIndex((l) => !l.itemName.trim());
+    const defaultUnit = existingInv?.unit_type === "pcs" ? "Pieces" : (existingInv?.bulk_pack_name || "Pieces");
+    const mult = getSupplyUnitMultiplier(defaultUnit);
+    const perUnitCost = existingInv?.unit_cost || 100;
 
     const newLine: PurchaseItemLine = {
       id: `line_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       itemName: goodName,
       category: existingInv?.category || currentSupplier?.category || "General Wholesaler",
       quantity: 1,
-      unit: existingInv?.unit_type === "pcs" ? "Pieces" : (existingInv?.bulk_pack_name || "Pieces"),
-      unitCost: existingInv?.unit_cost || 100,
-      retailPrice: existingInv?.unit_retail || Math.round((existingInv?.unit_cost || 100) * 1.25),
-      totalCost: existingInv?.unit_cost || 100
+      unit: defaultUnit,
+      unitCost: perUnitCost,
+      retailPrice: existingInv?.unit_retail || Math.round(perUnitCost * 1.25),
+      totalCost: Math.round(perUnitCost * mult * 100) / 100
     };
 
     if (emptyIdx >= 0) {
@@ -243,15 +251,18 @@ export default function PurchasesTab({
     if (suppliedGoodsList.length === 0) return;
     const newLines: PurchaseItemLine[] = suppliedGoodsList.map((goodName, idx) => {
       const existingInv = inventory.find((i) => i.name.toLowerCase().trim() === goodName.toLowerCase().trim());
+      const defaultUnit = existingInv?.unit_type === "pcs" ? "Pieces" : (existingInv?.bulk_pack_name || "Pieces");
+      const mult = getSupplyUnitMultiplier(defaultUnit);
+      const perUnitCost = existingInv?.unit_cost || 100;
       return {
         id: `line_supp_${Date.now()}_${idx}`,
         itemName: goodName,
         category: existingInv?.category || currentSupplier?.category || "General Wholesaler",
         quantity: 1,
-        unit: existingInv?.unit_type === "pcs" ? "Pieces" : (existingInv?.bulk_pack_name || "Pieces"),
-        unitCost: existingInv?.unit_cost || 100,
-        retailPrice: existingInv?.unit_retail || Math.round((existingInv?.unit_cost || 100) * 1.25),
-        totalCost: existingInv?.unit_cost || 100
+        unit: defaultUnit,
+        unitCost: perUnitCost,
+        retailPrice: existingInv?.unit_retail || Math.round(perUnitCost * 1.25),
+        totalCost: Math.round(perUnitCost * mult * 100) / 100
       };
     });
     setItemLines(newLines);
@@ -263,12 +274,16 @@ export default function PurchasesTab({
   const handleSelectSuppliedItemForRow = (lineId: string, goodName: string) => {
     if (!goodName) return;
     const existingInv = inventory.find((i) => i.name.toLowerCase().trim() === goodName.toLowerCase().trim());
+    const defaultUnit = existingInv?.unit_type === "pcs" ? "Pieces" : (existingInv?.bulk_pack_name || "Pieces");
+    const mult = getSupplyUnitMultiplier(defaultUnit);
+    const perUnitCost = existingInv?.unit_cost || 100;
     handleUpdateLine(lineId, {
       itemName: goodName,
       category: existingInv?.category || currentSupplier?.category || "General Wholesaler",
-      unit: existingInv?.unit_type === "pcs" ? "Pieces" : (existingInv?.bulk_pack_name || "Pieces"),
-      unitCost: existingInv?.unit_cost || 100,
-      retailPrice: existingInv?.unit_retail || Math.round((existingInv?.unit_cost || 100) * 1.25)
+      unit: defaultUnit,
+      unitCost: perUnitCost,
+      retailPrice: existingInv?.unit_retail || Math.round(perUnitCost * 1.25),
+      totalCost: Math.round(perUnitCost * mult * 100) / 100
     });
   };
 
@@ -304,26 +319,14 @@ export default function PurchasesTab({
   // Past purchases with expanded view tracking
   const [expandedPurchaseId, setExpandedPurchaseId] = useState<string | null>(null);
 
-  // Common Unit types in Kenya retail
-  const unitOptions = [
-    "Crate (24pkts)",
-    "Bale (12pkts)",
-    "Bale (24pkts)",
-    "Bag (50kg)",
-    "Bag (90kg)",
-    "Carton (12btls)",
-    "Carton (24pcs)",
-    "Tray (12cups)",
-    "Tray (30eggs)",
-    "Packets",
-    "Loaves",
-    "Bottles",
-    "Pieces",
-    "Kg"
-  ];
+  // Common Supply Unit measurements in Kenya retail & wholesale (Bales, Crates, Outa, Dozen, Litres, Loaves 200g/400g/600g, Kg, etc.)
+  const unitOptions = KENYA_SUPPLY_UNIT_OPTIONS;
 
   // Calculate lot summary
-  const totalLotUnits = itemLines.reduce((acc, line) => acc + (Number(line.quantity) || 0), 0);
+  const totalLotUnits = itemLines.reduce(
+    (acc, line) => acc + (Number(line.quantity) || 0) * getSupplyUnitMultiplier(line.unit),
+    0
+  );
   const totalLotCost = itemLines.reduce((acc, line) => acc + (Number(line.totalCost) || 0), 0);
 
   // Copy helper
@@ -342,28 +345,36 @@ export default function PurchasesTab({
       itemName: "",
       category: "General Wholesaler",
       quantity: 1,
-      unit: "Pieces",
-      unitCost: 100,
-      retailPrice: 120,
-      totalCost: 100
+      unit: "Bale (12pkts)",
+      unitCost: 0,
+      retailPrice: 0,
+      totalCost: 0
     };
     setItemLines([...itemLines, newLine]);
   };
 
-  // Update line row (supports both deriving unit wholesale cost from line total and calculating line total from unit cost)
+  // Update line row: breaks bulk supply packs (e.g. 1 Bale (12pkts) @ Line Total 2080 -> 2080 / 12 = 173.33 per packet)
   const handleUpdateLine = (id: string, updates: Partial<PurchaseItemLine>) => {
     setItemLines((prev) =>
       prev.map((line) => {
         if (line.id === id) {
           const updated = { ...line, ...updates };
+          const mult = getSupplyUnitMultiplier(updated.unit);
+          const qty = updated.quantity && updated.quantity > 0 ? updated.quantity : 1;
+          const totalRetailUnits = Math.max(0.0001, qty * mult);
+
           if (updates.totalCost !== undefined) {
-            const qty = updated.quantity && updated.quantity > 0 ? updated.quantity : 1;
-            updated.unitCost = Math.round(((updated.totalCost || 0) / qty) * 100) / 100;
-          } else if (updates.quantity !== undefined && updated.totalCost > 0 && updates.unitCost === undefined) {
-            const qty = updated.quantity > 0 ? updated.quantity : 1;
-            updated.unitCost = Math.round((updated.totalCost / qty) * 100) / 100;
+            updated.unitCost = deriveUnitWholesaleCost(updated.totalCost || 0, qty, updated.unit);
+          } else if (updates.unit !== undefined) {
+            if ((updated.totalCost || 0) > 0) {
+              updated.unitCost = deriveUnitWholesaleCost(updated.totalCost || 0, qty, updated.unit);
+            } else if ((updated.unitCost || 0) > 0) {
+              updated.totalCost = Math.round(totalRetailUnits * (updated.unitCost || 0) * 100) / 100;
+            }
+          } else if (updates.quantity !== undefined && (updated.totalCost || 0) > 0 && updates.unitCost === undefined) {
+            updated.unitCost = deriveUnitWholesaleCost(updated.totalCost || 0, qty, updated.unit);
           } else if (updates.unitCost !== undefined) {
-            updated.totalCost = Math.round((updated.quantity || 0) * (updated.unitCost || 0) * 100) / 100;
+            updated.totalCost = Math.round(totalRetailUnits * (updated.unitCost || 0) * 100) / 100;
           }
           return updated;
         }
@@ -532,6 +543,19 @@ export default function PurchasesTab({
         field === "rawPackUnit"
       ) {
         (updated as any)[field] = value;
+        if (field === "supplyUnit") {
+          const mult = getSupplyUnitMultiplier(String(value || ""));
+          const qty = Number(item.supplyUnitsReceived) > 0 ? Number(item.supplyUnitsReceived) : 1;
+          const currentLineCost = Number(item.lineCost) || 0;
+          if (mult > 1 && currentLineCost > 0) {
+            updated.packConversionMultiplier = mult;
+            updated.conversionRatio = mult;
+            updated.retailUnitsAdded = Math.round(qty * mult * 100) / 100;
+            updated.unitCostAtDelivery = deriveUnitWholesaleCost(currentLineCost, qty, String(value || ""));
+            const rPrice = Number(item.retailPrice) || 0;
+            updated.expectedMargin = Math.max(0, Math.round((rPrice - updated.unitCostAtDelivery) * 100) / 100);
+          }
+        }
       } else {
         const numVal = value === "" ? 0 : Number(value) || 0;
         (updated as any)[field] = numVal;
@@ -556,26 +580,26 @@ export default function PurchasesTab({
 
         if (field === "supplyUnitsReceived") {
           const qty = numVal > 0 ? numVal : 1;
-          updated.retailUnitsAdded = numVal;
+          const unitMult = getSupplyUnitMultiplier(updated.supplyUnit);
+          updated.retailUnitsAdded = Math.round(qty * unitMult * 100) / 100;
           const currentLineCost = Number(item.lineCost) || 0;
           if (currentLineCost > 0) {
-            // Derive unit wholesale cost from receipt line total ÷ quantity
-            updated.unitCostAtDelivery = Math.round((currentLineCost / qty) * 100) / 100;
+            updated.unitCostAtDelivery = deriveUnitWholesaleCost(currentLineCost, qty, updated.supplyUnit);
           } else {
             const uCost = Number(item.unitCostAtDelivery) || 0;
-            updated.lineCost = Math.round(qty * uCost * 100) / 100;
+            updated.lineCost = Math.round(qty * unitMult * uCost * 100) / 100;
           }
         }
 
         if (field === "lineCost") {
           const qty = Number(item.supplyUnitsReceived) > 0 ? Number(item.supplyUnitsReceived) : 1;
-          // Derive unit wholesale cost = lineCost ÷ qty
-          updated.unitCostAtDelivery = Math.round((numVal / qty) * 100) / 100;
+          updated.unitCostAtDelivery = deriveUnitWholesaleCost(numVal, qty, updated.supplyUnit);
         }
 
         if (field === "unitCostAtDelivery") {
           const qty = Number(item.supplyUnitsReceived) > 0 ? Number(item.supplyUnitsReceived) : 1;
-          updated.lineCost = Math.round(qty * numVal * 100) / 100;
+          const unitMult = getSupplyUnitMultiplier(updated.supplyUnit);
+          updated.lineCost = Math.round(qty * unitMult * numVal * 100) / 100;
         }
 
         if (
@@ -844,7 +868,9 @@ export default function PurchasesTab({
       category: "Dairy & Chilled",
       quantity: Number(item.supplyUnitsReceived) || 1,
       unit: item.supplyUnit,
-      unitCost: Number(item.unitCostAtDelivery) || (Number(item.lineCost) / (Number(item.supplyUnitsReceived) || 1)),
+      unitCost:
+        Number(item.unitCostAtDelivery) ||
+        deriveUnitWholesaleCost(Number(item.lineCost) || 0, Number(item.supplyUnitsReceived) || 1, item.supplyUnit),
       retailPrice: Number(item.retailPrice) || 0,
       totalCost: Number(item.lineCost) || 0
     }));
@@ -1747,8 +1773,10 @@ export default function PurchasesTab({
                               />
                               <input
                                 type="text"
+                                list="kenya-supply-units-datalist"
                                 value={item.supplyUnit}
                                 onChange={(e) => handleUpdateScannedItem(item.id, "supplyUnit", e.target.value)}
+                                placeholder="e.g. Bale (12pkts), Outa, Dozen, Litres, Loaf 400g"
                                 className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md text-[11px] text-slate-600"
                               />
                             </div>
@@ -2697,12 +2725,22 @@ export default function PurchasesTab({
                       setSelectedSupplierName("Jahdithma Wholesalers");
                       setItemLines([
                         {
+                          id: `line_j0_${Date.now()}`,
+                          itemName: "Ngano Swan 2kg",
+                          category: "Flour & Cereals",
+                          quantity: 1,
+                          unit: "Bale (12pkts)",
+                          unitCost: 173.33,
+                          retailPrice: 200,
+                          totalCost: 2080
+                        },
+                        {
                           id: `line_j1_${Date.now()}`,
                           itemName: "Pembe Maize Meal 2kg",
                           category: "Flour & Cereals",
                           quantity: 12,
                           unit: "Bale (12pkts)",
-                          unitCost: 1850,
+                          unitCost: 154.17,
                           retailPrice: 190,
                           totalCost: 22200
                         },
@@ -2712,7 +2750,7 @@ export default function PurchasesTab({
                           category: "General Wholesaler",
                           quantity: 20,
                           unit: "Bale (20pkts)",
-                          unitCost: 2500,
+                          unitCost: 125,
                           retailPrice: 150,
                           totalCost: 50000
                         },
@@ -2722,12 +2760,12 @@ export default function PurchasesTab({
                           category: "Cooking Oils & Soaps",
                           quantity: 12,
                           unit: "Carton (12btls)",
-                          unitCost: 2800,
+                          unitCost: 233.33,
                           retailPrice: 270,
                           totalCost: 33600
                         }
                       ]);
-                      setSuccessNote("Loaded Jahdithma Wholesalers wholesale cargo lot (Total: KSh 105,800).");
+                      setSuccessNote("Loaded Jahdithma Wholesalers wholesale cargo lot (Total: KSh 107,880).");
                       setTimeout(() => setSuccessNote(null), 3000);
                     }}
                     className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-xs rounded-xl transition border border-amber-200 cursor-pointer"
@@ -2864,24 +2902,33 @@ export default function PurchasesTab({
                           placeholder="0.00"
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-mono font-bold text-slate-900 text-right"
                         />
+                        {getSupplyUnitMultiplier(line.unit) > 1 && (line.totalCost || 0) > 0 && (
+                          <span className="block text-[10px] font-mono text-emerald-700 font-semibold mt-0.5 text-right">
+                            {Number(line.totalCost).toLocaleString()} &divide; {(line.quantity || 1) * getSupplyUnitMultiplier(line.unit)} units = {line.unitCost}/unit
+                          </span>
+                        )}
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Shelf Price ({currency})</label>
+                        <label className="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Line Total ({currency})</label>
                         <input
                           type="number"
                           step="any"
                           min={0}
-                          value={line.retailPrice || ""}
-                          onChange={(e) => handleUpdateLine(line.id, { retailPrice: e.target.value === "" ? 0 : parseFloat(e.target.value) })}
-                          placeholder="Selling price"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-mono font-bold text-blue-700 text-right"
+                          value={line.totalCost === 0 ? "" : line.totalCost}
+                          onChange={(e) => handleUpdateLine(line.id, { totalCost: e.target.value === "" ? 0 : parseFloat(e.target.value) })}
+                          placeholder="0.00"
+                          className="w-full bg-amber-50/60 border border-amber-300 rounded-xl p-2 text-xs font-mono font-bold text-amber-900 text-right"
                         />
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                      <span className="text-slate-500">Line Total Cost:</span>
-                      <strong className="text-slate-900 font-mono font-bold">{currency} {((line.quantity || 0) * (line.unitCost || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</strong>
+                      <span className="text-slate-500">
+                        Total Retail Units ({(line.quantity || 0) * getSupplyUnitMultiplier(line.unit)} units):
+                      </span>
+                      <strong className="text-slate-900 font-mono font-bold">
+                        {currency} {(line.totalCost || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      </strong>
                     </div>
                   </div>
                 ))}
@@ -2974,6 +3021,11 @@ export default function PurchasesTab({
                             placeholder="0.00"
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-mono font-semibold text-slate-900 text-right"
                           />
+                          {getSupplyUnitMultiplier(line.unit) > 1 && (line.totalCost || 0) > 0 && (
+                            <div className="text-[10px] font-mono text-emerald-700 font-semibold mt-1 text-right">
+                              {Number(line.totalCost).toLocaleString()} &divide; {(line.quantity || 1) * getSupplyUnitMultiplier(line.unit)} = {line.unitCost}/unit
+                            </div>
+                          )}
                         </td>
 
                         {/* LINE TOTAL COST (EDITABLE TO DERIVE UNIT WHOLESALE COST) */}
@@ -3012,6 +3064,13 @@ export default function PurchasesTab({
               <datalist id="inventory-suggestions">
                 {inventory.map((item) => (
                   <option key={item.id} value={item.name} />
+                ))}
+              </datalist>
+
+              {/* KENYA SUPPLY UNIT MEASUREMENTS DATALIST */}
+              <datalist id="kenya-supply-units-datalist">
+                {unitOptions.map((u) => (
+                  <option key={u} value={u} />
                 ))}
               </datalist>
 

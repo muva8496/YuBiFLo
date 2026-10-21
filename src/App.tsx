@@ -31,6 +31,10 @@ import {
   PLATFORM_BLUEPRINTS,
   PROJECT_ALACIO_CASE_STUDY
 } from "./services/alacioStorage";
+import {
+  getSupplyUnitMultiplier,
+  deriveUnitWholesaleCost
+} from "./services/bulkConversionEngine";
 import DataVaultModal from "./components/DataVaultModal";
 import { 
   loadDemoSandboxState, 
@@ -761,7 +765,13 @@ export default function App() {
       if (purchase.itemLines && purchase.itemLines.length > 0) {
         purchase.itemLines.forEach((line) => {
           const lineQty = Number(line.quantity) || 0;
-          const lineUnitCost = Number(line.unitCost) || 0;
+          const packMultiplier = getSupplyUnitMultiplier(line.unit);
+          const totalRetailUnitsReceived = Math.max(1, Math.round(lineQty * packMultiplier * 100) / 100);
+          const lineTotalCost = Number(line.totalCost) || 0;
+          const lineUnitCost =
+            lineTotalCost > 0
+              ? deriveUnitWholesaleCost(lineTotalCost, lineQty || 1, line.unit)
+              : Number(line.unitCost) || 0;
           const lineRetailPrice = Number(line.retailPrice) || 0;
 
           const existingIdx = updatedInventory.findIndex((inv) =>
@@ -770,10 +780,10 @@ export default function App() {
 
           const prevBatchUnits = existingIdx >= 0 && Number(updatedInventory[existingIdx].current_stock) > 0
             ? Number(updatedInventory[existingIdx].current_stock)
-            : lineQty;
+            : totalRetailUnitsReceived;
 
           const unitWholesale = lineUnitCost > 0 ? lineUnitCost : (existingIdx >= 0 ? Number(updatedInventory[existingIdx].unit_cost) || 50 : 50);
-          const unitRetail = lineRetailPrice > 0 ? lineRetailPrice : (existingIdx >= 0 ? Number(updatedInventory[existingIdx].unit_retail) || unitWholesale * 1.2 : unitWholesale * 1.2);
+          const unitRetail = lineRetailPrice > 0 ? lineRetailPrice : (existingIdx >= 0 ? Number(updatedInventory[existingIdx].unit_retail) || Math.round(unitWholesale * 1.2 * 100) / 100 : Math.round(unitWholesale * 1.2 * 100) / 100);
           const defaultRemains = Math.max(0, Math.min(2, Math.round(prevBatchUnits * 0.15)));
           const defaultEaten = 0;
           const defaultSold = Math.max(0, prevBatchUnits - defaultRemains - defaultEaten);
@@ -783,12 +793,12 @@ export default function App() {
             skuName: line.itemName,
             category: line.category || (existingIdx >= 0 ? updatedInventory[existingIdx].category : "Wholesale Supply"),
             unitType: line.unit || "Packets",
-            piecesPerPack: line.unit?.toLowerCase().includes("crate") ? 24 : (line.unit?.toLowerCase().includes("bale") ? 12 : 1),
+            piecesPerPack: packMultiplier,
             previousBatchQty: prevBatchUnits,
             previousBatchTotalUnits: prevBatchUnits,
             previousBatchDate: "Previous Batch Recorded (Yesterday)",
             previousBatchCost: prevBatchUnits * unitWholesale,
-            newBatchQty: lineQty,
+            newBatchQty: totalRetailUnitsReceived,
             newBatchDate: normalizedDate,
             supplierName: purchase.supplier,
             deliveryNoteNumber: purchase.notes || "Inward Restock Delivery",
@@ -806,13 +816,13 @@ export default function App() {
             calculatedSpoilageLoss: 0,
             status: "PENDING_AUTHORIZATION",
             paymentMethod: purchase.payment_channel === "MPESA" ? "MPESA" : "CASH",
-            notes: `Auto-generated when ${lineQty} ${line.unit} of ${line.itemName} arrived from ${purchase.supplier}. Authorize yesterday's sales without typing.`
+            notes: `Auto-generated when ${lineQty} ${line.unit} (${totalRetailUnitsReceived} retail units) of ${line.itemName} arrived from ${purchase.supplier}. Authorize yesterday's sales without typing.`
           };
           newlyGeneratedRestockCards.push(autoCard);
 
           if (existingIdx >= 0) {
             const existing = updatedInventory[existingIdx];
-            const addedStock = lineQty;
+            const addedStock = totalRetailUnitsReceived;
             const updatedStock = (Number(existing.current_stock) || 0) + addedStock;
             const updatedCost = lineUnitCost > 0 ? lineUnitCost : (Number(existing.unit_cost) || 0);
             const updatedRetail = lineRetailPrice > 0 ? lineRetailPrice : (Number(existing.unit_retail) || 0);
@@ -824,7 +834,9 @@ export default function App() {
               unit_retail: updatedRetail,
               total_shelf_value: Math.round(updatedStock * updatedRetail * 100) / 100,
               expected_margin: Math.round((updatedRetail - updatedCost) * 100) / 100,
-              supplier: purchase.supplier.trim()
+              supplier: purchase.supplier.trim(),
+              bulk_pack_size: packMultiplier,
+              bulk_pack_name: line.unit
             };
           } else {
             const effectiveRetail = lineRetailPrice || Math.round(lineUnitCost * 1.25 * 100) / 100;
@@ -832,19 +844,19 @@ export default function App() {
               id: `sku_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
               name: line.itemName.trim(),
               category: line.category || "General Wholesaler",
-              unit_type: line.unit || "pcs",
+              unit_type: packMultiplier > 1 ? "Packets" : (line.unit || "pcs"),
               unit_cost: lineUnitCost,
               unit_retail: effectiveRetail,
-              current_stock: lineQty,
-              opening_stock: lineQty,
+              current_stock: totalRetailUnitsReceived,
+              opening_stock: totalRetailUnitsReceived,
               expected_margin: Math.round((effectiveRetail - lineUnitCost) * 100) / 100,
-              total_shelf_value: Math.round(lineQty * effectiveRetail * 100) / 100,
+              total_shelf_value: Math.round(totalRetailUnitsReceived * effectiveRetail * 100) / 100,
               velocity_badge: "NORMAL",
               reorder_point: 5,
               supplier: purchase.supplier.trim(),
-              bulk_pack_size: 1,
+              bulk_pack_size: packMultiplier,
               bulk_pack_name: line.unit,
-              is_bulk_decanted: false
+              is_bulk_decanted: packMultiplier > 1
             };
             updatedInventory = [newSku, ...updatedInventory];
           }
