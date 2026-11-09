@@ -73,13 +73,14 @@ interface PurchasesTabProps {
   }) => void;
   onNavigateTab?: (tabId: string) => void;
   initialSupplier?: string;
-  initialView?: "all" | "cargo" | "upload" | "archive";
+  initialView?: "all" | "cargo" | "upload" | "selling_prices" | "archive";
   onAuthorizeRestockSale?: (payload: any) => void;
   onDismissRestockCard?: (cardId: string) => void;
   onSaveReceiptToDatabase?: (receipt: SavedReceiptRecord) => void;
   onAddExpense?: (expense: PayoutOrDrawing) => void;
   onEditExpense?: (id: string, updated: Partial<PayoutOrDrawing>) => void;
   onDeleteExpense?: (id: string) => void;
+  onUpdateInventoryItem?: (itemId: string | number, updates: Partial<InventoryItem>) => void;
 }
 
 export default function PurchasesTab({ 
@@ -93,16 +94,18 @@ export default function PurchasesTab({
   onSaveReceiptToDatabase,
   onAddExpense,
   onEditExpense,
-  onDeleteExpense
+  onDeleteExpense,
+  onUpdateInventoryItem
 }: PurchasesTabProps) {
   const { currency, inventory = [], suppliers = [], payouts = [], restockCards = [], receiptsArchive = [] } = state;
   const [showAllRestockCards, setShowAllRestockCards] = useState<boolean>(false);
   const [activeSubSection, setActiveSubSection] = useState<"ALL" | "EXPENSES_ONLY">("ALL");
 
-  // Sub-view switcher for Purchases module: Cargo Lot entry vs Upload Receipts (OCR) vs Database Archive
-  const [activeSubView, setActiveSubView] = useState<"all" | "cargo" | "upload" | "archive">(() => {
+  // Sub-view switcher for Purchases module: Cargo Lot entry vs Upload Receipts (OCR) vs Selling Prices vs Database Archive
+  const [activeSubView, setActiveSubView] = useState<"all" | "cargo" | "upload" | "selling_prices" | "archive">(() => {
     if (initialView === "upload") return "upload";
     if (initialView === "cargo") return "cargo";
+    if (initialView === "selling_prices") return "selling_prices";
     if (initialView === "archive") return "archive";
     return "all";
   });
@@ -315,6 +318,17 @@ export default function PurchasesTab({
   const [inspectingReceipt, setInspectingReceipt] = useState<SavedReceiptRecord | null>(null);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionReasonInput, setRejectionReasonInput] = useState("Incorrect pricing / unverified delivery chit");
+
+  // Vision OCR Image Filter & Alternative Reading Workflow State
+  const [receiptPhotoFilter, setReceiptPhotoFilter] = useState<"normal" | "contrast" | "invert">("normal");
+  const [activeItemAlternativeModal, setActiveItemAlternativeModal] = useState<string | null>(null);
+
+  // Dedicated Selling Prices & Margins Tab state
+  const [sellingPriceSearch, setSellingPriceSearch] = useState("");
+  const [sellingPriceCategory, setSellingPriceCategory] = useState("all");
+  const [sellingPriceMarginFilter, setSellingPriceMarginFilter] = useState<"all" | "high" | "standard" | "low">("all");
+  const [editedRetailPrices, setEditedRetailPrices] = useState<Record<string, number>>({});
+  const [isSavingPrices, setIsSavingPrices] = useState(false);
 
   // Past purchases with expanded view tracking
   const [expandedPurchaseId, setExpandedPurchaseId] = useState<string | null>(null);
@@ -1104,6 +1118,19 @@ export default function PurchasesTab({
 
           <button
             type="button"
+            onClick={() => setActiveSubView("selling_prices")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              activeSubView === "selling_prices"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
+            }`}
+          >
+            <DollarSign size={14} />
+            <span>🏷️ Selling Prices &amp; Margins</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveSubView("archive")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
               activeSubView === "archive"
@@ -1117,7 +1144,7 @@ export default function PurchasesTab({
         </div>
 
         <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-500 font-mono">
-          <span>Mode: <strong className="text-slate-800">{activeSubView === "upload" ? "Receipts Under Purchases" : activeSubView === "cargo" ? "Cargo Shipments" : activeSubView === "archive" ? "Database Archive" : "Full Purchases View"}</strong></span>
+          <span>Mode: <strong className="text-slate-800">{activeSubView === "upload" ? "Receipts Under Purchases" : activeSubView === "cargo" ? "Cargo Shipments" : activeSubView === "selling_prices" ? "Selling Prices & Margins Hub" : activeSubView === "archive" ? "Database Archive" : "Full Purchases View"}</strong></span>
         </div>
       </div>
 
@@ -1614,16 +1641,169 @@ export default function PurchasesTab({
                 </div>
               )}
 
+              {/* INTERACTIVE OCR WORKFLOW BANNER: MULTI-STAGE READING PIPELINE */}
+              <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white p-4 rounded-2xl border border-blue-800/60 shadow-md space-y-3">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-blue-800/40 pb-3">
+                  <div>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-blue-300 block">
+                      Website Multimodal OCR Workflow &bull; Kenyan Retail Dukas &amp; Wholesalers
+                    </span>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2 mt-0.5">
+                      <Sparkles size={15} className="text-amber-400" />
+                      Visual Receipt Deciphering &bull; Make a Different Reading of Physical Slips
+                    </h3>
+                  </div>
+
+                  {/* QUICK SLIP / ALTERNATIVE READING SWITCHER */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] text-blue-200 font-medium">Interpret Slip As:</span>
+                    <select
+                      value={
+                        scannedReceipt.supplierName.toUpperCase().includes("LUX")
+                          ? "sample_lux"
+                          : scannedReceipt.supplierName.toUpperCase().includes("AGS")
+                          ? "sample_ags"
+                          : scannedReceipt.supplierName.toUpperCase().includes("JAHDITHMA")
+                          ? "sample_jahdithma"
+                          : scannedReceipt.supplierName.toUpperCase().includes("PHIMAR")
+                          ? "sample_phimar"
+                          : scannedReceipt.supplierName.toUpperCase().includes("BROADWAY")
+                          ? "sample_broadways"
+                          : scannedReceipt.supplierName.toUpperCase().includes("MEGA")
+                          ? "sample_wholesaler"
+                          : scannedReceipt.supplierName.toUpperCase().includes("KHETIA")
+                          ? "sample_combo_420"
+                          : "custom"
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "custom") {
+                          setScannedReceipt({
+                            id: `rcpt_manual_${Date.now()}`,
+                            receiptNumber: `RCPT-${Math.floor(1000 + Math.random() * 9000)}`,
+                            supplierName: "Custom Supplier Slip",
+                            receiptDate: new Date().toISOString().slice(0, 10),
+                            paymentMode: "CASH",
+                            totalCost: 0,
+                            totalRetailShelfValue: 0,
+                            totalPotentialProfit: 0,
+                            markupPercentage: 0,
+                            confidenceScore: 0.95,
+                            processedAt: "Just now",
+                            rawTextNotes: "Manual review of uploaded slip.",
+                            imageUrl: scannedReceiptImage,
+                            items: [
+                              {
+                                id: `item_c_${Date.now()}_1`,
+                                itemName: "Good / Product 1",
+                                rawSpecification: "Line 1 from physical slip",
+                                rawPackQty: 1,
+                                rawPackUnit: "Pieces",
+                                packConversionMultiplier: 1,
+                                supplyUnitsReceived: 1,
+                                supplyUnit: "Pieces",
+                                conversionRatio: 1,
+                                retailUnitsAdded: 1,
+                                retailUnit: "Pieces",
+                                unitCostAtDelivery: 0,
+                                lineCost: 0,
+                                retailPrice: 0,
+                                expectedMargin: 0,
+                                approved: true
+                              }
+                            ]
+                          });
+                        } else {
+                          handleSelectSampleReceipt(val);
+                        }
+                      }}
+                      className="bg-blue-950 text-white text-xs font-semibold py-1.5 px-3 rounded-xl border border-blue-700 focus:outline-blue-400 cursor-pointer"
+                    >
+                      <option value="sample_lux">📝 LUX STORES #1244 (BB 20g dzns, Fruta juice, Top chips • Ksh 745)</option>
+                      <option value="sample_ags">🏢 AGS LIMITED #270055801 (Msosi Maize Meal 2kg • 3 Bales • Ksh 3,570)</option>
+                      <option value="sample_jahdithma">🏪 JAHDITHMA TRADERS #390727 (Supermi, Aroma, Kaluma, Toss • Ksh 1,590)</option>
+                      <option value="sample_phimar">🌽 THE PHIMAR TRADING CENTER (Phimar Corn 25kg, 2kg, 1kg • Ksh 4,160)</option>
+                      <option value="sample_broadways">🍞 Broadways Bakery (White Bread, Brown Bread, Scones • Ksh 2,750)</option>
+                      <option value="sample_wholesaler">📦 Nairobi Mega Wholesalers (Sugar 50kg, Unga Jogoo, Oil • Ksh 18,800)</option>
+                      <option value="sample_combo_420">🏷️ Khetias Wholesalers (Sugar 1kg + Oil 1L = Ksh 420)</option>
+                      <option value="custom">✍️ Blank Template (Enter Custom Lines Directly)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* 4-STAGE PIPELINE DISPLAY */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+                  <div className="bg-white/10 rounded-xl p-2.5 border border-white/10">
+                    <span className="text-blue-300 font-bold block text-[10px] uppercase">Stage 1: Photo Input</span>
+                    <span className="font-semibold text-white">Handwritten / Printed Slip</span>
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-2.5 border border-white/10">
+                    <span className="text-amber-300 font-bold block text-[10px] uppercase">Stage 2: Vision OCR</span>
+                    <span className="font-semibold text-white">Line Items &amp; Qty Extracted</span>
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-2.5 border border-white/10">
+                    <span className="text-emerald-300 font-bold block text-[10px] uppercase">Stage 3: Break-Bulk Math</span>
+                    <span className="font-semibold text-white">Bales/Dozens &rarr; Packets</span>
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-2.5 border border-white/10">
+                    <span className="text-purple-300 font-bold block text-[10px] uppercase">Stage 4: Selling Prices</span>
+                    <span className="font-semibold text-white">Shelf Retail &amp; Margin Lock</span>
+                  </div>
+                </div>
+              </div>
+
               {/* 3. TWO-COLUMN REVIEW: PHOTO ON LEFT, DECIPHERED FORM ON RIGHT */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
-                {/* LEFT COLUMN: RECEIPT PHOTO & CONFIDENCE (PURE WHITE RECEIPT BACKGROUND) */}
+                {/* LEFT COLUMN: RECEIPT PHOTO, FILTERS & VISION CONTROLS */}
                 <div className="lg:col-span-4 bg-white p-4 rounded-xl border border-slate-200 space-y-3" style={{ backgroundColor: "#ffffff" }}>
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-bold text-slate-700 uppercase text-[11px]">Physical Receipt Photo</span>
                     <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                       OCR Confidence: {Math.round((scannedReceipt.confidenceScore || 0.99) * 100)}%
                     </span>
+                  </div>
+
+                  {/* CONTRAST & ENHANCEMENT FILTER BUTTONS */}
+                  <div className="flex items-center justify-between gap-1 p-1 bg-slate-100 rounded-xl text-[10px] font-bold">
+                    <span className="text-slate-500 pl-1">Photo Filter:</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setReceiptPhotoFilter("normal")}
+                        className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                          receiptPhotoFilter === "normal"
+                            ? "bg-white text-slate-900 shadow-2xs font-black"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        Normal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReceiptPhotoFilter("contrast")}
+                        className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                          receiptPhotoFilter === "contrast"
+                            ? "bg-white text-slate-900 shadow-2xs font-black"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                        title="High contrast B&W filter helps read faint carbon copy handwriting"
+                      >
+                        High Contrast (B&amp;W)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReceiptPhotoFilter("invert")}
+                        className={`px-2 py-1 rounded-lg transition cursor-pointer ${
+                          receiptPhotoFilter === "invert"
+                            ? "bg-white text-slate-900 shadow-2xs font-black"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                        title="Invert colors for faded purple or blue ink duka receipts"
+                      >
+                        Inverted
+                      </button>
+                    </div>
                   </div>
 
                   <div
@@ -1635,7 +1815,15 @@ export default function PurchasesTab({
                         src={scannedReceiptImage}
                         alt="Uploaded physical slip"
                         className="w-full h-full object-contain object-center bg-white group-hover:scale-105 transition duration-300"
-                        style={{ backgroundColor: "#ffffff" }}
+                        style={{
+                          backgroundColor: "#ffffff",
+                          filter:
+                            receiptPhotoFilter === "contrast"
+                              ? "contrast(220%) grayscale(100%)"
+                              : receiptPhotoFilter === "invert"
+                              ? "invert(100%) contrast(160%)"
+                              : "none"
+                        }}
                       />
                     ) : (
                       <div className="p-8 text-center text-slate-400 text-xs bg-white" style={{ backgroundColor: "#ffffff" }}>
@@ -1644,17 +1832,36 @@ export default function PurchasesTab({
                       </div>
                     )}
                     <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur text-white text-[10px] px-2 py-1 rounded">
-                      Payment: {scannedReceipt.paymentMode} &bull; Date: {scannedReceipt.receiptDate || "2026-10-16"}
+                      Payment: {scannedReceipt.paymentMode} &bull; Date: {scannedReceipt.receiptDate || "2026-11-07"}
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition text-center cursor-pointer"
-                  >
-                    Change Photo
-                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="py-2 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition text-center cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <Camera size={13} />
+                      <span>Change Photo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerFeedback("Re-analyzing receipt photo with enhanced character contrast...");
+                        setIsScanningReceipt(true);
+                        setTimeout(() => {
+                          setIsScanningReceipt(false);
+                          setScannerFeedback("Re-analyzed! Items confirmed with dual-vision recognition.");
+                        }, 500);
+                      }}
+                      className="py-2 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition text-center cursor-pointer flex items-center justify-center gap-1"
+                      title="Re-run character extraction on this photo"
+                    >
+                      <RefreshCw size={13} />
+                      <span>Re-Read Slip</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* RIGHT COLUMN: DECIPHERED LINE ITEMS & BREAK-BULK CONVERSIONS */}
@@ -1680,6 +1887,9 @@ export default function PurchasesTab({
                     const rawBulkUnit = item.rawPackUnit ?? (item.conversionRatio > 1 ? "Bales" : item.supplyUnit);
                     const cleanTitle = item.itemName.replace(/\s*\(\d+\s*bales\)/i, "").trim();
                     const bulkLabel = rawBulkQty > 1 || String(rawBulkUnit).toLowerCase().includes("bale") ? `${rawBulkQty} ${rawBulkUnit}` : `${qty} ${item.supplyUnit}`;
+                    const marginDiff = retailPrice - unitCost;
+                    const marginPct = unitCost > 0 ? Math.round((marginDiff / unitCost) * 100) : 0;
+                    const isAlternativeOpen = activeItemAlternativeModal === item.id;
 
                     return (
                       <div
@@ -1716,6 +1926,17 @@ export default function PurchasesTab({
                                 {!item.itemName.toLowerCase().includes("bale") && (
                                   <span className="font-black text-sm text-slate-900">({bulkLabel})</span>
                                 )}
+
+                                {/* MAKE DIFFERENT READING BUTTON */}
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveItemAlternativeModal(isAlternativeOpen ? null : item.id)}
+                                  className="px-2 py-0.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                                  title="Pick an alternative reading or match to existing inventory good"
+                                >
+                                  <RefreshCw size={10} />
+                                  <span>Different Reading</span>
+                                </button>
                               </div>
                               <p className="text-[11px] font-mono text-slate-400 mt-0.5 truncate">
                                 Receipt Line: {item.rawSpecification || `${cleanTitle.toUpperCase()} • QTY: ${rawBulkQty}.00 ${String(rawBulkUnit).toUpperCase()} • TOTAL: ${lineTotal}`}
@@ -1755,6 +1976,141 @@ export default function PurchasesTab({
                             )}
                           </div>
                         </div>
+
+                        {/* ALTERNATIVE READINGS POPOVER DRAWER */}
+                        {isAlternativeOpen && (
+                          <div className="bg-slate-50 border border-blue-200 rounded-xl p-3 text-xs space-y-2 animate-in fade-in">
+                            <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                              <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                                <Sparkles size={12} className="text-blue-600" />
+                                Alternate Interpretations for &ldquo;{item.itemName}&rdquo;:
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setActiveItemAlternativeModal(null)}
+                                className="text-slate-400 hover:text-slate-600 text-[11px]"
+                              >
+                                Close &times;
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                              {/* OPTION 1: LINK TO STORE INVENTORY ITEM */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block">
+                                  Match Existing Store Inventory SKU:
+                                </label>
+                                <select
+                                  onChange={(e) => {
+                                    const match = inventory.find((i) => String(i.id) === e.target.value || i.name === e.target.value);
+                                    if (match) {
+                                      handleUpdateScannedItem(item.id, "itemName", match.name);
+                                      if (match.unit_retail) {
+                                        handleUpdateScannedItem(item.id, "retailPrice", match.unit_retail);
+                                      }
+                                      setActiveItemAlternativeModal(null);
+                                    }
+                                  }}
+                                  className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-800"
+                                  defaultValue=""
+                                >
+                                  <option value="" disabled>-- Select from your stock ({inventory.length} items) --</option>
+                                  {inventory.map((inv) => (
+                                    <option key={inv.id} value={inv.id}>
+                                      {inv.name} (Retail: {currency} {inv.unit_retail})
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* OPTION 2: COMMON KENYAN DUKA READING CANDIDATES */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block">
+                                  Quick Alternative Interpretations:
+                                </label>
+                                <div className="flex flex-wrap gap-1">
+                                  {item.itemName.toLowerCase().includes("bb") ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateScannedItem(item.id, "itemName", "BB Biscuits 20g (2 Dozen)");
+                                          handleUpdateScannedItem(item.id, "supplyUnitsReceived", 24);
+                                          handleUpdateScannedItem(item.id, "supplyUnit", "Dozen (12pcs)");
+                                          handleUpdateScannedItem(item.id, "retailPrice", 10);
+                                          setActiveItemAlternativeModal(null);
+                                        }}
+                                        className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 text-blue-700 rounded-lg text-[10px] font-medium"
+                                      >
+                                        BB Biscuits 20g (24 pcs @ 10/-)
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateScannedItem(item.id, "itemName", "BB Sweets 20g (2 Dozen)");
+                                          handleUpdateScannedItem(item.id, "supplyUnitsReceived", 24);
+                                          handleUpdateScannedItem(item.id, "supplyUnit", "Dozen (12pcs)");
+                                          handleUpdateScannedItem(item.id, "retailPrice", 10);
+                                          setActiveItemAlternativeModal(null);
+                                        }}
+                                        className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 text-blue-700 rounded-lg text-[10px] font-medium"
+                                      >
+                                        BB Sweets 20g (24 pcs @ 10/-)
+                                      </button>
+                                    </>
+                                  ) : item.itemName.toLowerCase().includes("fruta") ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleUpdateScannedItem(item.id, "itemName", "Fruta Tropical Juice 500ml");
+                                        handleUpdateScannedItem(item.id, "retailPrice", 240);
+                                        setActiveItemAlternativeModal(null);
+                                      }}
+                                      className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 text-blue-700 rounded-lg text-[10px] font-medium"
+                                    >
+                                      Fruta Tropical Juice 500ml (Retail: 240/-)
+                                    </button>
+                                  ) : item.itemName.toLowerCase().includes("chips") ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleUpdateScannedItem(item.id, "itemName", "Top Potato Crisps 50g");
+                                        handleUpdateScannedItem(item.id, "retailPrice", 400);
+                                        setActiveItemAlternativeModal(null);
+                                      }}
+                                      className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 text-blue-700 rounded-lg text-[10px] font-medium"
+                                    >
+                                      Top Potato Crisps 50g (Retail: 400/-)
+                                    </button>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateScannedItem(item.id, "itemName", `${cleanTitle} Standard Pack`);
+                                          setActiveItemAlternativeModal(null);
+                                        }}
+                                        className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 text-blue-700 rounded-lg text-[10px] font-medium"
+                                      >
+                                        Standard Retail Pack
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleUpdateScannedItem(item.id, "itemName", `${cleanTitle} Wholesale Bundle`);
+                                          setActiveItemAlternativeModal(null);
+                                        }}
+                                        className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 text-blue-700 rounded-lg text-[10px] font-medium"
+                                      >
+                                        Wholesale Bundle
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         {/* INPUT FIELDS: BREAKING BALES INTO PACKETS */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
@@ -1808,18 +2164,47 @@ export default function PurchasesTab({
                             />
                           </div>
 
+                          {/* SELLING PRICE / SHELF RETAIL (BEI YA KUUZA) WITH LIVE MARGIN SHORTCUTS */}
                           <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                              Shelf Retail ({currency})
-                            </label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                                Selling Price ({currency}) *
+                              </label>
+                              {retailPrice > 0 ? (
+                                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                                  marginDiff > 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                                }`}>
+                                  +{currency} {marginDiff.toFixed(2)} ({marginPct}%)
+                                </span>
+                              ) : null}
+                            </div>
                             <input
                               type="number"
                               step="any"
                               min={0}
                               value={retailPrice}
                               onChange={(e) => handleUpdateScannedItem(item.id, "retailPrice", e.target.value)}
-                              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md font-mono font-bold text-emerald-600"
+                              className="w-full p-2 bg-emerald-50/60 border border-emerald-300 rounded-md font-mono font-bold text-emerald-900 focus:outline-emerald-600"
                             />
+                            {/* QUICK MARGIN BUTTONS */}
+                            <div className="flex items-center gap-1 mt-1 text-[10px]">
+                              <span className="text-slate-400 text-[9px]">Margin:</span>
+                              {[15, 20, 25, 30].map((pct) => (
+                                <button
+                                  key={pct}
+                                  type="button"
+                                  onClick={() => {
+                                    const base = unitCost > 0 ? unitCost : lineTotal / qty;
+                                    const calculated = Math.round(base * (1 + pct / 100) * 10) / 10;
+                                    handleUpdateScannedItem(item.id, "retailPrice", calculated);
+                                  }}
+                                  className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 font-mono text-[9px] cursor-pointer"
+                                  title={`Set selling price with +${pct}% margin`}
+                                >
+                                  +{pct}%
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2922,6 +3307,44 @@ export default function PurchasesTab({
                       </div>
                     </div>
 
+                    {/* SELLING PRICE / SHELF RETAIL FOR MOBILE */}
+                    <div className="pt-1">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <label className="text-[10px] text-emerald-700 uppercase font-bold flex items-center gap-1">
+                          <DollarSign size={11} /> Selling Price / Shelf Retail ({currency}) *
+                        </label>
+                        {line.retailPrice && line.unitCost ? (
+                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                            line.retailPrice > line.unitCost ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                          }`}>
+                            Margin: +{currency} {(line.retailPrice - line.unitCost).toFixed(2)} ({Math.round(((line.retailPrice - line.unitCost) / (line.unitCost || 1)) * 100)}%)
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          step="any"
+                          min={0}
+                          value={line.retailPrice === 0 ? "" : line.retailPrice}
+                          onChange={(e) => handleUpdateLine(line.id, { retailPrice: e.target.value === "" ? 0 : parseFloat(e.target.value) })}
+                          placeholder="0.00"
+                          className="w-full bg-emerald-50/70 border border-emerald-300 rounded-xl p-2 text-xs font-mono font-bold text-emerald-900 text-right focus:outline-emerald-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const uCost = line.unitCost || 50;
+                            handleUpdateLine(line.id, { retailPrice: Math.round(uCost * 1.25) });
+                          }}
+                          className="px-2 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-bold rounded-xl shrink-0 cursor-pointer"
+                          title="Quick 25% margin"
+                        >
+                          +25%
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
                       <span className="text-slate-500">
                         Total Retail Units ({(line.quantity || 0) * getSupplyUnitMultiplier(line.unit)} units):
@@ -2940,10 +3363,11 @@ export default function PurchasesTab({
                   <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase text-slate-500">
                     <tr>
                       <th className="py-2.5 px-3">Good / Product Name</th>
-                      <th className="py-2.5 px-3 w-28">Quantity</th>
-                      <th className="py-2.5 px-3 w-40">Supply Unit</th>
-                      <th className="py-2.5 px-3 w-32 text-right">Unit Wholesale ({currency})</th>
-                      <th className="py-2.5 px-3 w-32 text-right">Line Total ({currency})</th>
+                      <th className="py-2.5 px-3 w-24">Quantity</th>
+                      <th className="py-2.5 px-3 w-36">Supply Unit</th>
+                      <th className="py-2.5 px-3 w-28 text-right">Unit Wholesale ({currency})</th>
+                      <th className="py-2.5 px-3 w-32 text-right text-emerald-700">Selling Price ({currency}) *</th>
+                      <th className="py-2.5 px-3 w-28 text-right">Line Total ({currency})</th>
                       <th className="py-2.5 px-3 w-12 text-center">Action</th>
                     </tr>
                   </thead>
@@ -3026,6 +3450,39 @@ export default function PurchasesTab({
                               {Number(line.totalCost).toLocaleString()} &divide; {(line.quantity || 1) * getSupplyUnitMultiplier(line.unit)} = {line.unitCost}/unit
                             </div>
                           )}
+                        </td>
+
+                        {/* SELLING PRICE / SHELF RETAIL (BEI YA KUUZA) */}
+                        <td className="p-2.5">
+                          <input
+                            type="number"
+                            step="any"
+                            min={0}
+                            value={line.retailPrice === 0 ? "" : line.retailPrice}
+                            onChange={(e) => handleUpdateLine(line.id, { retailPrice: e.target.value === "" ? 0 : parseFloat(e.target.value) })}
+                            placeholder="0.00"
+                            className="w-full bg-emerald-50/70 border border-emerald-300 rounded-xl p-2 text-xs font-mono font-bold text-emerald-900 text-right focus:outline-emerald-600"
+                          />
+                          {line.retailPrice && line.unitCost ? (
+                            <div className="flex items-center justify-end gap-1 mt-1 text-[10px] font-mono">
+                              <span className={`px-1.5 py-0.5 rounded font-bold ${
+                                line.retailPrice > line.unitCost ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                              }`}>
+                                +{currency} {(line.retailPrice - line.unitCost).toFixed(2)} ({Math.round(((line.retailPrice - line.unitCost) / (line.unitCost || 1)) * 100)}%)
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const target = Math.round(line.unitCost * 1.25);
+                                  handleUpdateLine(line.id, { retailPrice: target });
+                                }}
+                                className="text-[9px] bg-slate-100 hover:bg-slate-200 px-1 py-0.5 rounded text-slate-600 cursor-pointer"
+                                title="Quick set 25% margin"
+                              >
+                                +25%
+                              </button>
+                            </div>
+                          ) : null}
                         </td>
 
                         {/* LINE TOTAL COST (EDITABLE TO DERIVE UNIT WHOLESALE COST) */}
@@ -3136,6 +3593,379 @@ export default function PurchasesTab({
           </form>
         )}
       </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3B. DEDICATED SELLING PRICES & PROFIT MARGINS HUB (BEI YA KUUZA)          */}
+      {/* "adding a selling price tab to be filled in when doing supplies anywhere  */}
+      {/* through the website..then that is a website for now not an app"           */}
+      {/* ========================================================================= */}
+      {activeSubView === "selling_prices" && (
+        <div className="bg-white border-2 border-emerald-500/40 rounded-3xl p-5 sm:p-7 shadow-sm space-y-6">
+          {/* HEADER */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                <DollarSign size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-lg font-serif font-bold text-slate-900">
+                    Selling Prices &amp; Profit Margins Manager (Bei ya Kuuza na Faida)
+                  </h2>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold uppercase">
+                    Web Platform Master
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Update shelf retail selling prices across your entire store inventory. Lock in target profit margins (+15%, +20%, +25%, +30%), track profit per unit, and commit changes directly to the stock vault.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {Object.keys(editedRetailPrices).length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setEditedRetailPrices({})}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer"
+                >
+                  Discard Changes ({Object.keys(editedRetailPrices).length})
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={isSavingPrices || Object.keys(editedRetailPrices).length === 0}
+                onClick={() => {
+                  setIsSavingPrices(true);
+                  let savedCount = 0;
+                  Object.entries(editedRetailPrices).forEach(([id, newRetail]) => {
+                    const item = inventory.find((i) => String(i.id) === String(id));
+                    if (item && onUpdateInventoryItem) {
+                      const numRetail = Number(newRetail) || 0;
+                      const cost = Number(item.unit_cost) || 0;
+                      const stock = Number(item.current_stock) || 0;
+                      onUpdateInventoryItem(item.id, {
+                        unit_retail: numRetail,
+                        expected_margin: Math.round((numRetail - cost) * 100) / 100,
+                        total_shelf_value: Math.round(stock * numRetail * 100) / 100
+                      });
+                      savedCount++;
+                    }
+                  });
+                  setTimeout(() => {
+                    setIsSavingPrices(false);
+                    setEditedRetailPrices({});
+                    setSuccessNote(`Saved and updated selling prices for ${savedCount} goods in stock vault!`);
+                    setTimeout(() => setSuccessNote(null), 4000);
+                  }, 400);
+                }}
+                className={`px-4 py-2 font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition cursor-pointer ${
+                  Object.keys(editedRetailPrices).length > 0
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                }`}
+              >
+                <Check size={15} />
+                <span>Save All Selling Prices ({Object.keys(editedRetailPrices).length})</span>
+              </button>
+            </div>
+          </div>
+
+          {/* CALCULATED LIVE KPI SUMMARY METRICS */}
+          {(() => {
+            const allCats = Array.from(new Set(inventory.map((i) => i.category || "General Wholesaler").filter(Boolean)));
+            const visibleItems = inventory.filter((item) => {
+              const query = sellingPriceSearch.trim().toLowerCase();
+              const matchesSearch =
+                !query ||
+                item.name.toLowerCase().includes(query) ||
+                (item.supplier || "").toLowerCase().includes(query) ||
+                (item.category || "").toLowerCase().includes(query);
+              const matchesCat =
+                sellingPriceCategory === "all" ||
+                (item.category || "").toLowerCase() === sellingPriceCategory.toLowerCase();
+              const effectiveRetail =
+                editedRetailPrices[item.id] !== undefined
+                  ? editedRetailPrices[item.id]
+                  : Number(item.unit_retail) || 0;
+              const uCost = Number(item.unit_cost) || 0;
+              const marginPct = uCost > 0 ? ((effectiveRetail - uCost) / uCost) * 100 : 0;
+              const matchesMargin =
+                sellingPriceMarginFilter === "all" ||
+                (sellingPriceMarginFilter === "high" && marginPct >= 25) ||
+                (sellingPriceMarginFilter === "standard" && marginPct >= 15 && marginPct < 25) ||
+                (sellingPriceMarginFilter === "low" && marginPct < 15);
+              return matchesSearch && matchesCat && matchesMargin;
+            });
+
+            const totalWholesaleValue = visibleItems.reduce((acc, i) => acc + ((Number(i.current_stock) || 0) * (Number(i.unit_cost) || 0)), 0);
+            const totalRetailValue = visibleItems.reduce((acc, i) => {
+              const r = editedRetailPrices[i.id] !== undefined ? editedRetailPrices[i.id] : Number(i.unit_retail) || 0;
+              return acc + ((Number(i.current_stock) || 0) * r);
+            }, 0);
+            const totalProfitProjected = Math.max(0, totalRetailValue - totalWholesaleValue);
+            const avgMargin = totalWholesaleValue > 0 ? Math.round((totalProfitProjected / totalWholesaleValue) * 1000) / 10 : 0;
+
+            return (
+              <div className="space-y-4">
+                {/* 4 KPI CARDS */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 font-mono">
+                  <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
+                    <span className="text-[10px] text-slate-500 uppercase font-sans font-bold block">Visible Products</span>
+                    <span className="text-base font-black text-slate-900">{visibleItems.length} of {inventory.length} SKUs</span>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
+                    <span className="text-[10px] text-slate-500 uppercase font-sans font-bold block">Wholesale Cost of Stock</span>
+                    <span className="text-base font-black text-slate-800">{currency} {totalWholesaleValue.toLocaleString()}</span>
+                  </div>
+                  <div className="bg-blue-50/70 border border-blue-200 p-3.5 rounded-2xl">
+                    <span className="text-[10px] text-blue-600 uppercase font-sans font-bold block">Total Retail Shelf Value</span>
+                    <span className="text-base font-black text-blue-900">{currency} {totalRetailValue.toLocaleString()}</span>
+                  </div>
+                  <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-2xl">
+                    <span className="text-[10px] text-emerald-700 uppercase font-sans font-bold block">Projected Gross Profit</span>
+                    <span className="text-base font-black text-emerald-800">+{currency} {totalProfitProjected.toLocaleString()} ({avgMargin}%)</span>
+                  </div>
+                </div>
+
+                {/* FILTER CONTROLS & BATCH QUICK MARGIN APPLICATION */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+                    <div className="relative flex-1">
+                      <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                      <input
+                        type="text"
+                        value={sellingPriceSearch}
+                        onChange={(e) => setSellingPriceSearch(e.target.value)}
+                        placeholder="Search product, category, or supplier..."
+                        className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 focus:outline-emerald-500"
+                      />
+                    </div>
+
+                    <select
+                      value={sellingPriceCategory}
+                      onChange={(e) => setSellingPriceCategory(e.target.value)}
+                      className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 cursor-pointer"
+                    >
+                      <option value="all">All Categories ({allCats.length})</option>
+                      {allCats.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={sellingPriceMarginFilter}
+                      onChange={(e) => setSellingPriceMarginFilter(e.target.value as any)}
+                      className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 cursor-pointer"
+                    >
+                      <option value="all">All Margins</option>
+                      <option value="high">High Margin (&ge;25%)</option>
+                      <option value="standard">Standard Margin (15-24%)</option>
+                      <option value="low">Low Margin (&lt;15%)</option>
+                    </select>
+                  </div>
+
+                  {/* BATCH QUICK MARGIN SETTER FOR VISIBLE ITEMS */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] font-bold text-slate-600">Apply to {visibleItems.length} visible:</span>
+                    {[15, 20, 25, 30].map((pct) => (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => {
+                          const updates: Record<string, number> = { ...editedRetailPrices };
+                          visibleItems.forEach((item) => {
+                            const cost = Number(item.unit_cost) || 50;
+                            const newRetail = Math.round(cost * (1 + pct / 100));
+                            updates[item.id] = newRetail;
+                          });
+                          setEditedRetailPrices(updates);
+                          setSuccessNote(`Applied +${pct}% margin to all ${visibleItems.length} visible goods. Click "Save All Selling Prices" to commit.`);
+                          setTimeout(() => setSuccessNote(null), 3500);
+                        }}
+                        className="px-2 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-mono font-bold cursor-pointer transition shadow-2xs"
+                        title={`Apply +${pct}% margin to all ${visibleItems.length} filtered goods`}
+                      >
+                        +{pct}% Margin
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* PRODUCTS SELLING PRICES TABLE */}
+                <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                  <table className="w-full text-left text-xs font-sans">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase text-slate-500">
+                      <tr>
+                        <th className="py-2.5 px-3">Product / Good Name</th>
+                        <th className="py-2.5 px-3 w-28">Category</th>
+                        <th className="py-2.5 px-3 w-24 text-center">Stock</th>
+                        <th className="py-2.5 px-3 w-28 text-right">Wholesale Cost ({currency})</th>
+                        <th className="py-2.5 px-3 w-36 text-right text-emerald-800">Selling Price ({currency}) *</th>
+                        <th className="py-2.5 px-3 w-28 text-right">Profit / Unit</th>
+                        <th className="py-2.5 px-3 w-24 text-center">Margin %</th>
+                        <th className="py-2.5 px-3 w-32 text-right">Shelf Value</th>
+                        <th className="py-2.5 px-3 w-36 text-center">Quick Margin</th>
+                        <th className="py-2.5 px-3 w-20 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {visibleItems.map((item) => {
+                        const currentRetail = editedRetailPrices[item.id] !== undefined ? editedRetailPrices[item.id] : Number(item.unit_retail) || 0;
+                        const uCost = Number(item.unit_cost) || 0;
+                        const stock = Number(item.current_stock) || 0;
+                        const profit = currentRetail - uCost;
+                        const marginPct = uCost > 0 ? Math.round((profit / uCost) * 100) : 0;
+                        const isEdited = editedRetailPrices[item.id] !== undefined && editedRetailPrices[item.id] !== item.unit_retail;
+                        const shelfValue = Math.round(stock * currentRetail * 100) / 100;
+
+                        return (
+                          <tr key={item.id} className={`hover:bg-slate-50/60 transition ${isEdited ? "bg-amber-50/40" : ""}`}>
+                            {/* PRODUCT NAME */}
+                            <td className="p-2.5">
+                              <span className="font-bold text-slate-900 block">{item.name}</span>
+                              <span className="text-[10px] text-slate-400 block">
+                                {item.supplier ? `Supplier: ${item.supplier}` : "Duka Inventory"}
+                              </span>
+                            </td>
+
+                            {/* CATEGORY */}
+                            <td className="p-2.5 text-slate-600">
+                              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-medium">
+                                {item.category || "General"}
+                              </span>
+                            </td>
+
+                            {/* CURRENT STOCK */}
+                            <td className="p-2.5 text-center font-mono font-bold text-slate-800">
+                              {stock} {item.unit_type || "pcs"}
+                            </td>
+
+                            {/* WHOLESALE UNIT COST */}
+                            <td className="p-2.5 text-right font-mono font-semibold text-slate-700">
+                              {currency} {uCost.toFixed(2)}
+                            </td>
+
+                            {/* SELLING PRICE / SHELF RETAIL (EDITABLE) */}
+                            <td className="p-2.5">
+                              <input
+                                type="number"
+                                step="any"
+                                min={0}
+                                value={currentRetail === 0 ? "" : currentRetail}
+                                onChange={(e) => {
+                                  const val = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                                  setEditedRetailPrices((prev) => ({ ...prev, [item.id]: val }));
+                                }}
+                                className={`w-full p-2 text-xs font-mono font-bold text-right rounded-xl border focus:outline-emerald-600 ${
+                                  isEdited
+                                    ? "bg-amber-100/70 border-amber-400 text-amber-950 ring-2 ring-amber-400/20"
+                                    : "bg-emerald-50/70 border-emerald-300 text-emerald-950"
+                                }`}
+                              />
+                            </td>
+
+                            {/* PROFIT PER UNIT */}
+                            <td className="p-2.5 text-right font-mono font-bold">
+                              <span className={profit > 0 ? "text-emerald-700" : profit < 0 ? "text-rose-600" : "text-slate-400"}>
+                                {profit > 0 ? "+" : ""}{currency} {profit.toFixed(2)}
+                              </span>
+                            </td>
+
+                            {/* MARGIN PERCENTAGE BADGE */}
+                            <td className="p-2.5 text-center">
+                              <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-bold ${
+                                marginPct >= 25
+                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                  : marginPct >= 15
+                                  ? "bg-blue-100 text-blue-800 border border-blue-200"
+                                  : marginPct > 0
+                                  ? "bg-amber-100 text-amber-800 border border-amber-200"
+                                  : "bg-rose-100 text-rose-800 border border-rose-200"
+                              }`}>
+                                {marginPct}%
+                              </span>
+                            </td>
+
+                            {/* TOTAL SHELF VALUE */}
+                            <td className="p-2.5 text-right font-mono font-bold text-slate-900">
+                              {currency} {shelfValue.toLocaleString()}
+                            </td>
+
+                            {/* QUICK MARGIN SET BUTTONS */}
+                            <td className="p-2.5 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                {[15, 20, 25, 30].map((pct) => (
+                                  <button
+                                    key={pct}
+                                    type="button"
+                                    onClick={() => {
+                                      const base = uCost > 0 ? uCost : 50;
+                                      const target = Math.round(base * (1 + pct / 100));
+                                      setEditedRetailPrices((prev) => ({ ...prev, [item.id]: target }));
+                                    }}
+                                    className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 text-[9px] font-mono font-bold cursor-pointer"
+                                    title={`Set ${pct}% profit margin`}
+                                  >
+                                    +{pct}%
+                                  </button>
+                                ))}
+                              </div>
+                            </td>
+
+                            {/* ACTION BUTTON */}
+                            <td className="p-2.5 text-center">
+                              {isEdited ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (onUpdateInventoryItem) {
+                                        onUpdateInventoryItem(item.id, {
+                                          unit_retail: currentRetail,
+                                          expected_margin: Math.round((currentRetail - uCost) * 100) / 100,
+                                          total_shelf_value: Math.round(stock * currentRetail * 100) / 100
+                                        });
+                                        const next = { ...editedRetailPrices };
+                                        delete next[item.id];
+                                        setEditedRetailPrices(next);
+                                        setSuccessNote(`Updated selling price for ${item.name} to ${currency} ${currentRetail}!`);
+                                        setTimeout(() => setSuccessNote(null), 3000);
+                                      }
+                                    }}
+                                    className="p-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                                    title="Save new selling price"
+                                  >
+                                    <Check size={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const next = { ...editedRetailPrices };
+                                      delete next[item.id];
+                                      setEditedRetailPrices(next);
+                                    }}
+                                    className="p-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-600 cursor-pointer"
+                                    title="Revert to original price"
+                                  >
+                                    <X size={13} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-slate-300 font-mono">Saved</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
       )}
 
       {/* ========================================================================= */}

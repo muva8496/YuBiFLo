@@ -68,9 +68,9 @@ export default function SaasAppShell({
   // Sync browser tab title
   useEffect(() => {
     if (isDemo) {
-      document.title = "Demo · YuBiFLo";
+      document.title = "Demo · YuBiFlo Web Platform";
     } else {
-      document.title = "YuBiFLo — Your Business Is A Flower";
+      document.title = "YuBiFlo Web Platform · Retail Intelligence";
     }
   }, [isDemo]);
 
@@ -85,7 +85,8 @@ export default function SaasAppShell({
       icon: <ShoppingBag size={17} />,
       children: [
         { id: "purchases_cargo", name: "Inbound Cargo" },
-        { id: "receipt_ocr", name: "Upload Receipts" }
+        { id: "receipt_ocr", name: "Upload Receipts" },
+        { id: "selling_prices", name: "Selling Prices & Margins" }
       ]
     },
     { id: "suppliers", name: "Suppliers", icon: <Truck size={17} /> },

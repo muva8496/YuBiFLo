@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/v1/receipt-ocr",
+      "destination": "/api/v1/receipt-ocr"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

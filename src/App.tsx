@@ -730,6 +730,28 @@ export default function App() {
     }));
   };
 
+  const handleUpdateInventoryItem = (itemId: string | number, updates: Partial<InventoryItem>) => {
+    setMasterState((prev) => {
+      const updatedInventory = (prev.inventory || []).map((item) => {
+        if (String(item.id) === String(itemId)) {
+          const merged = { ...item, ...updates };
+          const cost = Number(merged.unit_cost) || 0;
+          const retail = Number(merged.unit_retail) || 0;
+          const stock = Number(merged.current_stock) || 0;
+          merged.expected_margin = Math.round((retail - cost) * 100) / 100;
+          merged.total_shelf_value = Math.round(stock * retail * 100) / 100;
+          return merged;
+        }
+        return item;
+      });
+      return {
+        ...prev,
+        inventory: updatedInventory,
+        last_updated: new Date().toISOString()
+      };
+    });
+  };
+
   const handleLogMultiItemPurchase = (purchase: {
     receiptId?: string;
     receiptNumber?: string;
@@ -1321,12 +1343,20 @@ export default function App() {
           />
         )}
 
-        {/* TAB 4: PURCHASES (MULTI-GOODS RESTOCK & RECEIPT OCR) */}
-        {(activeTab === "purchases" || activeTab === "purchases_cargo" || activeTab === "receipt_ocr") && (
+        {/* TAB 4: PURCHASES (MULTI-GOODS RESTOCK, RECEIPT OCR & SELLING PRICES) */}
+        {(activeTab === "purchases" || activeTab === "purchases_cargo" || activeTab === "receipt_ocr" || activeTab === "selling_prices") && (
           <PurchasesTab
             state={currentMasterState}
             initialSupplier={preselectedSupplier}
-            initialView={activeTab === "receipt_ocr" ? "upload" : activeTab === "purchases_cargo" ? "cargo" : "all"}
+            initialView={
+              activeTab === "receipt_ocr"
+                ? "upload"
+                : activeTab === "purchases_cargo"
+                ? "cargo"
+                : activeTab === "selling_prices"
+                ? "selling_prices"
+                : "all"
+            }
             onNavigateTab={setActiveTab}
             onLogPurchase={handleLogMultiItemPurchase}
             onAuthorizeRestockSale={handleAuthorizeRestockSale}
@@ -1335,6 +1365,7 @@ export default function App() {
             onAddExpense={handleAddExpense}
             onEditExpense={handleEditExpense}
             onDeleteExpense={handleDeleteExpense}
+            onUpdateInventoryItem={handleUpdateInventoryItem}
           />
         )}
 
