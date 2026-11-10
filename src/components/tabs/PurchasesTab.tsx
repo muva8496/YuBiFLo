@@ -4,7 +4,7 @@ import {
   Layers, ArrowUpRight, Search, Filter, AlertCircle, RefreshCw,
   Camera, Upload, FileText, Image as ImageIcon, Sparkles, Check,
   Trash2, Copy, ShieldCheck, ChevronDown, ChevronUp, Eye, Phone,
-  ArrowRight, Scan, Clock, Package, XCircle, CheckSquare, Square, History, X, Wallet
+  ArrowRight, Scan, Clock, Package, XCircle, CheckSquare, Square, History, X, Wallet, Building2
 } from "lucide-react";
 import { 
   AlacioMasterState, 
@@ -319,9 +319,8 @@ export default function PurchasesTab({
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionReasonInput, setRejectionReasonInput] = useState("Incorrect pricing / unverified delivery chit");
 
-  // Vision OCR Image Filter & Alternative Reading Workflow State
+  // Vision OCR Image Filter
   const [receiptPhotoFilter, setReceiptPhotoFilter] = useState<"normal" | "contrast" | "invert">("normal");
-  const [activeItemAlternativeModal, setActiveItemAlternativeModal] = useState<string | null>(null);
 
   // Dedicated Selling Prices & Margins Tab state
   const [sellingPriceSearch, setSellingPriceSearch] = useState("");
@@ -1641,113 +1640,81 @@ export default function PurchasesTab({
                 </div>
               )}
 
-              {/* INTERACTIVE OCR WORKFLOW BANNER: MULTI-STAGE READING PIPELINE */}
-              <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white p-4 rounded-2xl border border-blue-800/60 shadow-md space-y-3">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-blue-800/40 pb-3">
+              {/* ALACIO INBOUND RESTOCK & BREAK-BULK FORMULA ENGINE */}
+              <div className="bg-slate-900 text-white p-4 rounded-2xl border border-slate-800 shadow-md space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
                   <div>
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-blue-300 block">
-                      Website Multimodal OCR Workflow &bull; Kenyan Retail Dukas &amp; Wholesalers
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 block">
+                      Alacio Mini Shop &bull; Inbound Restock Formula
                     </span>
                     <h3 className="text-sm font-bold text-white flex items-center gap-2 mt-0.5">
-                      <Sparkles size={15} className="text-amber-400" />
-                      Visual Receipt Deciphering &bull; Make a Different Reading of Physical Slips
+                      <Building2 size={16} className="text-blue-400" />
+                      Physical Slip &amp; Lot Ingestion &bull; Verify Line Costs &amp; Set Shelf Selling Prices
                     </h3>
                   </div>
 
-                  {/* QUICK SLIP / ALTERNATIVE READING SWITCHER */}
+                  {/* QUICK BATCH ACTIONS */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] text-blue-200 font-medium">Interpret Slip As:</span>
-                    <select
-                      value={
-                        scannedReceipt.supplierName.toUpperCase().includes("LUX")
-                          ? "sample_lux"
-                          : scannedReceipt.supplierName.toUpperCase().includes("AGS")
-                          ? "sample_ags"
-                          : scannedReceipt.supplierName.toUpperCase().includes("JAHDITHMA")
-                          ? "sample_jahdithma"
-                          : scannedReceipt.supplierName.toUpperCase().includes("PHIMAR")
-                          ? "sample_phimar"
-                          : scannedReceipt.supplierName.toUpperCase().includes("BROADWAY")
-                          ? "sample_broadways"
-                          : scannedReceipt.supplierName.toUpperCase().includes("MEGA")
-                          ? "sample_wholesaler"
-                          : scannedReceipt.supplierName.toUpperCase().includes("KHETIA")
-                          ? "sample_combo_420"
-                          : "custom"
-                      }
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === "custom") {
-                          setScannedReceipt({
-                            id: `rcpt_manual_${Date.now()}`,
-                            receiptNumber: `RCPT-${Math.floor(1000 + Math.random() * 9000)}`,
-                            supplierName: "Custom Supplier Slip",
-                            receiptDate: new Date().toISOString().slice(0, 10),
-                            paymentMode: "CASH",
-                            totalCost: 0,
-                            totalRetailShelfValue: 0,
-                            totalPotentialProfit: 0,
-                            markupPercentage: 0,
-                            confidenceScore: 0.95,
-                            processedAt: "Just now",
-                            rawTextNotes: "Manual review of uploaded slip.",
-                            imageUrl: scannedReceiptImage,
-                            items: [
-                              {
-                                id: `item_c_${Date.now()}_1`,
-                                itemName: "Good / Product 1",
-                                rawSpecification: "Line 1 from physical slip",
-                                rawPackQty: 1,
-                                rawPackUnit: "Pieces",
-                                packConversionMultiplier: 1,
-                                supplyUnitsReceived: 1,
-                                supplyUnit: "Pieces",
-                                conversionRatio: 1,
-                                retailUnitsAdded: 1,
-                                retailUnit: "Pieces",
-                                unitCostAtDelivery: 0,
-                                lineCost: 0,
-                                retailPrice: 0,
-                                expectedMargin: 0,
-                                approved: true
-                              }
-                            ]
-                          });
-                        } else {
-                          handleSelectSampleReceipt(val);
-                        }
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newItem: ProcessedReceiptItem = {
+                          id: `item_manual_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+                          itemName: `Good ${scannedReceipt.items.length + 1}`,
+                          rawSpecification: "Manual entry from physical slip",
+                          rawPackQty: 1,
+                          rawPackUnit: "Bale (12pkts)",
+                          packConversionMultiplier: 12,
+                          supplyUnitsReceived: 12,
+                          supplyUnit: "Bale (12pkts)",
+                          conversionRatio: 12,
+                          retailUnitsAdded: 12,
+                          retailUnit: "packets",
+                          unitCostAtDelivery: 0,
+                          lineCost: 0,
+                          retailPrice: 0,
+                          expectedMargin: 0,
+                          approved: true
+                        };
+                        setScannedReceipt({
+                          ...scannedReceipt,
+                          items: [...scannedReceipt.items, newItem]
+                        });
                       }}
-                      className="bg-blue-950 text-white text-xs font-semibold py-1.5 px-3 rounded-xl border border-blue-700 focus:outline-blue-400 cursor-pointer"
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      title="Add another good written on this receipt"
                     >
-                      <option value="sample_lux">📝 LUX STORES #1244 (BB 20g dzns, Fruta juice, Top chips • Ksh 745)</option>
-                      <option value="sample_ags">🏢 AGS LIMITED #270055801 (Msosi Maize Meal 2kg • 3 Bales • Ksh 3,570)</option>
-                      <option value="sample_jahdithma">🏪 JAHDITHMA TRADERS #390727 (Supermi, Aroma, Kaluma, Toss • Ksh 1,590)</option>
-                      <option value="sample_phimar">🌽 THE PHIMAR TRADING CENTER (Phimar Corn 25kg, 2kg, 1kg • Ksh 4,160)</option>
-                      <option value="sample_broadways">🍞 Broadways Bakery (White Bread, Brown Bread, Scones • Ksh 2,750)</option>
-                      <option value="sample_wholesaler">📦 Nairobi Mega Wholesalers (Sugar 50kg, Unga Jogoo, Oil • Ksh 18,800)</option>
-                      <option value="sample_combo_420">🏷️ Khetias Wholesalers (Sugar 1kg + Oil 1L = Ksh 420)</option>
-                      <option value="custom">✍️ Blank Template (Enter Custom Lines Directly)</option>
-                    </select>
+                      <Plus size={14} /> Add Line from Slip
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleApproveAllItems}
+                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition cursor-pointer"
+                    >
+                      Approve All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRejectAllItems}
+                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition cursor-pointer"
+                    >
+                      Exclude All
+                    </button>
                   </div>
                 </div>
 
-                {/* 4-STAGE PIPELINE DISPLAY */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
-                  <div className="bg-white/10 rounded-xl p-2.5 border border-white/10">
-                    <span className="text-blue-300 font-bold block text-[10px] uppercase">Stage 1: Photo Input</span>
-                    <span className="font-semibold text-white">Handwritten / Printed Slip</span>
+                {/* THE WORKING FORMULA BADGE */}
+                <div className="p-3 rounded-xl bg-blue-950/60 border border-blue-800/60 text-xs flex flex-col md:flex-row md:items-center justify-between gap-2 text-blue-200">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono font-bold text-[11px] shrink-0">
+                      Working Formula
+                    </span>
+                    <span className="text-[12px] text-white">
+                      <strong>Derived Wholesale Unit Cost</strong> = Line Total Cost &divide; Total Retail Units &bull; <strong>Shelf Selling Price</strong> = Wholesale Cost &times; (1 + Margin %)
+                    </span>
                   </div>
-                  <div className="bg-white/10 rounded-xl p-2.5 border border-white/10">
-                    <span className="text-amber-300 font-bold block text-[10px] uppercase">Stage 2: Vision OCR</span>
-                    <span className="font-semibold text-white">Line Items &amp; Qty Extracted</span>
-                  </div>
-                  <div className="bg-white/10 rounded-xl p-2.5 border border-white/10">
-                    <span className="text-emerald-300 font-bold block text-[10px] uppercase">Stage 3: Break-Bulk Math</span>
-                    <span className="font-semibold text-white">Bales/Dozens &rarr; Packets</span>
-                  </div>
-                  <div className="bg-white/10 rounded-xl p-2.5 border border-white/10">
-                    <span className="text-purple-300 font-bold block text-[10px] uppercase">Stage 4: Selling Prices</span>
-                    <span className="font-semibold text-white">Shelf Retail &amp; Margin Lock</span>
+                  <div className="text-[11px] text-blue-300 font-mono shrink-0">
+                    e.g. Nganoo: 2,080 &divide; 12 = 173.33/pkt | BB: 200 &divide; 24 = 8.33/pc
                   </div>
                 </div>
               </div>
@@ -1889,7 +1856,6 @@ export default function PurchasesTab({
                     const bulkLabel = rawBulkQty > 1 || String(rawBulkUnit).toLowerCase().includes("bale") ? `${rawBulkQty} ${rawBulkUnit}` : `${qty} ${item.supplyUnit}`;
                     const marginDiff = retailPrice - unitCost;
                     const marginPct = unitCost > 0 ? Math.round((marginDiff / unitCost) * 100) : 0;
-                    const isAlternativeOpen = activeItemAlternativeModal === item.id;
 
                     return (
                       <div
@@ -1927,16 +1893,27 @@ export default function PurchasesTab({
                                   <span className="font-black text-sm text-slate-900">({bulkLabel})</span>
                                 )}
 
-                                {/* MAKE DIFFERENT READING BUTTON */}
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveItemAlternativeModal(isAlternativeOpen ? null : item.id)}
-                                  className="px-2 py-0.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
-                                  title="Pick an alternative reading or match to existing inventory good"
+                                <select
+                                  onChange={(e) => {
+                                    const match = inventory.find((i) => String(i.id) === e.target.value || i.name === e.target.value);
+                                    if (match) {
+                                      handleUpdateScannedItem(item.id, "itemName", match.name);
+                                      if (match.unit_retail) {
+                                        handleUpdateScannedItem(item.id, "retailPrice", match.unit_retail);
+                                      }
+                                    }
+                                  }}
+                                  className="text-[11px] bg-slate-50 border border-slate-200 text-slate-600 rounded-lg px-2 py-0.5 cursor-pointer max-w-[170px]"
+                                  defaultValue=""
+                                  title="Match to existing Alacio inventory SKU"
                                 >
-                                  <RefreshCw size={10} />
-                                  <span>Different Reading</span>
-                                </button>
+                                  <option value="" disabled>Link to stock SKU...</option>
+                                  {inventory.map((inv) => (
+                                    <option key={inv.id} value={inv.id}>
+                                      {inv.name} ({currency} {inv.unit_retail})
+                                    </option>
+                                  ))}
+                                </select>
                               </div>
                               <p className="text-[11px] font-mono text-slate-400 mt-0.5 truncate">
                                 Receipt Line: {item.rawSpecification || `${cleanTitle.toUpperCase()} • QTY: ${rawBulkQty}.00 ${String(rawBulkUnit).toUpperCase()} • TOTAL: ${lineTotal}`}
@@ -1976,141 +1953,6 @@ export default function PurchasesTab({
                             )}
                           </div>
                         </div>
-
-                        {/* ALTERNATIVE READINGS POPOVER DRAWER */}
-                        {isAlternativeOpen && (
-                          <div className="bg-slate-50 border border-blue-200 rounded-xl p-3 text-xs space-y-2 animate-in fade-in">
-                            <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
-                              <span className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
-                                <Sparkles size={12} className="text-blue-600" />
-                                Alternate Interpretations for &ldquo;{item.itemName}&rdquo;:
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setActiveItemAlternativeModal(null)}
-                                className="text-slate-400 hover:text-slate-600 text-[11px]"
-                              >
-                                Close &times;
-                              </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                              {/* OPTION 1: LINK TO STORE INVENTORY ITEM */}
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase block">
-                                  Match Existing Store Inventory SKU:
-                                </label>
-                                <select
-                                  onChange={(e) => {
-                                    const match = inventory.find((i) => String(i.id) === e.target.value || i.name === e.target.value);
-                                    if (match) {
-                                      handleUpdateScannedItem(item.id, "itemName", match.name);
-                                      if (match.unit_retail) {
-                                        handleUpdateScannedItem(item.id, "retailPrice", match.unit_retail);
-                                      }
-                                      setActiveItemAlternativeModal(null);
-                                    }
-                                  }}
-                                  className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-800"
-                                  defaultValue=""
-                                >
-                                  <option value="" disabled>-- Select from your stock ({inventory.length} items) --</option>
-                                  {inventory.map((inv) => (
-                                    <option key={inv.id} value={inv.id}>
-                                      {inv.name} (Retail: {currency} {inv.unit_retail})
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              {/* OPTION 2: COMMON KENYAN DUKA READING CANDIDATES */}
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase block">
-                                  Quick Alternative Interpretations:
-                                </label>
-                                <div className="flex flex-wrap gap-1">
-                                  {item.itemName.toLowerCase().includes("bb") ? (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          handleUpdateScannedItem(item.id, "itemName", "BB Biscuits 20g (2 Dozen)");
-                                          handleUpdateScannedItem(item.id, "supplyUnitsReceived", 24);
-                                          handleUpdateScannedItem(item.id, "supplyUnit", "Dozen (12pcs)");
-                                          handleUpdateScannedItem(item.id, "retailPrice", 10);
-                                          setActiveItemAlternativeModal(null);
-                                        }}
-                                        className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 text-blue-700 rounded-lg text-[10px] font-medium"
-                                      >
-                                        BB Biscuits 20g (24 pcs @ 10/-)
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          handleUpdateScannedItem(item.id, "itemName", "BB Sweets 20g (2 Dozen)");
-                                          handleUpdateScannedItem(item.id, "supplyUnitsReceived", 24);
-                                          handleUpdateScannedItem(item.id, "supplyUnit", "Dozen (12pcs)");
-                                          handleUpdateScannedItem(item.id, "retailPrice", 10);
-                                          setActiveItemAlternativeModal(null);
-                                        }}
-                                        className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 text-blue-700 rounded-lg text-[10px] font-medium"
-                                      >
-                                        BB Sweets 20g (24 pcs @ 10/-)
-                                      </button>
-                                    </>
-                                  ) : item.itemName.toLowerCase().includes("fruta") ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleUpdateScannedItem(item.id, "itemName", "Fruta Tropical Juice 500ml");
-                                        handleUpdateScannedItem(item.id, "retailPrice", 240);
-                                        setActiveItemAlternativeModal(null);
-                                      }}
-                                      className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 text-blue-700 rounded-lg text-[10px] font-medium"
-                                    >
-                                      Fruta Tropical Juice 500ml (Retail: 240/-)
-                                    </button>
-                                  ) : item.itemName.toLowerCase().includes("chips") ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        handleUpdateScannedItem(item.id, "itemName", "Top Potato Crisps 50g");
-                                        handleUpdateScannedItem(item.id, "retailPrice", 400);
-                                        setActiveItemAlternativeModal(null);
-                                      }}
-                                      className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 text-blue-700 rounded-lg text-[10px] font-medium"
-                                    >
-                                      Top Potato Crisps 50g (Retail: 400/-)
-                                    </button>
-                                  ) : (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          handleUpdateScannedItem(item.id, "itemName", `${cleanTitle} Standard Pack`);
-                                          setActiveItemAlternativeModal(null);
-                                        }}
-                                        className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 text-blue-700 rounded-lg text-[10px] font-medium"
-                                      >
-                                        Standard Retail Pack
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          handleUpdateScannedItem(item.id, "itemName", `${cleanTitle} Wholesale Bundle`);
-                                          setActiveItemAlternativeModal(null);
-                                        }}
-                                        className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 text-blue-700 rounded-lg text-[10px] font-medium"
-                                      >
-                                        Wholesale Bundle
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
 
                         {/* INPUT FIELDS: BREAKING BALES INTO PACKETS */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">

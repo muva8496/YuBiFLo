@@ -249,6 +249,42 @@ export interface RestockReconciliationCard {
   notes?: string;
 }
 
+export interface BatchTurnoverItem {
+  id: string;
+  skuName: string;
+  category?: string;
+  unitType: string;
+  batchQty: number; // Delivered units in this batch
+  unitCost: number; // Derived unit wholesale cost
+  unitRetail: number; // Shelf selling price
+  destroyedQty: number; // Destroyed / damaged / expired
+  ownerUsedQty: number; // Used by user / staff tea
+  calculatedSoldQty: number; // batchQty - (destroyedQty + ownerUsedQty)
+  calculatedRevenue: number; // calculatedSoldQty * unitRetail
+  calculatedProfit: number; // calculatedRevenue - (calculatedSoldQty * unitCost)
+}
+
+export interface SupplierBatchCard {
+  id: string;
+  batchNumber: string; // e.g. "INV-1244" or "270055801"
+  supplierName: string;
+  deliveredDate: string; // YYYY-MM-DD
+  deliveredTimestamp: string; // ISO string e.g. "2026-11-07T08:30:00Z"
+  receiptId?: string;
+  hoursElapsed: number;
+  items: BatchTurnoverItem[];
+  totalBatchUnits: number;
+  totalBatchCost: number;
+  totalBatchRevenue: number;
+  totalBatchProfit: number;
+  status: "PENDING_AUTHORIZATION" | "AUTHORIZED_AND_RECONCILED" | "AUTO_VALIDATED";
+  paymentMethod: "CASH" | "MPESA" | "SPLIT";
+  authorizedAt?: string;
+  authorizedDate?: string;
+  autoValidatedReason?: string; // e.g. "Auto-validated: Same supplier dropped new batch after 12h+"
+  notes?: string;
+}
+
 export interface AlacioMasterState {
   merchant_name?: string;
   client_type?: string;
@@ -264,6 +300,7 @@ export interface AlacioMasterState {
   mpesaStatements: MpesaStatementRecord[];
   reconciliations: ReconciliationAudit[];
   restockCards?: RestockReconciliationCard[];
+  supplierBatchCards?: SupplierBatchCard[];
   kpis: AlacioKpis;
   cash_register_balance: number;
   mpesa_float_balance: number;

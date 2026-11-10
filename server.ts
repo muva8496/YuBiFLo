@@ -187,7 +187,7 @@ ${textContent ? `Additional receipt text context:\n${textContent}` : ""}`;
           try {
             response = await callWithTimeout(
               ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: "gemini-3.8-flash",
                 contents: rawImage && !rawImage.startsWith("data:image/svg+xml") ? { parts: contents } : prompt,
                 config: {
                   systemInstruction:
@@ -264,20 +264,9 @@ ${textContent ? `Additional receipt text context:\n${textContent}` : ""}`;
 
       const rawTextLower = String(textContent || "").toLowerCase();
 
-      // Smart domain-aware fallback parser ONLY if Gemini did not return extracted receipts
+      // Deterministic domain parser ONLY if Gemini did not return extracted receipts
       if (!parsed || !parsed.extractedReceipts || parsed.extractedReceipts.length === 0) {
-        const isGenericImageUpload =
-          rawFileName === "image.png" ||
-          rawFileName.includes("screenshot") ||
-          rawFileName.includes("image_") ||
-          rawFileName.includes("whatsapp") ||
-          rawFileName.includes("photo") ||
-          rawFileName.includes("upload") ||
-          rawFileName.includes("f45e609e") ||
-          !rawFileName;
-
         const isLux =
-          isGenericImageUpload ||
           rawFileName.includes("lux") ||
           rawFileName.includes("soweto") ||
           rawFileName.includes("kayole") ||
@@ -291,7 +280,8 @@ ${textContent ? `Additional receipt text context:\n${textContent}` : ""}`;
           rawTextLower.includes("soweto") ||
           rawTextLower.includes("kayole") ||
           rawTextLower.includes("chips") ||
-          rawTextLower.includes("fruta");
+          rawTextLower.includes("fruta") ||
+          rawTextLower.includes("bb");
         const isAgs = rawFileName.includes("test_3") || rawFileName.includes("ags") || rawFileName.includes("msosi") || rawTextLower.includes("ags") || rawTextLower.includes("msosi") || rawTextLower.includes("270055801");
         const isPhimar = rawFileName.includes("phimar") || rawTextLower.includes("phimar");
         const isBrookside = rawFileName.includes("brookside") || rawTextLower.includes("brookside");

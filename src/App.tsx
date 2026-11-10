@@ -20,7 +20,9 @@ import {
   Blueprint,
   SupplierProfile,
   RestockReconciliationCard,
-  SavedReceiptRecord
+  SavedReceiptRecord,
+  SupplierBatchCard,
+  BatchTurnoverItem
 } from "./types/alacio";
 import { 
   loadAlacioState, 
@@ -1162,6 +1164,123 @@ export default function App() {
     }));
   };
 
+  const handleAuthorizeSupplierBatch = (payload: {
+    batchId: string;
+    supplierName: string;
+    batchNumber: string;
+    deliveredDate: string;
+    items: BatchTurnoverItem[];
+    totalRevenue: number;
+    totalProfit: number;
+    paymentMethod: "CASH" | "MPESA" | "SPLIT";
+    salesDate: string;
+    notes?: string;
+  }) => {
+    const updater = isDemoMode ? setDemoState : setAlacioState;
+    updater((prev) => {
+      const recordDate = payload.salesDate || new Date().toISOString().slice(0, 10);
+      const itemsSummary = payload.items
+        .filter((i) => i.calculatedSoldQty > 0)
+        .map((i) => `${i.calculatedSoldQty} ${i.unitType} ${i.skuName}`)
+        .join(", ");
+
+      const cashDelta = payload.paymentMethod === "CASH" 
+        ? payload.totalRevenue 
+        : payload.paymentMethod === "SPLIT" 
+        ? Math.round(payload.totalRevenue / 2) 
+        : 0;
+      const mpesaDelta = payload.paymentMethod === "MPESA" 
+        ? payload.totalRevenue 
+        : payload.paymentMethod === "SPLIT" 
+        ? Math.round(payload.totalRevenue / 2) 
+        : 0;
+
+      const newSale: SalesLedgerItem = {
+        id: `sale_batch_${Date.now()}`,
+        date: recordDate,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        customer_name: `Walk-in Counter (${payload.supplierName} Batch)`,
+        items_summary: itemsSummary || `Batch Turnover: ${payload.supplierName} #${payload.batchNumber}`,
+        total_amount: payload.totalRevenue,
+        cash_paid: cashDelta,
+        mpesa_paid: mpesaDelta,
+        debt_amount: 0,
+        payment_method: payload.paymentMethod,
+        payment_channel: payload.paymentMethod,
+        cash_received: cashDelta
+      };
+
+      const newPayouts: PayoutOrDrawing[] = [...(prev.payouts || [])];
+      
+      // Owner consumption (e.g., Kadogo chai / staff use) - protects cash drawer from phantom shortage
+      const totalOwnerUsedCost = payload.items.reduce((sum, i) => sum + (i.ownerUsedQty * i.unitCost), 0);
+      const totalOwnerUsedUnits = payload.items.reduce((sum, i) => sum + i.ownerUsedQty, 0);
+      if (totalOwnerUsedUnits > 0 && totalOwnerUsedCost > 0) {
+        newPayouts.unshift({
+          id: `payout_owner_${Date.now()}`,
+          date: recordDate,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          amount: Math.round(totalOwnerUsedCost * 100) / 100,
+          type: "OWNER_DRAWING",
+          payment_channel: "CASH",
+          notes: `Proprietor consumption: ${totalOwnerUsedUnits} units from ${payload.supplierName} (Batch #${payload.batchNumber}) [Protected from cash gap]`
+        });
+      }
+
+      // Spoilage / Damage / Expired loss write-off
+      const totalDestroyedCost = payload.items.reduce((sum, i) => sum + (i.destroyedQty * i.unitCost), 0);
+      const totalDestroyedUnits = payload.items.reduce((sum, i) => sum + i.destroyedQty, 0);
+      if (totalDestroyedUnits > 0 && totalDestroyedCost > 0) {
+        newPayouts.unshift({
+          id: `payout_spoil_${Date.now()}`,
+          date: recordDate,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          amount: Math.round(totalDestroyedCost * 100) / 100,
+          type: "BUSINESS_EXPENSE",
+          payment_channel: "CASH",
+          notes: `Inventory shrinkage: ${totalDestroyedUnits} units damaged/expired from ${payload.supplierName} (Batch #${payload.batchNumber})`
+        });
+      }
+
+      // Mark batch card as authorized
+      const existingBatchCards = prev.supplierBatchCards || [];
+      const updatedBatchCards = existingBatchCards.map((b) => {
+        if (b.id === payload.batchId) {
+          return {
+            ...b,
+            items: payload.items,
+            totalBatchRevenue: payload.totalRevenue,
+            totalBatchProfit: payload.totalProfit,
+            status: "AUTHORIZED_AND_RECONCILED" as const,
+            paymentMethod: payload.paymentMethod,
+            authorizedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            authorizedDate: recordDate,
+            notes: payload.notes
+          };
+        }
+        return b;
+      });
+
+      return {
+        ...prev,
+        salesLedger: [newSale, ...(prev.salesLedger || [])],
+        payouts: newPayouts,
+        supplierBatchCards: updatedBatchCards,
+        cash_register_balance: (Number(prev.cash_register_balance) || 0) + cashDelta,
+        mpesa_float_balance: (Number(prev.mpesa_float_balance) || 0) + mpesaDelta,
+        last_updated: new Date().toISOString()
+      };
+    });
+  };
+
+  const handleDismissSupplierBatch = (batchId: string) => {
+    const updater = isDemoMode ? setDemoState : setAlacioState;
+    updater((prev) => ({
+      ...prev,
+      supplierBatchCards: (prev.supplierBatchCards || []).filter((b) => b.id !== batchId)
+    }));
+  };
+
   // -------------------------------------------------------------
   // VIEW 1: PUBLIC LANDING PAGE
   // -------------------------------------------------------------
@@ -1340,6 +1459,8 @@ export default function App() {
             onCommitSupplyDrivenSale={handleCommitSupplyDrivenSale}
             onAuthorizeRestockSale={handleAuthorizeRestockSale}
             onDismissRestockCard={handleDismissRestockCard}
+            onAuthorizeSupplierBatch={handleAuthorizeSupplierBatch}
+            onDismissSupplierBatch={handleDismissSupplierBatch}
           />
         )}
 
