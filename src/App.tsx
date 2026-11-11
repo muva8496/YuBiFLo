@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { 
   Building2, Globe, Plus, ChevronDown, Copy, X, ArrowRight, Sparkles, 
   AlertTriangle, Layers, Database, BarChart3, BrainCircuit, Eye, 
@@ -37,7 +37,6 @@ import {
   getSupplyUnitMultiplier,
   deriveUnitWholesaleCost
 } from "./services/bulkConversionEngine";
-import DataVaultModal from "./components/DataVaultModal";
 import { 
   loadDemoSandboxState, 
   saveDemoSandboxState, 
@@ -50,35 +49,57 @@ import {
   signOutAllDevices 
 } from "./services/authSessionService";
 
-import SaasAppShell from "./components/SaasAppShell";
-import SaasDashboardTab from "./components/tabs/SaasDashboardTab";
-import LaunchpadTab, { LaunchpadProgress } from "./components/tabs/LaunchpadTab";
-import SupplyDrivenSalesTab from "./components/tabs/SupplyDrivenSalesTab";
-import PurchasesTab, { PurchaseItemLine } from "./components/tabs/PurchasesTab";
-import SuppliersTab from "./components/tabs/SuppliersTab";
-import StockVaultSuppliersTab from "./components/tabs/StockVaultSuppliersTab";
-import DawnLockTab from "./components/tabs/DawnLockTab";
-import UnifiedVoiceLedgerTab from "./components/tabs/UnifiedVoiceLedgerTab";
-import CustomersCreditTab from "./components/tabs/CustomersCreditTab";
-import ThreeFoldLedgersTab from "./components/tabs/ThreeFoldLedgersTab";
-import AnalyticsTab from "./components/tabs/AnalyticsTab";
-import OwnerExpensesTab from "./components/tabs/OwnerExpensesTab";
-import { VoiceDraftRecord } from "./components/tabs/PendingDraftsQueueTab";
+import type { LaunchpadProgress } from "./components/tabs/LaunchpadTab";
+import type { PurchaseItemLine } from "./components/tabs/PurchasesTab";
+import type { VoiceDraftRecord } from "./components/tabs/PendingDraftsQueueTab";
 import {
   reconcileChronologicalReceiptsAndSales,
   normalizeIsoDate,
   doProductsMatch
 } from "./utils/chronologicalReceiptSalesEngine";
-import TemplateInDevelopmentView from "./components/TemplateInDevelopmentView";
-import OneTapGapModal from "./components/OneTapGapModal";
-import MpesaImportModal from "./components/MpesaImportModal";
-import PullYourOwnAppModal from "./components/PullYourOwnAppModal";
-import { VoiceTransactionPayload } from "./components/VoiceLedger";
-import YuBiFloEnterpriseCommand from "./components/YuBiFloEnterpriseCommand";
+import type { VoiceTransactionPayload } from "./components/VoiceLedger";
+import { reconcileOrRegisterSupplier, reconcileOrRegisterCustomer } from "./utils/partyNameFuzzyMatcher";
+
+// Immediate Critical Path Modules (Header, Dashboard & Auth)
+import SaasAppShell from "./components/SaasAppShell";
+import SaasDashboardTab from "./components/tabs/SaasDashboardTab";
 import YuBiFloLandingPage from "./components/YuBiFloLandingPage";
 import UnifiedAuthModal from "./components/UnifiedAuthModal";
-import DomainMigrationModal from "./components/DomainMigrationModal";
-import { reconcileOrRegisterSupplier, reconcileOrRegisterCustomer } from "./utils/partyNameFuzzyMatcher";
+
+// Lazy-Loaded Tabs & Heavy Modals for Instant Bundle Execution (<300ms)
+const LaunchpadTab = lazy(() => import("./components/tabs/LaunchpadTab"));
+const SupplyDrivenSalesTab = lazy(() => import("./components/tabs/SupplyDrivenSalesTab"));
+const PurchasesTab = lazy(() => import("./components/tabs/PurchasesTab"));
+const SuppliersTab = lazy(() => import("./components/tabs/SuppliersTab"));
+const StockVaultSuppliersTab = lazy(() => import("./components/tabs/StockVaultSuppliersTab"));
+const DawnLockTab = lazy(() => import("./components/tabs/DawnLockTab"));
+const UnifiedVoiceLedgerTab = lazy(() => import("./components/tabs/UnifiedVoiceLedgerTab"));
+const CustomersCreditTab = lazy(() => import("./components/tabs/CustomersCreditTab"));
+const ThreeFoldLedgersTab = lazy(() => import("./components/tabs/ThreeFoldLedgersTab"));
+const AnalyticsTab = lazy(() => import("./components/tabs/AnalyticsTab"));
+const OwnerExpensesTab = lazy(() => import("./components/tabs/OwnerExpensesTab"));
+const TemplateInDevelopmentView = lazy(() => import("./components/TemplateInDevelopmentView"));
+const OneTapGapModal = lazy(() => import("./components/OneTapGapModal"));
+const MpesaImportModal = lazy(() => import("./components/MpesaImportModal"));
+const PullYourOwnAppModal = lazy(() => import("./components/PullYourOwnAppModal"));
+const DataVaultModal = lazy(() => import("./components/DataVaultModal"));
+const DomainMigrationModal = lazy(() => import("./components/DomainMigrationModal"));
+const YuBiFloEnterpriseCommand = lazy(() => import("./components/YuBiFloEnterpriseCommand"));
+
+function TabLoadingSkeleton() {
+  return (
+    <div className="p-4 sm:p-6 space-y-4 max-w-5xl animate-pulse">
+      <div className="h-7 bg-slate-200/80 rounded-xl w-44"></div>
+      <div className="h-3.5 bg-slate-200/60 rounded-lg w-64"></div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-5">
+        <div className="h-24 bg-white border border-slate-200 rounded-2xl shadow-2xs"></div>
+        <div className="h-24 bg-white border border-slate-200 rounded-2xl shadow-2xs"></div>
+        <div className="h-24 bg-white border border-slate-200 rounded-2xl shadow-2xs"></div>
+      </div>
+      <div className="h-56 bg-white border border-slate-200 rounded-2xl shadow-2xs mt-4"></div>
+    </div>
+  );
+}
 
 export default function App() {
   // Session State (90-day sliding session)
@@ -1377,14 +1398,16 @@ export default function App() {
   // -------------------------------------------------------------
   if (currentView === "yubiflo_command") {
     return (
-      <YuBiFloEnterpriseCommand
-        alacioState={currentMasterState}
-        onLaunchAlacioShop={() => {
-          setCurrentView("workspace");
-          setActiveTab("dashboard");
-        }}
-        onOpenBlueprints={() => setCurrentView("landing")}
-      />
+      <Suspense fallback={<TabLoadingSkeleton />}>
+        <YuBiFloEnterpriseCommand
+          alacioState={currentMasterState}
+          onLaunchAlacioShop={() => {
+            setCurrentView("workspace");
+            setActiveTab("dashboard");
+          }}
+          onOpenBlueprints={() => setCurrentView("landing")}
+        />
+      </Suspense>
     );
   }
 
@@ -1393,14 +1416,16 @@ export default function App() {
   // -------------------------------------------------------------
   if (currentView === "developing" && activeDevelopingBlueprint) {
     return (
-      <TemplateInDevelopmentView
-        blueprint={activeDevelopingBlueprint}
-        onBackToLanding={() => setCurrentView("landing")}
-        onLaunchAlacioPilot={() => {
-          setCurrentView("workspace");
-          setActiveTab("dashboard");
-        }}
-      />
+      <Suspense fallback={<TabLoadingSkeleton />}>
+        <TemplateInDevelopmentView
+          blueprint={activeDevelopingBlueprint}
+          onBackToLanding={() => setCurrentView("landing")}
+          onLaunchAlacioPilot={() => {
+            setCurrentView("workspace");
+            setActiveTab("dashboard");
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -1455,8 +1480,9 @@ export default function App() {
           setCurrentView("landing");
         }}
       >
-        {/* TAB 1: LAUNCHPAD */}
-        {activeTab === "launchpad" && (
+        <Suspense fallback={<TabLoadingSkeleton />}>
+          {/* TAB 1: LAUNCHPAD */}
+          {activeTab === "launchpad" && (
           <LaunchpadTab
             state={currentMasterState}
             onNavigateTab={setActiveTab}
@@ -1636,6 +1662,7 @@ export default function App() {
             state={currentMasterState}
           />
         )}
+        </Suspense>
       </SaasAppShell>
 
       {/* COMBINED INSTAGRAM-STYLE SIGN IN / SIGN UP MODAL */}
@@ -1728,60 +1755,73 @@ export default function App() {
         </div>
       )}
 
-      {/* 1-TAP GAP RESOLUTION MODAL */}
-      <OneTapGapModal
-        isOpen={isOneTapGapOpen}
-        onClose={() => setIsOneTapGapOpen(false)}
-        gapAmount={-1500}
-        currency={currentMasterState.currency}
-        onResolveGap={handleResolveGap}
-      />
+      {/* LAZY LOADED MODALS */}
+      <Suspense fallback={null}>
+        {/* 1-TAP GAP RESOLUTION MODAL */}
+        {isOneTapGapOpen && (
+          <OneTapGapModal
+            isOpen={isOneTapGapOpen}
+            onClose={() => setIsOneTapGapOpen(false)}
+            gapAmount={-1500}
+            currency={currentMasterState.currency}
+            onResolveGap={handleResolveGap}
+          />
+        )}
 
-      {/* M-PESA STATEMENT IMPORT MODAL */}
-      <MpesaImportModal
-        isOpen={isMpesaImportOpen}
-        onClose={() => setIsMpesaImportOpen(false)}
-        currency={currentMasterState.currency}
-        onImportRecords={handleImportMpesa}
-      />
+        {/* M-PESA STATEMENT IMPORT MODAL */}
+        {isMpesaImportOpen && (
+          <MpesaImportModal
+            isOpen={isMpesaImportOpen}
+            onClose={() => setIsMpesaImportOpen(false)}
+            currency={currentMasterState.currency}
+            onImportRecords={handleImportMpesa}
+          />
+        )}
 
-      {/* PULL YOUR OWN APP (STANDALONE SINGLE-BUSINESS PWA & DATA EXPORT) */}
-      <PullYourOwnAppModal
-        isOpen={isPullYourOwnAppOpen}
-        onClose={() => setIsPullYourOwnAppOpen(false)}
-        state={currentMasterState}
-      />
+        {/* PULL YOUR OWN APP (STANDALONE SINGLE-BUSINESS PWA & DATA EXPORT) */}
+        {isPullYourOwnAppOpen && (
+          <PullYourOwnAppModal
+            isOpen={isPullYourOwnAppOpen}
+            onClose={() => setIsPullYourOwnAppOpen(false)}
+            state={currentMasterState}
+          />
+        )}
 
-      {/* ZERO DATA LOSS & DATA PROTECTION VAULT MODAL */}
-      <DataVaultModal
-        isOpen={isDataVaultOpen}
-        onClose={() => setIsDataVaultOpen(false)}
-        masterState={currentMasterState}
-        onStateRestored={(newState) => {
-          if (isDemoMode) {
-            setDemoState(newState);
-          } else {
-            setAlacioState(newState);
-            saveAlacioState(newState, currentUser?.email);
-          }
-        }}
-      />
+        {/* ZERO DATA LOSS & DATA PROTECTION VAULT MODAL */}
+        {isDataVaultOpen && (
+          <DataVaultModal
+            isOpen={isDataVaultOpen}
+            onClose={() => setIsDataVaultOpen(false)}
+            masterState={currentMasterState}
+            onStateRestored={(newState) => {
+              if (isDemoMode) {
+                setDemoState(newState);
+              } else {
+                setAlacioState(newState);
+                saveAlacioState(newState, currentUser?.email);
+              }
+            }}
+          />
+        )}
 
-      {/* DOMAIN MIGRATION BRIDGE (yubiflo.vercel.app <-> yubiflo.com) */}
-      <DomainMigrationModal
-        isOpen={isMigrationModalOpen}
-        onClose={() => setIsMigrationModalOpen(false)}
-        currentState={currentMasterState}
-        onRestoreState={(newState) => {
-          if (isDemoMode) {
-            setDemoState(newState);
-          } else {
-            setAlacioState(newState);
-            saveAlacioState(newState, currentUser?.email);
-          }
-        }}
-        userEmail={currentUser?.email}
-      />
+        {/* DOMAIN MIGRATION BRIDGE (yubiflo.vercel.app <-> yubiflo.com) */}
+        {isMigrationModalOpen && (
+          <DomainMigrationModal
+            isOpen={isMigrationModalOpen}
+            onClose={() => setIsMigrationModalOpen(false)}
+            currentState={currentMasterState}
+            onRestoreState={(newState) => {
+              if (isDemoMode) {
+                setDemoState(newState);
+              } else {
+                setAlacioState(newState);
+                saveAlacioState(newState, currentUser?.email);
+              }
+            }}
+            userEmail={currentUser?.email}
+          />
+        )}
+      </Suspense>
     </>
   );
 }

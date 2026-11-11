@@ -1325,6 +1325,8 @@ export function loadAlacioState(userEmail?: string): AlacioMasterState {
  * 3. Alternating rolling snapshot backup (Snapshot A and B) for crash-recovery
  * 4. Cloud Firestore mirror with merge: true to user's workspace doc
  */
+let cloudSyncTimer: any = null;
+
 export async function saveAlacioState(state: AlacioMasterState, userEmail?: string): Promise<void> {
   const targetEmail = userEmail || state.user_email || (() => {
     try {
@@ -1375,52 +1377,58 @@ export async function saveAlacioState(state: AlacioMasterState, userEmail?: stri
     console.warn("[YuBiFlo Storage] Rolling backup snapshot skipped:", backupErr);
   }
 
-  // 4. Cloud Firestore Mirroring (Zero Data Loss across browser clears and device switches)
-  try {
-    const docId = targetEmail ? sanitizeWorkspaceDocId(targetEmail) : "ws_alacio_001";
-    const workspaceRef = doc(db, "workspaces", docId);
-    
-    await setDoc(workspaceRef, {
-      id: docId,
-      business_name: stateToPersist.merchant_name || "YuBiFlo Merchant",
-      client_type: stateToPersist.client_type || "Retail / Duka",
-      user_email: targetEmail || "",
-      currency: stateToPersist.currency || "KSh",
-      kpis: stateToPersist.kpis,
-      cash_register_balance: stateToPersist.cash_register_balance,
-      mpesa_float_balance: stateToPersist.mpesa_float_balance,
-      equitel_account_balance: stateToPersist.equitel_account_balance,
-      total_items_count: stateToPersist.inventory.length,
-      warehouse_batches_count: stateToPersist.warehouse.length,
-      inventory: stateToPersist.inventory,
-      warehouse: stateToPersist.warehouse,
-      customers: stateToPersist.customers,
-      suppliers: stateToPersist.suppliers || [],
-      salesLedger: stateToPersist.salesLedger || [],
-      payouts: stateToPersist.payouts || [],
-      morning_bookends: stateToPersist.morning_bookends || [],
-      floatDenominations: stateToPersist.floatDenominations || [],
-      reconciliations: stateToPersist.reconciliations || [],
-      restockCards: stateToPersist.restockCards || [],
-      receiptsArchive: stateToPersist.receiptsArchive || [],
-      schema_version: SCHEMA_VERSION,
-      last_updated: stateToPersist.last_persisted_at
-    }, { merge: true });
-
-    // Also mirror to baseline ws_alacio_001 so legacy references remain populated
-    if (docId !== "ws_alacio_001") {
-      const defaultRef = doc(db, "workspaces", "ws_alacio_001");
-      setDoc(defaultRef, {
-        id: "ws_alacio_001",
-        business_name: stateToPersist.merchant_name || "Alacio Mini Shop",
-        kpis: stateToPersist.kpis,
-        total_items_count: stateToPersist.inventory.length,
-        last_updated: stateToPersist.last_persisted_at
-      }, { merge: true }).catch(() => {});
-    }
-  } catch (cloudErr) {
-    handleFirestoreError(cloudErr, OperationType.WRITE, `workspaces/${targetEmail ? sanitizeWorkspaceDocId(targetEmail) : "ws_alacio_001"}`);
+  // 4. Cloud Firestore Mirroring (Debounced to prevent blocking initial load and network pipeline)
+  if (cloudSyncTimer) {
+    clearTimeout(cloudSyncTimer);
   }
+
+  cloudSyncTimer = setTimeout(async () => {
+    try {
+      const docId = targetEmail ? sanitizeWorkspaceDocId(targetEmail) : "ws_alacio_001";
+      const workspaceRef = doc(db, "workspaces", docId);
+      
+      await setDoc(workspaceRef, {
+        id: docId,
+        business_name: stateToPersist.merchant_name || "YuBiFlo Merchant",
+        client_type: stateToPersist.client_type || "Retail / Duka",
+        user_email: targetEmail || "",
+        currency: stateToPersist.currency || "KSh",
+        kpis: stateToPersist.kpis,
+        cash_register_balance: stateToPersist.cash_register_balance,
+        mpesa_float_balance: stateToPersist.mpesa_float_balance,
+        equitel_account_balance: stateToPersist.equitel_account_balance,
+        total_items_count: stateToPersist.inventory.length,
+        warehouse_batches_count: stateToPersist.warehouse.length,
+        inventory: stateToPersist.inventory,
+        warehouse: stateToPersist.warehouse,
+        customers: stateToPersist.customers,
+        suppliers: stateToPersist.suppliers || [],
+        salesLedger: stateToPersist.salesLedger || [],
+        payouts: stateToPersist.payouts || [],
+        morning_bookends: stateToPersist.morning_bookends || [],
+        floatDenominations: stateToPersist.floatDenominations || [],
+        reconciliations: stateToPersist.reconciliations || [],
+        restockCards: stateToPersist.restockCards || [],
+        receiptsArchive: stateToPersist.receiptsArchive || [],
+        schema_version: SCHEMA_VERSION,
+        last_updated: stateToPersist.last_persisted_at
+      }, { merge: true });
+
+      // Also mirror to baseline ws_alacio_001 so legacy references remain populated
+      if (docId !== "ws_alacio_001") {
+        const defaultRef = doc(db, "workspaces", "ws_alacio_001");
+        setDoc(defaultRef, {
+          id: "ws_alacio_001",
+          business_name: stateToPersist.merchant_name || "Alacio Mini Shop",
+          kpis: stateToPersist.kpis,
+          total_items_count: stateToPersist.inventory.length,
+          last_updated: stateToPersist.last_persisted_at
+        }, { merge: true }).catch(() => {});
+      }
+    } catch (cloudErr) {
+      handleFirestoreError(cloudErr, OperationType.WRITE, `workspaces/${targetEmail ? sanitizeWorkspaceDocId(targetEmail) : "ws_alacio_001"}`);
+    }
+  }, 1500);
 }
 
 /**
