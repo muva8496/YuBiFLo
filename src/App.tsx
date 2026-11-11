@@ -77,6 +77,8 @@ import { VoiceTransactionPayload } from "./components/VoiceLedger";
 import YuBiFloEnterpriseCommand from "./components/YuBiFloEnterpriseCommand";
 import YuBiFloLandingPage from "./components/YuBiFloLandingPage";
 import UnifiedAuthModal from "./components/UnifiedAuthModal";
+import DomainMigrationModal from "./components/DomainMigrationModal";
+import { reconcileOrRegisterSupplier, reconcileOrRegisterCustomer } from "./utils/partyNameFuzzyMatcher";
 
 export default function App() {
   // Session State (90-day sliding session)
@@ -145,6 +147,7 @@ export default function App() {
   const [isMpesaImportOpen, setIsMpesaImportOpen] = useState(false);
   const [isPullYourOwnAppOpen, setIsPullYourOwnAppOpen] = useState(false);
   const [isDataVaultOpen, setIsDataVaultOpen] = useState(false);
+  const [isMigrationModalOpen, setIsMigrationModalOpen] = useState(false);
   const [lastVoiceLog, setLastVoiceLog] = useState<string | null>(null);
 
   // Active state pointer: demoState when in demo, alacioState when in real workspace
@@ -347,25 +350,20 @@ export default function App() {
       });
 
       let updatedCustomers = [...prev.customers];
+      let canonicalCustomer = payload.customer;
       if (payload.debtAmount > 0) {
-        const cIdx = updatedCustomers.findIndex((c) => c.name.toLowerCase().includes(payload.customer.toLowerCase()));
-        if (cIdx !== -1) {
-          updatedCustomers[cIdx] = {
-            ...updatedCustomers[cIdx],
-            debt_balance: updatedCustomers[cIdx].debt_balance + payload.debtAmount,
-            last_transaction_date: "Just now"
-          };
-        } else {
-          updatedCustomers.push({
-            id: `cust_${Date.now()}`,
-            name: payload.customer,
+        const reconciled = reconcileOrRegisterCustomer(
+          payload.customer,
+          updatedCustomers,
+          {
+            debtDelta: payload.debtAmount,
             phone: "07XX XXX XXX",
-            debt_balance: payload.debtAmount,
-            credit_limit: 1000,
-            last_transaction_date: "Just now",
-            notes: "Created via Voice Simulator / VCR"
-          });
-        }
+            date: "Just now",
+            notes: "Recorded via Voice Simulator / VCR"
+          }
+        );
+        updatedCustomers = reconciled.updatedCustomers;
+        canonicalCustomer = reconciled.canonicalName;
       }
 
       const derivedPaymentMethod: "CASH" | "MPESA" | "SPLIT" | "CREDIT" = 
@@ -377,7 +375,7 @@ export default function App() {
         id: `sl_${Date.now()}`,
         date: new Date().toISOString().slice(0, 10),
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        customer_name: payload.customer,
+        customer_name: canonicalCustomer,
         items_summary: itemsSummary || "Assorted items",
         total_amount: payload.total,
         cash_paid: payload.cashPaid,
@@ -539,20 +537,20 @@ export default function App() {
     date?: string;
   }) => {
     setMasterState((prev) => {
-      const debtorRecord: CustomerDebtor = {
-        id: `cust_${Date.now()}`,
-        name: newDebtor.name,
-        phone: newDebtor.phone,
-        national_id: newDebtor.national_id,
-        credit_limit: newDebtor.credit_limit,
-        debt_balance: newDebtor.initial_debt,
-        last_transaction_date: newDebtor.date || "Today",
-        notes: newDebtor.notes
-      };
+      const reconciled = reconcileOrRegisterCustomer(
+        newDebtor.name,
+        prev.customers,
+        {
+          debtDelta: newDebtor.initial_debt,
+          phone: newDebtor.phone,
+          date: newDebtor.date || "Today",
+          notes: newDebtor.notes
+        }
+      );
 
       return {
         ...prev,
-        customers: [debtorRecord, ...prev.customers],
+        customers: reconciled.updatedCustomers,
         last_updated: new Date().toISOString()
       };
     });
@@ -772,19 +770,32 @@ export default function App() {
     const normalizedDate = normalizeIsoDate(purchase.date);
     const effectiveReceiptId = purchase.receiptId || `rcpt_lot_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
-    const newPayout: PayoutOrDrawing = {
-      id: `payout_cargo_${effectiveReceiptId}`,
-      date: normalizedDate,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      amount: cleanPurchaseAmt,
-      type: "SUPPLIER_PAYOUT",
-      payment_channel: purchase.payment_channel,
-      notes: `${purchase.supplier} [ID: ${purchase.supplierNationalId || "N/A"}, Phone: ${purchase.supplierPhone || "N/A"}]: ${purchase.items} [${purchase.payment_channel}]`
-    };
-
     setMasterState((prev) => {
       let updatedInventory = [...prev.inventory];
       const newlyGeneratedRestockCards: RestockReconciliationCard[] = [];
+
+      const purchasedGoodNames = (purchase.itemLines || []).map((l: any) => l.itemName.trim()).filter(Boolean);
+      const { canonicalName: canonicalSupplier, updatedSuppliers } = reconcileOrRegisterSupplier(
+        purchase.supplier,
+        prev.suppliers || [],
+        {
+          phone: purchase.supplierPhone,
+          national_id: purchase.supplierNationalId,
+          orderCost: cleanPurchaseAmt,
+          deliveryDate: normalizedDate,
+          suppliedItems: purchasedGoodNames
+        }
+      );
+
+      const newPayout: PayoutOrDrawing = {
+        id: `payout_cargo_${effectiveReceiptId}`,
+        date: normalizedDate,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        amount: cleanPurchaseAmt,
+        type: "SUPPLIER_PAYOUT",
+        payment_channel: purchase.payment_channel,
+        notes: `${canonicalSupplier} [ID: ${purchase.supplierNationalId || "N/A"}, Phone: ${purchase.supplierPhone || "N/A"}]: ${purchase.items} [${purchase.payment_channel}]`
+      };
 
       if (purchase.itemLines && purchase.itemLines.length > 0) {
         purchase.itemLines.forEach((line) => {
@@ -824,7 +835,7 @@ export default function App() {
             previousBatchCost: prevBatchUnits * unitWholesale,
             newBatchQty: totalRetailUnitsReceived,
             newBatchDate: normalizedDate,
-            supplierName: purchase.supplier,
+            supplierName: canonicalSupplier,
             deliveryNoteNumber: purchase.notes || "Inward Restock Delivery",
             remainsOnShelf: defaultRemains,
             ownerConsumedQty: defaultEaten,
@@ -840,7 +851,7 @@ export default function App() {
             calculatedSpoilageLoss: 0,
             status: "PENDING_AUTHORIZATION",
             paymentMethod: purchase.payment_channel === "MPESA" ? "MPESA" : "CASH",
-            notes: `Auto-generated when ${lineQty} ${line.unit} (${totalRetailUnitsReceived} retail units) of ${line.itemName} arrived from ${purchase.supplier}. Authorize yesterday's sales without typing.`
+            notes: `Auto-generated when ${lineQty} ${line.unit} (${totalRetailUnitsReceived} retail units) of ${line.itemName} arrived from ${canonicalSupplier}. Authorize yesterday's sales without typing.`
           };
           newlyGeneratedRestockCards.push(autoCard);
 
@@ -858,7 +869,7 @@ export default function App() {
               unit_retail: updatedRetail,
               total_shelf_value: Math.round(updatedStock * updatedRetail * 100) / 100,
               expected_margin: Math.round((updatedRetail - updatedCost) * 100) / 100,
-              supplier: purchase.supplier.trim(),
+              supplier: canonicalSupplier,
               bulk_pack_size: packMultiplier,
               bulk_pack_name: line.unit
             };
@@ -877,7 +888,7 @@ export default function App() {
               total_shelf_value: Math.round(totalRetailUnitsReceived * effectiveRetail * 100) / 100,
               velocity_badge: "NORMAL",
               reorder_point: 5,
-              supplier: purchase.supplier.trim(),
+              supplier: canonicalSupplier,
               bulk_pack_size: packMultiplier,
               bulk_pack_name: line.unit,
               is_bulk_decanted: packMultiplier > 1
@@ -885,43 +896,6 @@ export default function App() {
             updatedInventory = [newSku, ...updatedInventory];
           }
         });
-      }
-
-      const purchasedGoodNames = (purchase.itemLines || []).map((l: any) => l.itemName.trim()).filter(Boolean);
-
-      const supplierExists = (prev.suppliers || []).some(
-        (s) => s.name.toLowerCase().trim() === purchase.supplier.toLowerCase().trim()
-      );
-
-      let updatedSuppliers: SupplierProfile[] = [];
-      if (supplierExists) {
-        updatedSuppliers = (prev.suppliers || []).map((s) => {
-          if (s.name.toLowerCase().trim() === purchase.supplier.toLowerCase().trim()) {
-            const existingGoods = s.supplied_items || [];
-            const mergedGoods = Array.from(new Set([...existingGoods, ...purchasedGoodNames]));
-            return {
-              ...s,
-              total_orders_cost: (Number(s.total_orders_cost) || 0) + cleanPurchaseAmt,
-              last_delivery_date: normalizedDate,
-              supplied_items: mergedGoods
-            };
-          }
-          return s;
-        });
-      } else {
-        const newSupplier: SupplierProfile = {
-          id: `supp_${Date.now()}`,
-          name: purchase.supplier.trim(),
-          company: `${purchase.supplier.trim()}`,
-          phone: purchase.supplierPhone || "0722 000 111",
-          national_id: purchase.supplierNationalId || "ID-PENDING",
-          category: (purchase as any).supplierCategory || "Wholesale Distributor",
-          total_orders_cost: cleanPurchaseAmt,
-          last_delivery_date: normalizedDate,
-          payment_preference: purchase.payment_channel === "MPESA" ? "MPESA_TILL" : "NATIONAL_ID_DEPOSIT",
-          supplied_items: purchasedGoodNames
-        };
-        updatedSuppliers = [newSupplier, ...(prev.suppliers || [])];
       }
 
       // Ensure every purchase with itemLines also has a matching receipt record in receiptsArchive
@@ -940,7 +914,7 @@ export default function App() {
         const autoReceiptRecord: SavedReceiptRecord = {
           id: effectiveReceiptId,
           receiptNumber: purchase.receiptNumber || `DN-${Math.floor(1000 + Math.random() * 9000)}`,
-          supplierName: purchase.supplier.trim(),
+          supplierName: canonicalSupplier,
           receiptDate: normalizedDate,
           paymentMode: purchase.payment_channel === "MPESA" ? "MPESA" : "CASH",
           status: "approved",
@@ -1179,6 +1153,15 @@ export default function App() {
     const updater = isDemoMode ? setDemoState : setAlacioState;
     updater((prev) => {
       const recordDate = payload.salesDate || new Date().toISOString().slice(0, 10);
+      const { canonicalName: canonicalSupplier, updatedSuppliers } = reconcileOrRegisterSupplier(
+        payload.supplierName,
+        prev.suppliers || [],
+        {
+          deliveryDate: payload.deliveredDate || recordDate,
+          suppliedItems: payload.items.map((i) => i.skuName)
+        }
+      );
+
       const itemsSummary = payload.items
         .filter((i) => i.calculatedSoldQty > 0)
         .map((i) => `${i.calculatedSoldQty} ${i.unitType} ${i.skuName}`)
@@ -1199,8 +1182,8 @@ export default function App() {
         id: `sale_batch_${Date.now()}`,
         date: recordDate,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        customer_name: `Walk-in Counter (${payload.supplierName} Batch)`,
-        items_summary: itemsSummary || `Batch Turnover: ${payload.supplierName} #${payload.batchNumber}`,
+        customer_name: `Walk-in Counter (${canonicalSupplier} Batch)`,
+        items_summary: itemsSummary || `Batch Turnover: ${canonicalSupplier} #${payload.batchNumber}`,
         total_amount: payload.totalRevenue,
         cash_paid: cashDelta,
         mpesa_paid: mpesaDelta,
@@ -1242,6 +1225,51 @@ export default function App() {
         });
       }
 
+      // Update inventory so older remaining pieces stay on shelf and add into inventory
+      let updatedInventory = [...(prev.inventory || [])];
+      payload.items.forEach((item) => {
+        const remaining = Number(item.remainingOnShelf) || 0;
+        const existingIdx = updatedInventory.findIndex((inv) => 
+          doProductsMatch(inv.name, item.skuName) || 
+          inv.name.toLowerCase().includes(item.skuName.toLowerCase()) || 
+          item.skuName.toLowerCase().includes(inv.name.toLowerCase())
+        );
+
+        if (existingIdx >= 0) {
+          const inv = updatedInventory[existingIdx];
+          // Preserve remaining older pieces in current_stock
+          const newStock = Math.max(remaining, Number(inv.current_stock) || 0);
+          updatedInventory[existingIdx] = {
+            ...inv,
+            current_stock: newStock,
+            unit_cost: item.unitCost > 0 ? item.unitCost : inv.unit_cost,
+            unit_retail: item.unitRetail > 0 ? item.unitRetail : inv.unit_retail,
+            total_shelf_value: Math.round(newStock * (item.unitRetail || inv.unit_retail) * 100) / 100,
+            expected_margin: Math.round(((item.unitRetail || inv.unit_retail) - (item.unitCost || inv.unit_cost)) * 100) / 100
+          };
+        } else if (remaining > 0 || item.batchQty > 0) {
+          // If not in inventory yet, add it as a new inventory item
+          const newSku: InventoryItem = {
+            id: `sku_batch_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            name: item.skuName.trim(),
+            category: "Wholesale Delivery",
+            unit_type: item.unitType || "pcs",
+            unit_cost: item.unitCost,
+            unit_retail: item.unitRetail,
+            current_stock: remaining > 0 ? remaining : item.batchQty,
+            opening_stock: remaining > 0 ? remaining : item.batchQty,
+            expected_margin: Math.round((item.unitRetail - item.unitCost) * 100) / 100,
+            total_shelf_value: Math.round((remaining > 0 ? remaining : item.batchQty) * item.unitRetail * 100) / 100,
+            velocity_badge: "FAST",
+            reorder_point: 2,
+            supplier: payload.supplierName
+          };
+          updatedInventory.push(newSku);
+        }
+      });
+
+      const newKpis = calculateKpis(updatedInventory, prev.warehouse);
+
       // Mark batch card as authorized
       const existingBatchCards = prev.supplierBatchCards || [];
       const updatedBatchCards = existingBatchCards.map((b) => {
@@ -1263,11 +1291,14 @@ export default function App() {
 
       return {
         ...prev,
+        inventory: updatedInventory,
         salesLedger: [newSale, ...(prev.salesLedger || [])],
         payouts: newPayouts,
+        suppliers: updatedSuppliers,
         supplierBatchCards: updatedBatchCards,
         cash_register_balance: (Number(prev.cash_register_balance) || 0) + cashDelta,
         mpesa_float_balance: (Number(prev.mpesa_float_balance) || 0) + mpesaDelta,
+        kpis: newKpis,
         last_updated: new Date().toISOString()
       };
     });
@@ -1411,6 +1442,7 @@ export default function App() {
         onOpenQuickDeni={() => setActiveTab("customer_deni")}
         onResetToSkeleton={handleResetToSkeleton}
         onOpenDataVault={() => setIsDataVaultOpen(true)}
+        onOpenMigrationBridge={() => setIsMigrationModalOpen(true)}
         onOpenSettings={() => {}}
         onSignOut={() => {
           signOut();
@@ -1594,6 +1626,7 @@ export default function App() {
         {activeTab === "three_fold_ledgers" && (
           <ThreeFoldLedgersTab
             state={currentMasterState}
+            onPaySupplier={handlePaySupplier}
           />
         )}
 
@@ -1732,6 +1765,22 @@ export default function App() {
             saveAlacioState(newState, currentUser?.email);
           }
         }}
+      />
+
+      {/* DOMAIN MIGRATION BRIDGE (yubiflo.vercel.app <-> yubiflo.com) */}
+      <DomainMigrationModal
+        isOpen={isMigrationModalOpen}
+        onClose={() => setIsMigrationModalOpen(false)}
+        currentState={currentMasterState}
+        onRestoreState={(newState) => {
+          if (isDemoMode) {
+            setDemoState(newState);
+          } else {
+            setAlacioState(newState);
+            saveAlacioState(newState, currentUser?.email);
+          }
+        }}
+        userEmail={currentUser?.email}
       />
     </>
   );

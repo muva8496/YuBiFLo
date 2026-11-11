@@ -257,9 +257,13 @@ export interface BatchTurnoverItem {
   batchQty: number; // Delivered units in this batch
   unitCost: number; // Derived unit wholesale cost
   unitRetail: number; // Shelf selling price
+  remainingOnShelf: number; // Older remaining unsold pieces on shelf (adds to active inventory)
   destroyedQty: number; // Destroyed / damaged / expired
   ownerUsedQty: number; // Used by user / staff tea
-  calculatedSoldQty: number; // batchQty - (destroyedQty + ownerUsedQty)
+  reappearedInLaterBatch: boolean; // True ONLY if product appears in a later batch from same supplier
+  nextDeliveryBatchNumber?: string; // Delivery Note # of subsequent replenishment
+  nextDeliveryDate?: string; // Date of subsequent replenishment
+  calculatedSoldQty: number; // batchQty - (remainingOnShelf + destroyedQty + ownerUsedQty)
   calculatedRevenue: number; // calculatedSoldQty * unitRetail
   calculatedProfit: number; // calculatedRevenue - (calculatedSoldQty * unitCost)
 }
@@ -268,7 +272,7 @@ export interface SupplierBatchCard {
   id: string;
   batchNumber: string; // e.g. "INV-1244" or "270055801"
   supplierName: string;
-  deliveredDate: string; // YYYY-MM-DD
+  deliveredDate: string; // YYYY-MM-DD (Date sales belong to when batch is validated)
   deliveredTimestamp: string; // ISO string e.g. "2026-11-07T08:30:00Z"
   receiptId?: string;
   hoursElapsed: number;
@@ -279,6 +283,9 @@ export interface SupplierBatchCard {
   totalBatchProfit: number;
   status: "PENDING_AUTHORIZATION" | "AUTHORIZED_AND_RECONCILED" | "AUTO_VALIDATED";
   paymentMethod: "CASH" | "MPESA" | "SPLIT";
+  hasLaterBatchFromSameSupplier?: boolean;
+  laterBatchNumber?: string;
+  laterBatchDate?: string;
   authorizedAt?: string;
   authorizedDate?: string;
   autoValidatedReason?: string; // e.g. "Auto-validated: Same supplier dropped new batch after 12h+"

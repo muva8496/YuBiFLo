@@ -37,6 +37,7 @@ interface SaasAppShellProps {
   onOpenQuickDeni?: () => void;
   onResetToSkeleton?: () => void;
   onOpenDataVault?: () => void;
+  onOpenMigrationBridge?: () => void;
   children: React.ReactNode;
 }
 
@@ -56,6 +57,7 @@ export default function SaasAppShell({
   onOpenQuickDeni,
   onResetToSkeleton,
   onOpenDataVault,
+  onOpenMigrationBridge,
   children
 }: SaasAppShellProps) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -155,6 +157,18 @@ export default function SaasAppShell({
             >
               <ShieldCheck size={14} className="text-emerald-600" />
               <span className="hidden sm:inline">Data Safe</span>
+            </button>
+          )}
+
+          {/* DOMAIN MIGRATION BRIDGE BUTTON */}
+          {onOpenMigrationBridge && (
+            <button
+              onClick={onOpenMigrationBridge}
+              className="h-8 px-2.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 flex items-center gap-1.5 transition cursor-pointer text-xs font-bold shadow-2xs"
+              title="Domain Sync: Transfer data between yubiflo.vercel.app and yubiflo.com with Zero Loss"
+            >
+              <Globe size={14} className="text-blue-600" />
+              <span className="hidden sm:inline">Domain Sync</span>
             </button>
           )}
 
