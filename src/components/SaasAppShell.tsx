@@ -207,7 +207,9 @@ export default function SaasAppShell({
                   {currentWorkspaceName}
                 </span>
                 <span className="text-[9px] text-blue-700 font-medium truncate hidden sm:inline">
-                  {currentBusinessType}
+                  {activeAccount?.role === "MANAGER" || currentWorkspaceName.toLowerCase().includes("alacio")
+                    ? "Client (Rose) • Managed by Moses"
+                    : `${currentBusinessType} • Owned by Moses`}
                 </span>
               </div>
 
@@ -232,7 +234,7 @@ export default function SaasAppShell({
                     {user?.email || "mosesmukangai75@gmail.com"}
                   </strong>
                   <span className="text-[10px] text-slate-500 block truncate mt-0.5">
-                    {user?.name ? `${user.name} (Owner)` : "Account Owner"}
+                    {user?.name ? `${user.name} (Manager & Owner)` : "Manager & Owner"}
                   </span>
                 </div>
 
@@ -249,6 +251,7 @@ export default function SaasAppShell({
                     <div className="space-y-1 max-h-52 overflow-y-auto pr-0.5">
                       {accounts.map((acc) => {
                         const isActive = (activeAccountId ? acc.id === activeAccountId : acc.isPrimary) || (!activeAccountId && acc.id === "acc_alacio_mini");
+                        const isClient = acc.role === "MANAGER" || acc.businessName.toLowerCase().includes("alacio");
                         return (
                           <button
                             key={acc.id}
@@ -273,7 +276,9 @@ export default function SaasAppShell({
                               <div className="min-w-0">
                                 <div className="truncate text-xs font-semibold leading-tight">{acc.businessName}</div>
                                 <div className="text-[10px] text-slate-500 font-normal truncate mt-0.5">
-                                  {acc.businessType} &bull; {acc.currency || "KSh"}
+                                  {isClient 
+                                    ? `Client (Owned by Rose) • Managed by Moses` 
+                                    : `${acc.businessType} • Owned by Moses`}
                                 </div>
                               </div>
                             </div>

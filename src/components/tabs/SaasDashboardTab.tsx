@@ -11,6 +11,10 @@ import { LaunchpadProgress } from "./LaunchpadTab";
 interface SaasDashboardTabProps {
   state: AlacioMasterState;
   userName?: string;
+  proprietorName?: string;
+  managerName?: string;
+  businessName?: string;
+  accountRole?: "OWNER" | "ADMIN" | "MANAGER";
   onNavigateTab: (tabId: string) => void;
   onOpenQuickSale?: () => void;
   onOpenQuickPurchase?: () => void;
@@ -23,6 +27,10 @@ interface SaasDashboardTabProps {
 export default function SaasDashboardTab({
   state,
   userName = "Alacio",
+  proprietorName,
+  managerName,
+  businessName,
+  accountRole,
   onNavigateTab,
   onOpenQuickSale,
   onOpenQuickPurchase,
@@ -78,14 +86,19 @@ export default function SaasDashboardTab({
   const now = new Date();
   const hour = now.getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+  // Check if active business is Alacio Mini shop (client owned by Rose, managed by Moses)
+  const isAlacioShop = 
+    (businessName && businessName.toLowerCase().includes("alacio")) ||
+    (state.merchant_name && state.merchant_name.toLowerCase().includes("alacio"));
+
   const firstName = isDemo
     ? "Musa"
-    : (userName && userName !== "Trader" && userName !== "Alacio"
-        ? userName.trim().split(" ")[0]
-        : (state.merchant_name ? state.merchant_name.trim().split(" ")[0] : "Musa"));
+    : (proprietorName || (isAlacioShop ? "Rose" : (userName && userName !== "Trader" && userName !== "Alacio" ? userName.trim().split(" ")[0] : "Moses")));
+
   const merchantDisplayName = isDemo
     ? "Duka Space (Demo Sandbox)"
-    : (state.merchant_name || "Musa General Retailers");
+    : (businessName || state.merchant_name || (isAlacioShop ? "Alacio Mini shop" : "Mukangai Wholesalers & Supplies"));
 
   const todayIso = now.toISOString().slice(0, 10); // YYYY-MM-DD (e.g. 2026-10-17)
   const currentMonthPrefix = todayIso.slice(0, 7); // YYYY-MM (e.g. 2026-10)
@@ -402,6 +415,21 @@ export default function SaasDashboardTab({
           <span className="text-[11px] font-mono bg-slate-100 text-slate-700 border border-slate-300 px-2.5 py-0.5 rounded-full font-semibold">
             {todayReadable}
           </span>
+          {isDemo ? (
+            <span className="text-[11px] font-mono bg-amber-50 text-amber-800 border border-amber-300 px-2.5 py-0.5 rounded-full font-semibold">
+              Interactive Demo Sandbox
+            </span>
+          ) : isAlacioShop ? (
+            <span className="text-[11px] font-medium bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+              Client Retail Duka &bull; Proprietor: <strong>Rose</strong> &bull; Managed by <strong>Moses</strong>
+            </span>
+          ) : (
+            <span className="text-[11px] font-medium bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+              Enterprise Workspace &bull; Owner: <strong>Moses Mukangai</strong>
+            </span>
+          )}
         </div>
       </div>
 

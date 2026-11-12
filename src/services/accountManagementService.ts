@@ -9,6 +9,9 @@ export interface UserAccount {
   id: string;
   businessName: string;
   businessType: string;
+  proprietorName: string; // The primary shop owner (e.g. "Rose" for Alacio Mini shop, "Moses" for Mukangai Wholesalers)
+  managerName?: string;    // The person managing the workspace (e.g. "Moses Mukangai")
+  managementNote?: string; // Clear description of client vs owned account
   ownerEmail: string;
   currency: string;
   role: "OWNER" | "ADMIN" | "MANAGER";
@@ -37,9 +40,12 @@ export function getDefaultAccountsForEmail(email: string): UserAccount[] {
       id: "acc_alacio_mini",
       businessName: isMoses ? "Alacio Mini shop" : "Alacio Retail Duka",
       businessType: "Retail / Duka",
+      proprietorName: "Rose",
+      managerName: isMoses ? "Moses Mukangai" : "Manager",
+      managementNote: "Client Retail Duka — Owned by Rose, managed by Moses via YuBiFlo",
       ownerEmail: cleanEmail,
       currency: "KSh",
-      role: "OWNER",
+      role: "MANAGER",
       isPrimary: true,
       color: "blue",
       createdAt: "2026-10-01T06:00:00.000Z",
@@ -49,6 +55,9 @@ export function getDefaultAccountsForEmail(email: string): UserAccount[] {
       id: "acc_mukangai_wholesalers",
       businessName: isMoses ? "Mukangai Wholesalers & Supplies" : "Branch 2 Wholesalers",
       businessType: "Wholesale & Cargo Depot",
+      proprietorName: isMoses ? "Moses" : "Owner",
+      managerName: isMoses ? "Moses Mukangai" : undefined,
+      managementNote: "Direct Enterprise — Owned & Operated by Moses Mukangai",
       ownerEmail: cleanEmail,
       currency: "KSh",
       role: "OWNER",
@@ -72,7 +81,38 @@ export function getUserAccounts(email?: string): UserAccount[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        // Automatically patch proprietor names and management roles so client accounts show correct owner
+        const patched = parsed.map((acc: UserAccount) => {
+          if (acc.id === "acc_alacio_mini" || acc.businessName?.toLowerCase().includes("alacio")) {
+            return {
+              ...acc,
+              proprietorName: "Rose",
+              managerName: "Moses Mukangai",
+              managementNote: "Client Retail Duka — Owned by Rose, managed by Moses via YuBiFlo",
+              role: "MANAGER" as const
+            };
+          }
+          if (acc.id === "acc_mukangai_wholesalers" || acc.businessName?.toLowerCase().includes("mukangai")) {
+            return {
+              ...acc,
+              proprietorName: "Moses",
+              managerName: "Moses Mukangai",
+              managementNote: "Direct Enterprise — Owned by Moses Mukangai",
+              role: "OWNER" as const
+            };
+          }
+          if (!acc.proprietorName) {
+            return {
+              ...acc,
+              proprietorName: acc.businessName?.split(" ")[0] || "Owner"
+            };
+          }
+          return acc;
+        });
+
+        // Save patched accounts back
+        localStorage.setItem(key, JSON.stringify(patched));
+        return patched;
       }
     }
   } catch (err) {
@@ -137,14 +177,13 @@ export function setActiveAccountId(email: string, accountId: string): void {
   }
 }
 
-/**
- * Create a new business account / shop under the current Gmail
- */
 export function createAccountForUser(
   email: string,
   businessName: string,
   businessType: string = "Retail / Duka",
-  currency: string = "KSh"
+  currency: string = "KSh",
+  proprietorName?: string,
+  role: "OWNER" | "ADMIN" | "MANAGER" = "OWNER"
 ): UserAccount {
   const activeEmail = email.trim().toLowerCase();
   const accounts = getUserAccounts(activeEmail);
@@ -152,13 +191,17 @@ export function createAccountForUser(
   const colors: Array<UserAccount["color"]> = ["blue", "emerald", "purple", "amber", "rose", "indigo"];
   const color = colors[accounts.length % colors.length];
 
+  const derivedProprietor = (proprietorName && proprietorName.trim()) || businessName.trim().split(" ")[0] || "Owner";
+
   const newAccount: UserAccount = {
     id: `acc_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     businessName: businessName.trim() || `Shop #${accounts.length + 1}`,
     businessType: businessType || "Retail / Duka",
+    proprietorName: derivedProprietor,
+    managerName: "Moses Mukangai",
     ownerEmail: activeEmail,
     currency: currency || "KSh",
-    role: "OWNER",
+    role,
     isPrimary: accounts.length === 0,
     color,
     createdAt: new Date().toISOString(),

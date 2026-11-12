@@ -1565,19 +1565,31 @@ export default function App() {
         )}
 
         {/* TAB 2: DASHBOARD */}
-        {activeTab === "dashboard" && (
-          <SaasDashboardTab
-            state={currentMasterState}
-            userName={currentUser?.name || "Musa"}
-            onNavigateTab={setActiveTab}
-            onOpenQuickSale={() => setActiveTab("voice_ledger")}
-            onOpenQuickPurchase={() => setActiveTab("purchases")}
-            onOpenQuickDeni={() => setActiveTab("customer_deni")}
-            onAddExpense={handleAddExpense}
-            launchpadProgress={isDemoMode ? demoLaunchpadProgress : realLaunchpadProgress}
-            isDemo={isDemoMode}
-          />
-        )}
+        {activeTab === "dashboard" && (() => {
+          const currentActiveAccount = accounts.find((a) => a.id === activeAccountId);
+          const activeBusinessName = currentActiveAccount?.businessName || currentMasterState.merchant_name || "Alacio Mini shop";
+          const isAlacio = activeBusinessName.toLowerCase().includes("alacio");
+          const activeProprietor = currentActiveAccount?.proprietorName || (isAlacio ? "Rose" : (currentUser?.name?.split(" ")[0] || "Moses"));
+          const activeManager = currentActiveAccount?.managerName || (isAlacio ? "Moses Mukangai" : undefined);
+
+          return (
+            <SaasDashboardTab
+              state={currentMasterState}
+              userName={activeProprietor}
+              proprietorName={activeProprietor}
+              managerName={activeManager}
+              businessName={activeBusinessName}
+              accountRole={currentActiveAccount?.role || (isAlacio ? "MANAGER" : "OWNER")}
+              onNavigateTab={setActiveTab}
+              onOpenQuickSale={() => setActiveTab("voice_ledger")}
+              onOpenQuickPurchase={() => setActiveTab("purchases")}
+              onOpenQuickDeni={() => setActiveTab("customer_deni")}
+              onAddExpense={handleAddExpense}
+              launchpadProgress={isDemoMode ? demoLaunchpadProgress : realLaunchpadProgress}
+              isDemo={isDemoMode}
+            />
+          );
+        })()}
 
         {/* TAB 3: SUPPLY-DRIVEN SALES */}
         {(activeTab === "supply_sales" || activeTab === "sales_supply") && (
