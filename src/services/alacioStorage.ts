@@ -962,14 +962,22 @@ export const STORAGE_BACKUP_SNAPSHOT_B = "yubiflo_backup_snapshot_b";
 export const STORAGE_SNAPSHOT_SLOT = "yubiflo_snapshot_slot";
 export const STORAGE_LAST_SAVED = "yubiflo_last_saved_at";
 
-export function getUserStorageKey(email?: string): string {
+export function getUserStorageKey(email?: string, accountId?: string): string {
   if (!email) return STORAGE_KEY_ALACIO;
-  const clean = email.trim().toLowerCase().replace(/[^a-zA-Z0-9_-]/g, "_");
-  return `yubiflo_user_state_${clean}`;
+  const cleanEmail = email.trim().toLowerCase().replace(/[^a-zA-Z0-9_-]/g, "_");
+  if (accountId) {
+    const cleanAcc = accountId.trim().toLowerCase().replace(/[^a-zA-Z0-9_-]/g, "_");
+    return `yubiflo_user_state_${cleanEmail}_${cleanAcc}`;
+  }
+  return `yubiflo_user_state_${cleanEmail}`;
 }
 
-export function sanitizeWorkspaceDocId(identifier: string): string {
+export function sanitizeWorkspaceDocId(identifier: string, accountId?: string): string {
   const clean = identifier.trim().toLowerCase().replace(/[^a-zA-Z0-9_-]/g, "_");
+  if (accountId) {
+    const cleanAcc = accountId.trim().toLowerCase().replace(/[^a-zA-Z0-9_-]/g, "_");
+    return `ws_${clean.slice(0, 45)}_${cleanAcc.slice(0, 30)}`;
+  }
   return `ws_${clean.slice(0, 80)}`;
 }
 
@@ -1118,7 +1126,7 @@ function sanitizePayoutRecord(p: any, todayStr: string, sanitizedReceipts: Saved
  * 5. Applies defensive schema migration (preserves ALL custom/new attributes via spread)
  * 6. Never erases user stock with demo data
  */
-export function loadAlacioState(userEmail?: string): AlacioMasterState {
+export function loadAlacioState(userEmail?: string, accountId?: string): AlacioMasterState {
   try {
     const activeEmail = userEmail || (() => {
       try {
@@ -1131,11 +1139,13 @@ export function loadAlacioState(userEmail?: string): AlacioMasterState {
       return undefined;
     })();
 
-    const userKey = activeEmail ? getUserStorageKey(activeEmail) : null;
+    const accountSpecificKey = activeEmail && accountId ? getUserStorageKey(activeEmail, accountId) : null;
+    const userGeneralKey = activeEmail ? getUserStorageKey(activeEmail) : null;
     
     // Ordered candidate keys to check for zero-data-loss retrieval
     const candidateKeys = [
-      userKey,
+      accountSpecificKey,
+      userGeneralKey,
       STORAGE_KEY_ALACIO,
       STORAGE_BACKUP_SNAPSHOT_A,
       STORAGE_BACKUP_SNAPSHOT_B,
@@ -1327,7 +1337,7 @@ export function loadAlacioState(userEmail?: string): AlacioMasterState {
  */
 let cloudSyncTimer: any = null;
 
-export async function saveAlacioState(state: AlacioMasterState, userEmail?: string): Promise<void> {
+export async function saveAlacioState(state: AlacioMasterState, userEmail?: string, accountId?: string): Promise<void> {
   const targetEmail = userEmail || state.user_email || (() => {
     try {
       const rawSess = localStorage.getItem("yubiflo_auth_session");
@@ -1339,29 +1349,37 @@ export async function saveAlacioState(state: AlacioMasterState, userEmail?: stri
     return undefined;
   })();
 
+  const activeAccountId = accountId || (state as any).account_id;
+
   const stateToPersist: AlacioMasterState = {
     ...state,
     schema_version: SCHEMA_VERSION,
     last_persisted_at: new Date().toISOString(),
-    user_email: targetEmail || state.user_email
+    user_email: targetEmail || state.user_email,
+    ...(activeAccountId ? { account_id: activeAccountId } : {})
   };
 
   const serialized = JSON.stringify(stateToPersist);
 
-  // 1. Primary Live Storage
+  // 1. Primary Live Storage (and account-scoped key if specified)
   try {
     localStorage.setItem(STORAGE_KEY_ALACIO, serialized);
   } catch (err) {
     console.error("[YuBiFlo Storage] Primary save to localStorage failed:", err);
   }
 
-  // 2. User-Scoped Persistence (enables seamless multi-merchant and login restoration)
+  // 2. User & Account-Scoped Persistence (enables seamless multi-account switching under one Gmail)
   if (targetEmail) {
     try {
+      if (activeAccountId) {
+        const accountKey = getUserStorageKey(targetEmail, activeAccountId);
+        localStorage.setItem(accountKey, serialized);
+      }
+      // Also write to user general key as last active state
       const userKey = getUserStorageKey(targetEmail);
       localStorage.setItem(userKey, serialized);
     } catch (err) {
-      console.warn("[YuBiFlo Storage] User-scoped save failed:", err);
+      console.warn("[YuBiFlo Storage] User/Account-scoped save failed:", err);
     }
   }
 
@@ -1384,7 +1402,7 @@ export async function saveAlacioState(state: AlacioMasterState, userEmail?: stri
 
   cloudSyncTimer = setTimeout(async () => {
     try {
-      const docId = targetEmail ? sanitizeWorkspaceDocId(targetEmail) : "ws_alacio_001";
+      const docId = targetEmail ? sanitizeWorkspaceDocId(targetEmail, activeAccountId) : "ws_alacio_001";
       const workspaceRef = doc(db, "workspaces", docId);
       
       await setDoc(workspaceRef, {
@@ -1392,6 +1410,7 @@ export async function saveAlacioState(state: AlacioMasterState, userEmail?: stri
         business_name: stateToPersist.merchant_name || "YuBiFlo Merchant",
         client_type: stateToPersist.client_type || "Retail / Duka",
         user_email: targetEmail || "",
+        account_id: activeAccountId || null,
         currency: stateToPersist.currency || "KSh",
         kpis: stateToPersist.kpis,
         cash_register_balance: stateToPersist.cash_register_balance,
@@ -1414,8 +1433,8 @@ export async function saveAlacioState(state: AlacioMasterState, userEmail?: stri
         last_updated: stateToPersist.last_persisted_at
       }, { merge: true });
 
-      // Also mirror to baseline ws_alacio_001 so legacy references remain populated
-      if (docId !== "ws_alacio_001") {
+      // Also mirror to baseline ws_alacio_001 if this is the default account
+      if (docId !== "ws_alacio_001" && (!activeAccountId || activeAccountId === "acc_moses_alacio")) {
         const defaultRef = doc(db, "workspaces", "ws_alacio_001");
         setDoc(defaultRef, {
           id: "ws_alacio_001",
@@ -1426,7 +1445,7 @@ export async function saveAlacioState(state: AlacioMasterState, userEmail?: stri
         }, { merge: true }).catch(() => {});
       }
     } catch (cloudErr) {
-      handleFirestoreError(cloudErr, OperationType.WRITE, `workspaces/${targetEmail ? sanitizeWorkspaceDocId(targetEmail) : "ws_alacio_001"}`);
+      handleFirestoreError(cloudErr, OperationType.WRITE, `workspaces/${targetEmail ? sanitizeWorkspaceDocId(targetEmail, activeAccountId) : "ws_alacio_001"}`);
     }
   }, 1500);
 }
@@ -1435,10 +1454,10 @@ export async function saveAlacioState(state: AlacioMasterState, userEmail?: stri
  * Disaster Recovery & Cloud Hydration:
  * Queries Firestore when local storage is empty (e.g. browser cleared cookies, new laptop)
  */
-export async function restoreUserStateFromCloud(userEmail: string): Promise<AlacioMasterState | null> {
+export async function restoreUserStateFromCloud(userEmail: string, accountId?: string): Promise<AlacioMasterState | null> {
   try {
     const { getDoc } = await import("firebase/firestore");
-    const docId = sanitizeWorkspaceDocId(userEmail);
+    const docId = sanitizeWorkspaceDocId(userEmail, accountId);
     const workspaceRef = doc(db, "workspaces", docId);
     const snap = await getDoc(workspaceRef);
 
@@ -1477,6 +1496,7 @@ export async function restoreUserStateFromCloud(userEmail: string): Promise<Alac
           merchant_name: data.business_name || data.merchant_name,
           client_type: data.client_type,
           user_email: userEmail,
+          account_id: accountId || data.account_id,
           inventory: safeInv,
           warehouse: Array.isArray(data.warehouse) ? data.warehouse : [],
           customers: Array.isArray(data.customers) ? data.customers : [],
@@ -1493,7 +1513,7 @@ export async function restoreUserStateFromCloud(userEmail: string): Promise<Alac
 
         const reconciled = reconcileChronologicalReceiptsAndSales(restored);
         // Cache restored data to localStorage so offline access works immediately
-        saveAlacioState(reconciled, userEmail);
+        saveAlacioState(reconciled, userEmail, accountId);
         return reconciled;
       }
     }

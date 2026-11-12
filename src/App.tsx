@@ -83,8 +83,14 @@ const OneTapGapModal = lazy(() => import("./components/OneTapGapModal"));
 const MpesaImportModal = lazy(() => import("./components/MpesaImportModal"));
 const PullYourOwnAppModal = lazy(() => import("./components/PullYourOwnAppModal"));
 const DataVaultModal = lazy(() => import("./components/DataVaultModal"));
-const DomainMigrationModal = lazy(() => import("./components/DomainMigrationModal"));
 const YuBiFloEnterpriseCommand = lazy(() => import("./components/YuBiFloEnterpriseCommand"));
+import {
+  UserAccount,
+  getUserAccounts,
+  getActiveAccountId,
+  setActiveAccountId,
+  createAccountForUser
+} from "./services/accountManagementService";
 
 function TabLoadingSkeleton() {
   return (
@@ -118,13 +124,30 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [preselectedSupplier, setPreselectedSupplier] = useState<string | undefined>(undefined);
 
+  // MULTI-ACCOUNT MANAGEMENT UNDER SAME GMAIL
+  const [accounts, setAccounts] = useState<UserAccount[]>(() => {
+    const session = getValidSession();
+    const email = session?.user?.email || "mosesmukangai75@gmail.com";
+    return getUserAccounts(email);
+  });
+  const [activeAccountId, setActiveAccountIdState] = useState<string>(() => {
+    const session = getValidSession();
+    const email = session?.user?.email || "mosesmukangai75@gmail.com";
+    return getActiveAccountId(email);
+  });
+
   // DUKA SPACE DEMO SANDBOX ISOLATION
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
   const [demoOriginView, setDemoOriginView] = useState<"landing" | "workspace">("landing");
   const [demoState, setDemoState] = useState<AlacioMasterState>(() => loadDemoSandboxState());
 
-  // REAL WORKSPACE STATE
-  const [alacioState, setAlacioState] = useState<AlacioMasterState>(() => loadAlacioState());
+  // REAL WORKSPACE STATE (Account-scoped with zero-data-loss fallback)
+  const [alacioState, setAlacioState] = useState<AlacioMasterState>(() => {
+    const session = getValidSession();
+    const email = session?.user?.email || "mosesmukangai75@gmail.com";
+    const initialAccId = getActiveAccountId(email);
+    return loadAlacioState(email, initialAccId);
+  });
 
   // REAL WORKSPACE LAUNCHPAD PROGRESS
   const [realLaunchpadProgress, setRealLaunchpadProgress] = useState<LaunchpadProgress>(() => {
@@ -168,16 +191,15 @@ export default function App() {
   const [isMpesaImportOpen, setIsMpesaImportOpen] = useState(false);
   const [isPullYourOwnAppOpen, setIsPullYourOwnAppOpen] = useState(false);
   const [isDataVaultOpen, setIsDataVaultOpen] = useState(false);
-  const [isMigrationModalOpen, setIsMigrationModalOpen] = useState(false);
   const [lastVoiceLog, setLastVoiceLog] = useState<string | null>(null);
 
   // Active state pointer: demoState when in demo, alacioState when in real workspace
   const currentMasterState = isDemoMode ? demoState : alacioState;
 
-  // Persist real state to multi-tier storage with zero-data-loss snapshots
+  // Persist real state to multi-tier storage with account-isolation and zero-data-loss snapshots
   useEffect(() => {
-    saveAlacioState(alacioState, currentUser?.email);
-  }, [alacioState, currentUser?.email]);
+    saveAlacioState(alacioState, currentUser?.email, activeAccountId);
+  }, [alacioState, currentUser?.email, activeAccountId]);
 
   // Persist demo state strictly to isolated sandbox storage
   useEffect(() => {
@@ -232,14 +254,56 @@ export default function App() {
     }
   };
 
+  const handleSwitchAccount = (accountId: string) => {
+    const email = currentUser?.email || "mosesmukangai75@gmail.com";
+    // 1. Persist current state before switching
+    saveAlacioState(alacioState, email, activeAccountId);
+    // 2. Set active account ID in storage and state
+    setActiveAccountId(email, accountId);
+    setActiveAccountIdState(accountId);
+    // 3. Load target account state with zero-data-loss isolation
+    const targetState = loadAlacioState(email, accountId);
+    (targetState as any).account_id = accountId;
+    const targetAcc = accounts.find((a) => a.id === accountId);
+    if (targetAcc && (!targetState.merchant_name || targetState.merchant_name === "YuBiFlo Merchant")) {
+      targetState.merchant_name = targetAcc.businessName;
+    }
+    setAlacioState(targetState);
+  };
+
+  const handleCreateAccount = (businessName: string, businessType: string) => {
+    const email = currentUser?.email || "mosesmukangai75@gmail.com";
+    // 1. Persist current state
+    saveAlacioState(alacioState, email, activeAccountId);
+    // 2. Create new business account under the Gmail
+    const newAcc = createAccountForUser(email, businessName, businessType);
+    const updatedAccounts = getUserAccounts(email);
+    setAccounts(updatedAccounts);
+    setActiveAccountIdState(newAcc.id);
+    // 3. Initialize fresh isolated skeleton state for this new shop
+    const freshState = createSkeletonBusinessState(businessName, businessType);
+    freshState.user_email = email;
+    (freshState as any).account_id = newAcc.id;
+    freshState.merchant_name = businessName;
+    freshState.client_type = businessType;
+    setAlacioState(freshState);
+    saveAlacioState(freshState, email, newAcc.id);
+  };
+
   const handleAuthSuccess = async (user: UserProfile) => {
     setCurrentUser(user);
     setIsAuthModalOpen(false);
     setIsDemoMode(false);
     resetDemoSandbox();
 
+    // Refresh user accounts under this Gmail
+    const userAccs = getUserAccounts(user.email);
+    setAccounts(userAccs);
+    const userAccId = getActiveAccountId(user.email);
+    setActiveAccountIdState(userAccId);
+
     // Zero Data Loss: Check if this user already has saved state in local cache or backups
-    const existingUserState = loadAlacioState(user.email);
+    const existingUserState = loadAlacioState(user.email, userAccId);
     const hasExistingData = 
       (existingUserState.inventory && existingUserState.inventory.length > 0) ||
       (existingUserState.salesLedger && existingUserState.salesLedger.length > 0) ||
@@ -250,12 +314,13 @@ export default function App() {
     if (hasExistingData) {
       // Existing client logging in or returning: DO NOT OVERWRITE! Restore their goods and ledger!
       existingUserState.user_email = user.email;
+      (existingUserState as any).account_id = userAccId;
       setAlacioState(existingUserState);
-      saveAlacioState(existingUserState, user.email);
+      saveAlacioState(existingUserState, user.email, userAccId);
     } else {
       // Check Firestore cloud mirror in case they are on a new device or cleared cache
       try {
-        const cloudState = await restoreUserStateFromCloud(user.email);
+        const cloudState = await restoreUserStateFromCloud(user.email, userAccId);
         if (cloudState && ((cloudState.inventory && cloudState.inventory.length > 0) || (cloudState.salesLedger && cloudState.salesLedger.length > 0))) {
           setAlacioState(cloudState);
           setCurrentView("workspace");
@@ -269,8 +334,9 @@ export default function App() {
       // First-time signup with no prior data: initialize clean skeleton ready for their goods
       const skeletonState = createSkeletonBusinessState(user.businessName, user.businessType);
       skeletonState.user_email = user.email;
+      (skeletonState as any).account_id = userAccId;
       setAlacioState(skeletonState);
-      saveAlacioState(skeletonState, user.email);
+      saveAlacioState(skeletonState, user.email, userAccId);
 
       const freshLaunchpad: LaunchpadProgress = {
         step1_dawnLock: false,
@@ -1446,6 +1512,10 @@ export default function App() {
     <>
       <SaasAppShell
         user={currentUser}
+        accounts={accounts}
+        activeAccountId={activeAccountId}
+        onSwitchAccount={handleSwitchAccount}
+        onCreateAccount={handleCreateAccount}
         activeTab={activeTab}
         onNavigateTab={setActiveTab}
         isDemo={isDemoMode}
@@ -1467,7 +1537,6 @@ export default function App() {
         onOpenQuickDeni={() => setActiveTab("customer_deni")}
         onResetToSkeleton={handleResetToSkeleton}
         onOpenDataVault={() => setIsDataVaultOpen(true)}
-        onOpenMigrationBridge={() => setIsMigrationModalOpen(true)}
         onOpenSettings={() => {}}
         onSignOut={() => {
           signOut();
@@ -1798,27 +1867,9 @@ export default function App() {
                 setDemoState(newState);
               } else {
                 setAlacioState(newState);
-                saveAlacioState(newState, currentUser?.email);
+                saveAlacioState(newState, currentUser?.email, activeAccountId);
               }
             }}
-          />
-        )}
-
-        {/* DOMAIN MIGRATION BRIDGE (yubiflo.vercel.app <-> yubiflo.com) */}
-        {isMigrationModalOpen && (
-          <DomainMigrationModal
-            isOpen={isMigrationModalOpen}
-            onClose={() => setIsMigrationModalOpen(false)}
-            currentState={currentMasterState}
-            onRestoreState={(newState) => {
-              if (isDemoMode) {
-                setDemoState(newState);
-              } else {
-                setAlacioState(newState);
-                saveAlacioState(newState, currentUser?.email);
-              }
-            }}
-            userEmail={currentUser?.email}
           />
         )}
       </Suspense>

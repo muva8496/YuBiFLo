@@ -20,6 +20,7 @@ import {
   BlueprintStatusBadge,
   recordBlueprintRequest
 } from "./MegaMenus";
+import { YuBiFloMark, YuBiFloLogo } from "./YuBiFloLogo";
 import { AlacioMasterState } from "../types/alacio";
 
 interface YuBiFloLandingPageProps {
@@ -325,28 +326,9 @@ export default function YuBiFloLandingPage({
           <div className="flex items-center gap-8 lg:gap-10">
             <button 
               onClick={handleLaunchWorkspace}
-              className="flex items-center gap-3 text-left group cursor-pointer"
+              className="flex items-center gap-3 text-left group cursor-pointer transition-transform hover:scale-[1.02]"
             >
-              <div className="w-10 h-10 rounded-2xl bg-[#000000] text-white flex items-center justify-center shadow-md shadow-[#000000]/20">
-                {/* Minimalist 5-Petal Flower Symbol */}
-                <svg viewBox="0 0 40 40" className="w-6 h-6 fill-none stroke-current stroke-2">
-                  <circle cx="20" cy="20" r="3.5" fill="#FAF6EE" stroke="#B8860B" />
-                  <ellipse cx="20" cy="11" rx="3.5" ry="5.5" fill="#262626" stroke="#FAF6EE" strokeWidth="1" />
-                  <ellipse cx="28" cy="16" rx="3.5" ry="5.5" transform="rotate(72 28 16)" fill="#B8860B" stroke="#FAF6EE" strokeWidth="1" />
-                  <ellipse cx="25" cy="27" rx="3.5" ry="5.5" transform="rotate(144 25 27)" fill="#171717" stroke="#FAF6EE" strokeWidth="1" />
-                  <ellipse cx="15" cy="27" rx="3.5" ry="5.5" transform="rotate(216 15 27)" fill="#996515" stroke="#FAF6EE" strokeWidth="1" />
-                  <ellipse cx="12" cy="16" rx="3.5" ry="5.5" transform="rotate(288 12 16)" fill="#262626" stroke="#FAF6EE" strokeWidth="1" />
-                </svg>
-              </div>
-
-              <div className="flex flex-col">
-                <span className="text-2xl font-black font-serif tracking-tight text-[#000000] flex items-center gap-1.5">
-                  YuBiFLo
-                </span>
-                <span className="text-[10px] font-sans text-[#B8860B] font-semibold tracking-wide -mt-0.5">
-                  Your Business Is A Flower
-                </span>
-              </div>
+              <YuBiFloLogo size="md" variant="dark" />
             </button>
 
             {/* Desktop Navigation Links */}
@@ -1354,16 +1336,8 @@ export default function YuBiFloLandingPage({
             
             {/* Logo and signature */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#262626] text-white flex items-center justify-center font-serif font-bold">
-                  Y
-                </div>
-                <span className="text-xl font-serif font-bold text-white tracking-tight">YuBiFLo</span>
-              </div>
-              <p className="text-xs text-[#B8860B] font-serif italic">
-                Your Business Is A Flower
-              </p>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <YuBiFloLogo size="md" variant="light" />
+              <p className="text-xs text-slate-400 leading-relaxed mt-2">
                 No notebooks. No typing. Just know your numbers.
               </p>
             </div>

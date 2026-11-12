@@ -7,6 +7,8 @@ import {
   Plus, Play, FileText, Bookmark, Truck, ShieldCheck, Wallet, Camera
 } from "lucide-react";
 import { UserProfile, signOut, signOutAllDevices } from "../services/authSessionService";
+import { UserAccount } from "../services/accountManagementService";
+import { YuBiFloMark } from "./YuBiFloLogo";
 import VideoFactorModal from "./VideoFactorModal";
 import QuickCreateModal from "./QuickCreateModal";
 
@@ -23,6 +25,10 @@ export interface SaasNavItem {
 
 interface SaasAppShellProps {
   user?: UserProfile | null;
+  accounts?: UserAccount[];
+  activeAccountId?: string;
+  onSwitchAccount?: (accountId: string) => void;
+  onCreateAccount?: (businessName: string, businessType: string) => void;
   activeTab: string;
   onNavigateTab: (tabId: string) => void;
   onSignOut: () => void;
@@ -37,12 +43,15 @@ interface SaasAppShellProps {
   onOpenQuickDeni?: () => void;
   onResetToSkeleton?: () => void;
   onOpenDataVault?: () => void;
-  onOpenMigrationBridge?: () => void;
   children: React.ReactNode;
 }
 
 export default function SaasAppShell({
   user,
+  accounts = [],
+  activeAccountId,
+  onSwitchAccount,
+  onCreateAccount,
   activeTab,
   onNavigateTab,
   onSignOut,
@@ -57,10 +66,12 @@ export default function SaasAppShell({
   onOpenQuickDeni,
   onResetToSkeleton,
   onOpenDataVault,
-  onOpenMigrationBridge,
   children
 }: SaasAppShellProps) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
+  const [newBizName, setNewBizName] = useState("");
+  const [newBizType, setNewBizType] = useState("Retail / Duka");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
@@ -109,7 +120,9 @@ export default function SaasAppShell({
     { id: "analytics", name: "Business Analytics", icon: <BarChart2 size={17} /> }
   ];
 
-  const currentWorkspaceName = user?.businessName || "Musa General Retailers";
+  const activeAccount = accounts.find((a) => a.id === activeAccountId);
+  const currentWorkspaceName = activeAccount?.businessName || user?.businessName || "Alacio Mini shop";
+  const currentBusinessType = activeAccount?.businessType || user?.businessType || "Retail / Duka";
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans flex flex-col selection:bg-blue-100 selection:text-blue-900 relative">
@@ -133,19 +146,22 @@ export default function SaasAppShell({
             onClick={() => onNavigateTab("dashboard")}
             className="flex items-center gap-2.5 text-slate-900 font-bold tracking-tight cursor-pointer group"
           >
-            {/* WAVE-STYLE ICON MARK */}
-            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 14C5.5 9 8.5 9 10 14C11.5 19 14.5 19 16 14C17.5 9 20.5 9 22 14" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+            {/* YUBIFLO FLORAL CASHFLOW MARK */}
+            <div className="group-hover:scale-105 transition-transform">
+              <YuBiFloMark size={32} />
             </div>
-            <span className="font-serif text-lg font-bold text-slate-900 tracking-tight">
-              YuBiFLo
-            </span>
+            <div className="flex flex-col text-left">
+              <span className="font-serif text-lg font-bold text-slate-900 tracking-tight leading-none">
+                YuBiFLo
+              </span>
+              <span className="text-[9px] font-semibold text-amber-700 tracking-wider uppercase font-sans mt-0.5 hidden sm:inline">
+                Your Business Is A Flower
+              </span>
+            </div>
           </button>
         </div>
 
-        {/* RIGHT: DATA VAULT + DOCUMENT ICON + HELP (?) + BUSINESS NAME IN PILL AT TOP RIGHT */}
+        {/* RIGHT: DATA VAULT + DOCUMENT ICON + HELP (?) + BUSINESS SWITCHER PILL AT TOP RIGHT */}
         <div className="flex items-center gap-2 sm:gap-3">
           
           {/* ZERO-DATA-LOSS DATA VAULT BUTTON */}
@@ -153,22 +169,10 @@ export default function SaasAppShell({
             <button
               onClick={onOpenDataVault}
               className="h-8 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 flex items-center gap-1.5 transition cursor-pointer text-xs font-bold shadow-2xs"
-              title="Zero-Data-Loss Protection: Auto-Saved &amp; Cloud Mirrored"
+              title="Zero-Data-Loss Protection: Auto-Saved & Cloud Mirrored"
             >
               <ShieldCheck size={14} className="text-emerald-600" />
               <span className="hidden sm:inline">Data Safe</span>
-            </button>
-          )}
-
-          {/* DOMAIN MIGRATION BRIDGE BUTTON */}
-          {onOpenMigrationBridge && (
-            <button
-              onClick={onOpenMigrationBridge}
-              className="h-8 px-2.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 flex items-center gap-1.5 transition cursor-pointer text-xs font-bold shadow-2xs"
-              title="Domain Sync: Transfer data between yubiflo.vercel.app and yubiflo.com with Zero Loss"
-            >
-              <Globe size={14} className="text-blue-600" />
-              <span className="hidden sm:inline">Domain Sync</span>
             </button>
           )}
 
@@ -176,7 +180,7 @@ export default function SaasAppShell({
           <button
             onClick={() => onNavigateTab("three_fold_ledgers")}
             className="w-8 h-8 rounded-lg bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition cursor-pointer"
-            title="3-Fold Ledgers &amp; Accounts"
+            title="3-Fold Ledgers & Accounts"
           >
             <FileText size={16} />
           </button>
@@ -185,88 +189,141 @@ export default function SaasAppShell({
           <button
             onClick={() => setHelpModalOpen(true)}
             className="w-8 h-8 rounded-lg bg-slate-100/90 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition cursor-pointer"
-            title="Help &amp; Documentation"
+            title="Help & Documentation"
           >
             <HelpCircle size={16} />
           </button>
 
-          {/* BUSINESS NAME PILL DROPDOWN AT FAR RIGHT TOP CORNER */}
+          {/* MULTI-ACCOUNT BUSINESS SWITCHER PILL AT FAR RIGHT TOP CORNER */}
           <div className="relative">
             <button
               onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              className="bg-[#EBF3FC] hover:bg-[#E2EDFA] border border-[#CBD5E1] rounded-lg px-3 py-1.5 flex items-center gap-2 cursor-pointer transition text-xs font-semibold text-slate-900 shadow-2xs"
+              className="bg-[#EBF3FC] hover:bg-[#E2EDFA] border border-[#CBD5E1] rounded-lg px-2.5 sm:px-3 py-1.5 flex items-center gap-2 cursor-pointer transition text-xs font-semibold text-slate-900 shadow-2xs"
+              title="Switch between your business accounts opened with this Gmail"
             >
               <Building2 size={13} className="text-blue-600 shrink-0" />
-              <span className="max-w-[130px] sm:max-w-[180px] truncate font-bold text-slate-900">
-                {currentWorkspaceName}
-              </span>
+              <div className="flex flex-col text-left">
+                <span className="max-w-[110px] sm:max-w-[170px] truncate font-bold text-slate-900 leading-tight">
+                  {currentWorkspaceName}
+                </span>
+                <span className="text-[9px] text-blue-700 font-medium truncate hidden sm:inline">
+                  {currentBusinessType}
+                </span>
+              </div>
 
-              <ChevronDown size={14} className={`text-slate-600 transition-transform ${userDropdownOpen ? "rotate-180" : ""}`} />
+              <ChevronDown size={14} className={`text-slate-600 transition-transform shrink-0 ${userDropdownOpen ? "rotate-180" : ""}`} />
             </button>
 
             {/* DROPDOWN MENU */}
             {userDropdownOpen && (
               <div 
-                className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 space-y-1.5 z-50 text-xs font-sans animate-in fade-in zoom-in-95"
+                className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-xl p-2.5 space-y-2 z-50 text-xs font-sans animate-in fade-in zoom-in-95"
                 onMouseLeave={() => setUserDropdownOpen(false)}
               >
-                {/* STATUS HEADER */}
-                <div className="px-3 py-2 border-b border-slate-100">
-                  {isDemo ? (
-                    <div>
-                      <span className="text-[10px] text-amber-600 uppercase font-bold block">Active Workspace:</span>
-                      <strong className="text-slate-900 text-xs block truncate">Duka Space (Demo)</strong>
-                      <span className="text-[10px] text-slate-500 block">Sample data only &bull; 24h reset</span>
-                    </div>
-                  ) : (
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Signed In As:</span>
-                      <strong className="text-slate-900 text-xs block truncate">{user?.name || "Business Owner"}</strong>
-                      <span className="text-[10px] text-blue-600 block truncate">{user?.phone || "Private Workspace"}</span>
-                    </div>
-                  )}
+                {/* GMAIL ACCOUNT BADGE */}
+                <div className="px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Connected Gmail</span>
+                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-medium border border-emerald-200/60">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                    </span>
+                  </div>
+                  <strong className="text-slate-900 text-xs block truncate mt-0.5">
+                    {user?.email || "mosesmukangai75@gmail.com"}
+                  </strong>
+                  <span className="text-[10px] text-slate-500 block truncate mt-0.5">
+                    {user?.name ? `${user.name} (Owner)` : "Account Owner"}
+                  </span>
                 </div>
 
-                {/* WORKSPACE SWITCHER SECTION (My business / Duka Space, demo) */}
-                <div className="py-1 space-y-1">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase px-3 block">
-                    Switch Workspace:
+                {/* MULTI-ACCOUNT SWITCHER: LIST OF ALL BUSINESSES OPENED UNDER THIS GMAIL */}
+                {!isDemo && accounts && accounts.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between px-2 pt-1 pb-0.5">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                        My Businesses ({accounts.length})
+                      </span>
+                      <span className="text-[10px] text-blue-600 font-medium">1-Click Switch</span>
+                    </div>
+
+                    <div className="space-y-1 max-h-52 overflow-y-auto pr-0.5">
+                      {accounts.map((acc) => {
+                        const isActive = (activeAccountId ? acc.id === activeAccountId : acc.isPrimary) || (!activeAccountId && acc.id === "acc_alacio_mini");
+                        return (
+                          <button
+                            key={acc.id}
+                            onClick={() => {
+                              setUserDropdownOpen(false);
+                              if (onSwitchAccount) {
+                                onSwitchAccount(acc.id);
+                              }
+                            }}
+                            className={`w-full px-2.5 py-2 text-left rounded-xl flex items-center justify-between transition cursor-pointer border ${
+                              isActive 
+                                ? "bg-blue-50/80 border-blue-200 text-blue-950 font-bold shadow-2xs" 
+                                : "hover:bg-slate-50 border-transparent text-slate-700 hover:border-slate-200"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                                isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
+                              }`}>
+                                <Building2 size={13} />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="truncate text-xs font-semibold leading-tight">{acc.businessName}</div>
+                                <div className="text-[10px] text-slate-500 font-normal truncate mt-0.5">
+                                  {acc.businessType} &bull; {acc.currency || "KSh"}
+                                </div>
+                              </div>
+                            </div>
+
+                            {isActive && (
+                              <div className="shrink-0 flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-100/60 px-1.5 py-0.5 rounded">
+                                <Check size={12} />
+                                <span className="text-[10px]">Active</span>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* ADD ANOTHER BUSINESS BUTTON */}
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        setIsAddAccountModalOpen(true);
+                      }}
+                      className="w-full mt-1 px-3 py-1.5 text-left rounded-xl hover:bg-blue-50 text-blue-700 flex items-center gap-2 transition cursor-pointer text-xs font-semibold border border-dashed border-blue-200 hover:border-blue-400"
+                    >
+                      <Plus size={14} className="text-blue-600 shrink-0" />
+                      <span>+ Add Another Business / Shop</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* WORKSPACE SWITCHER SECTION (Real vs Demo) */}
+                <div className="border-t border-slate-100 pt-1.5 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase px-2 block">
+                    Exploration:
                   </span>
 
-                  {/* OPTION 1: REAL WORKSPACE */}
+                  {/* DUKA SPACE DEMO OPTION */}
                   <button
                     onClick={() => {
                       setUserDropdownOpen(false);
                       if (onSwitchWorkspace) {
-                        onSwitchWorkspace("real");
+                        onSwitchWorkspace(isDemo ? "real" : "demo");
                       }
                     }}
-                    className={`w-full px-3 py-2 text-left rounded-xl flex items-center justify-between transition cursor-pointer text-xs ${
-                      !isDemo ? "bg-blue-50 text-blue-700 font-bold" : "text-slate-700 hover:bg-slate-100"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <Building2 size={13} className="text-blue-600 shrink-0" />
-                      <span className="truncate">{user?.businessName ? `${user.businessName} (My business)` : "My business"}</span>
-                    </div>
-                    {!isDemo && <Check size={13} className="text-blue-600 shrink-0" />}
-                  </button>
-
-                  {/* OPTION 2: DUKA SPACE DEMO */}
-                  <button
-                    onClick={() => {
-                      setUserDropdownOpen(false);
-                      if (onSwitchWorkspace) {
-                        onSwitchWorkspace("demo");
-                      }
-                    }}
-                    className={`w-full px-3 py-2 text-left rounded-xl flex items-center justify-between transition cursor-pointer text-xs ${
-                      isDemo ? "bg-amber-50 text-amber-800 font-bold" : "text-slate-700 hover:bg-slate-100"
+                    className={`w-full px-2.5 py-2 text-left rounded-xl flex items-center justify-between transition cursor-pointer text-xs ${
+                      isDemo ? "bg-amber-50 text-amber-800 font-bold border border-amber-200" : "text-slate-700 hover:bg-slate-100"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
                       <Sparkles size={13} className="text-amber-500 shrink-0" />
-                      <span className="truncate">Duka Space (demo)</span>
+                      <span className="truncate">{isDemo ? "Return to My Real Accounts" : "Try Duka Space (Interactive Demo)"}</span>
                     </div>
                     {isDemo && <Check size={13} className="text-amber-600 shrink-0" />}
                   </button>
@@ -599,6 +656,105 @@ export default function SaasAppShell({
         isDocked={videoIsDocked}
         onToggleDock={() => setVideoIsDocked(!videoIsDocked)}
       />
+
+      {/* CREATE NEW BUSINESS ACCOUNT MODAL (UNDER SAME GMAIL) */}
+      {isAddAccountModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                  <Building2 size={16} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Add New Business / Shop</h3>
+                  <p className="text-[11px] text-slate-500">Connected to {user?.email || "your Gmail"}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAddAccountModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-200/50 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newBizName.trim()) return;
+                if (onCreateAccount) {
+                  onCreateAccount(newBizName.trim(), newBizType);
+                }
+                setNewBizName("");
+                setIsAddAccountModalOpen(false);
+              }}
+              className="p-6 space-y-4 text-xs"
+            >
+              <div>
+                <label className="block text-slate-700 font-bold mb-1.5">
+                  Business / Shop Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Alacio Wholesale Depot, Branch 2 Supermarket"
+                  value={newBizName}
+                  onChange={(e) => setNewBizName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 text-xs"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1.5">
+                  Category / Business Model
+                </label>
+                <select
+                  value={newBizType}
+                  onChange={(e) => setNewBizType(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 text-xs bg-white"
+                >
+                  <option value="Retail / Duka">Retail / Duka (General FMCG)</option>
+                  <option value="Wholesale & Cargo Depot">Wholesale & Cargo Depot (Bulk Supplies)</option>
+                  <option value="Hardware & Building Supplies">Hardware & Building Supplies</option>
+                  <option value="Pharmacy & Chemist">Pharmacy & Chemist</option>
+                  <option value="Agrovet & Farm Inputs">Agrovet & Farm Inputs</option>
+                  <option value="Electronics & Phone Accessories">Electronics & Accessories</option>
+                </select>
+              </div>
+
+              <div className="p-3 bg-blue-50/70 border border-blue-200/60 rounded-xl text-[11px] text-blue-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5">
+                  <ShieldCheck size={13} className="text-blue-600" />
+                  Independent Workspace Isolation
+                </div>
+                <p className="text-slate-600">
+                  This new business will have its own separate inventory, sales batches, 3-fold ledgers, and cash balances, completely isolated while remaining linked to your single Gmail login.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddAccountModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition cursor-pointer font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newBizName.trim()}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-bold transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                >
+                  <Plus size={14} />
+                  <span>Create Business Workspace</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
