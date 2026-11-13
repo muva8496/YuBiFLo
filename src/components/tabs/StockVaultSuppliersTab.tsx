@@ -33,7 +33,7 @@ export default function StockVaultSuppliersTab({
   // New supplier form state
   const [isAddingSupplier, setIsAddingSupplier] = useState(false);
   const [newSupName, setNewSupName] = useState("");
-  const [newSupCategory, setNewSupCategory] = useState("Bakery");
+  const [newSupCategory, setNewSupCategory] = useState("Foodstuff & Viungo");
   const [newSupPhone, setNewSupPhone] = useState("");
   const [newSupTerms, setNewSupTerms] = useState("Cash on Delivery");
 
@@ -222,7 +222,8 @@ export default function StockVaultSuppliersTab({
                   className="w-full bg-[#080D15] border border-[#182C40] rounded-xl p-2.5 text-white font-mono"
                 >
                   <option value="Dairy">Dairy (Milk, Mala, Butter)</option>
-                  <option value="Bakery">Bakery (Bread, Buns)</option>
+                  <option value="Bread & Snacks">Bread &amp; Snacks</option>
+                  <option value="Foodstuff & Viungo">Foodstuff, Spices &amp; Viungo</option>
                   <option value="Milling">Milling (Unga, Maize flour)</option>
                   <option value="Sugar & Dry Goods">Sugar &amp; Dry Goods</option>
                   <option value="Household">Household (Soap, Matches)</option>

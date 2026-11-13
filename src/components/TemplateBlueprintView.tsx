@@ -58,7 +58,7 @@ const BLUEPRINTS: Record<BlueprintId, BlueprintConfig> = {
     tagline: "High-velocity estate kiosks, general shops & mini-marts",
     icon: <Store className="w-5 h-5 text-emerald-400" />,
     currency: "KSh",
-    categories: ["Dairy", "Flour", "Cooking Oils", "Bakery", "Poultry", "Sugar", "Spices", "Hygiene", "Beverages"],
+    categories: ["Dairy", "Flour", "Cooking Oils", "Bread & Snacks", "Poultry", "Sugar", "Spices", "Hygiene", "Beverages"],
     unitTypes: ["packets", "bales", "bottles", "crates", "loaves", "kg", "pieces"],
     pipelineRules: {
       restockTriggerAutoClose: true,

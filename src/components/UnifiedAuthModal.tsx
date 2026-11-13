@@ -336,6 +336,7 @@ export default function UnifiedAuthModal({
                       className="w-full bg-[#080d15] border border-[#1b2b3d] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#2563eb] cursor-pointer"
                     >
                       <option value="Retail / Duka">Duka / Retail Shop (Available Live)</option>
+                      <option value="Open Eatery & Roadside Kiosk">Open Eatery &amp; Roadside Kiosk (Live Shell)</option>
                       <option value="Hardware">Hardware Store</option>
                       <option value="Wholesale">Wholesale Distributor</option>
                       <option value="Agrovet">Agrovet &amp; Farm Inputs</option>

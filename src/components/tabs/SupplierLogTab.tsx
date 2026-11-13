@@ -1390,7 +1390,8 @@ export default function SupplierLogTab({
                     className="w-full bg-[#0a0d12] border border-slate-700 rounded-xl p-2.5 text-white"
                   >
                     <option value="Dairy">Dairy &amp; Chilled (Milk, Mala, Yoghurt)</option>
-                    <option value="Bakery">Bakery (Bread, Scones, Cakes)</option>
+                    <option value="Foodstuff & Viungo">Foodstuff, Spices &amp; Viungo</option>
+                    <option value="Bread & Snacks">Bread &amp; Snacks</option>
                     <option value="Flour & Cereals">Flour &amp; Cereals (Maize, Wheat Unga)</option>
                     <option value="Cooking Oils">Cooking Oils &amp; Fats</option>
                     <option value="Sugar & Sweeteners">Sugar &amp; Sweeteners</option>
@@ -1520,7 +1521,8 @@ export default function SupplierLogTab({
                     <option value="Flour & Cereals">Flour &amp; Cereals</option>
                     <option value="Cooking & Oils">Cooking &amp; Oils</option>
                     <option value="Sugar & Sweeteners">Sugar &amp; Sweeteners</option>
-                    <option value="Bakery & Confectionery">Bakery &amp; Confectionery</option>
+                    <option value="Foodstuff & Viungo">Foodstuff, Spices &amp; Viungo</option>
+                    <option value="Bread & Snacks">Bread &amp; Snacks</option>
                     <option value="Beverages & Soda">Beverages &amp; Soda</option>
                     <option value="General Merchandise">General Merchandise</option>
                   </select>

@@ -96,11 +96,45 @@ export interface PayoutOrDrawing {
   date?: string; // YYYY-MM-DD format for editable reporting
   amount: number;
   type: "BUSINESS_EXPENSE" | "OWNER_DRAWING" | "SUPPLIER_PAYOUT";
-  expense_category?: "RENT" | "MISC" | "TRAVEL" | "PERSONAL_WITHDRAWAL" | "UTILITIES" | "WAGES" | "SUPPLIES" | string;
+  expense_category?:
+    | "RENT"
+    | "MISC"
+    | "TRAVEL"
+    | "PERSONAL_WITHDRAWAL"
+    | "UTILITIES"
+    | "WAGES"
+    | "SUPPLIES"
+    | "FOODSTUFF"
+    | "VIUNGO_SPICES"
+    | "COOKING_FUEL"
+    | string;
   payee?: string;
   notes: string;
   resolved_gap_id?: string;
   payment_channel?: string;
+}
+
+export type PaymentChannelCategory = "CASH" | "MOBILE_MONEY" | "BANK";
+
+export type PaymentChannelSubType =
+  | "CASH_DRAWER"
+  | "MPESA_TILL"
+  | "PAYBILL"
+  | "POCHI_LA_BIASHARA"
+  | "SEND_MONEY"
+  | "BANK_TRANSFER"
+  | "EQUITEL";
+
+export interface PaymentChannelConfig {
+  id: string;
+  label: string;
+  shortCode: string;
+  category: PaymentChannelCategory;
+  subType: PaymentChannelSubType;
+  balance: number;
+  accountRef?: string;
+  description?: string;
+  enabled: boolean;
 }
 
 export interface UnifiedTransaction {
@@ -294,8 +328,11 @@ export interface SupplierBatchCard {
 
 export interface AlacioMasterState {
   merchant_name?: string;
+  proprietor_name?: string;
   client_type?: string;
+  business_blueprint_id?: "duka_fmcg" | "open_eatery" | string;
   is_skeleton?: boolean;
+  paymentChannels?: PaymentChannelConfig[];
   inventory: InventoryItem[];
   warehouse: WarehouseBatch[];
   customers: CustomerDebtor[];

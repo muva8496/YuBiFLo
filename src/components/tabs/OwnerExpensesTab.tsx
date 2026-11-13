@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import {
   Wallet, Plus, Trash2, Edit2, Check, X, Home, Car, Coffee,
   UserMinus, Zap, Users, FileCheck, Filter, Search, Calendar,
-  DollarSign, CheckCircle2, ArrowUpRight, Sparkles
+  DollarSign, CheckCircle2, ArrowUpRight, Sparkles, UtensilsCrossed, Flame, Droplets
 } from "lucide-react";
 import { AlacioMasterState, PayoutOrDrawing } from "../../types/alacio";
+import { isEateryBusinessState, resolvePaymentChannels } from "../../services/alacioStorage";
 
 interface OwnerExpensesTabProps {
   state: AlacioMasterState;
@@ -14,7 +15,18 @@ interface OwnerExpensesTabProps {
 }
 
 export interface ExpenseCategoryMeta {
-  id: "RENT" | "MISC" | "TRAVEL" | "PERSONAL_WITHDRAWAL" | "UTILITIES" | "WAGES" | "SUPPLIES" | "OTHER_CUSTOM";
+  id:
+    | "RENT"
+    | "MISC"
+    | "TRAVEL"
+    | "PERSONAL_WITHDRAWAL"
+    | "UTILITIES"
+    | "WAGES"
+    | "FOODSTUFF"
+    | "VIUNGO_SPICES"
+    | "COOKING_FUEL"
+    | "SUPPLIES"
+    | "OTHER_CUSTOM";
   label: string;
   shortLabel: string;
   type: "BUSINESS_EXPENSE" | "OWNER_DRAWING";
@@ -24,20 +36,52 @@ export interface ExpenseCategoryMeta {
 
 export const EXPENSE_CATEGORIES: ExpenseCategoryMeta[] = [
   {
+    id: "FOODSTUFF",
+    label: "Foodstuff & Kitchen Stock",
+    shortLabel: "Foodstuff",
+    type: "BUSINESS_EXPENSE",
+    badgeColor: "bg-orange-50 text-orange-800 border-orange-200",
+    examples: "Beef, chicken, fish, maize/wheat flour, rice, beans, potatoes, greens"
+  },
+  {
+    id: "VIUNGO_SPICES",
+    label: "Viungo, Spices & Cooking Oil",
+    shortLabel: "Viungo & Oil",
+    type: "BUSINESS_EXPENSE",
+    badgeColor: "bg-lime-50 text-lime-800 border-lime-200",
+    examples: "Tomatoes, onions, dania, royco, cooking oil, salt, curry spices"
+  },
+  {
+    id: "COOKING_FUEL",
+    label: "Cooking Fuel (Charcoal / LPG / Kuni)",
+    shortLabel: "Fuel / Gas",
+    type: "BUSINESS_EXPENSE",
+    badgeColor: "bg-red-50 text-red-700 border-red-200",
+    examples: "Makaa sack, LPG gas cylinder refill, firewood, kerosene"
+  },
+  {
+    id: "WAGES",
+    label: "Support Staff Wages & Casuals",
+    shortLabel: "Staff Wages",
+    type: "BUSINESS_EXPENSE",
+    badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
+    examples: "1–2 kitchen/serving helpers daily or weekly salary, offloading casuals"
+  },
+  {
     id: "RENT",
-    label: "Shop Rent & Stall Lease",
+    label: "Shop / Stall / Structure Rent",
     shortLabel: "Rent",
     type: "BUSINESS_EXPENSE",
     badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    examples: "Monthly shop rent, stall fee, store lease"
+    examples: "Monthly kiosk/stall rent, county ground fee, store lease"
   },
   {
     id: "MISC",
-    label: "Miscellaneous & Shop Upkeep",
+    label: "Miscellaneous & Upkeep",
     shortLabel: "Misc",
     type: "BUSINESS_EXPENSE",
     badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
-    examples: "Packaging bags, tea, airtime, watchman, cleaning"
+    examples: "Takeaway bags, serviettes, airtime, soap, cleaning"
   },
   {
     id: "TRAVEL",
@@ -45,7 +89,7 @@ export const EXPENSE_CATEGORIES: ExpenseCategoryMeta[] = [
     shortLabel: "Travel",
     type: "BUSINESS_EXPENSE",
     badgeColor: "bg-sky-50 text-sky-700 border-sky-200",
-    examples: "Boda boda fare, matatu to wholesale market, fuel"
+    examples: "Boda boda fare, market run transport, delivery fare"
   },
   {
     id: "PERSONAL_WITHDRAWAL",
@@ -53,7 +97,7 @@ export const EXPENSE_CATEGORIES: ExpenseCategoryMeta[] = [
     shortLabel: "Personal Withdrawal",
     type: "OWNER_DRAWING",
     badgeColor: "bg-rose-50 text-rose-700 border-rose-200",
-    examples: "Owner cash drawing, home upkeep, school fees, lunch"
+    examples: "Owner cash drawing, home upkeep, school fees, family expense"
   },
   {
     id: "UTILITIES",
@@ -61,23 +105,15 @@ export const EXPENSE_CATEGORIES: ExpenseCategoryMeta[] = [
     shortLabel: "Utilities",
     type: "BUSINESS_EXPENSE",
     badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    examples: "KPLC prepaid electricity tokens, water bill, internet"
-  },
-  {
-    id: "WAGES",
-    label: "Wages & Casual Labor",
-    shortLabel: "Wages",
-    type: "BUSINESS_EXPENSE",
-    badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
-    examples: "Shop attendant salary, offloading casuals, errands"
+    examples: "KPLC prepaid tokens, water drums/bill, internet"
   },
   {
     id: "SUPPLIES",
-    label: "County Permits & Licenses",
+    label: "County Permits & Health Licenses",
     shortLabel: "Permits",
     type: "BUSINESS_EXPENSE",
     badgeColor: "bg-slate-100 text-slate-700 border-slate-300",
-    examples: "County single business permit, health certificate"
+    examples: "County single business permit, food handler health certificate"
   },
   {
     id: "OTHER_CUSTOM",
@@ -85,7 +121,7 @@ export const EXPENSE_CATEGORIES: ExpenseCategoryMeta[] = [
     shortLabel: "Other / Custom",
     type: "BUSINESS_EXPENSE",
     badgeColor: "bg-teal-50 text-teal-700 border-teal-200",
-    examples: "Repairs, security, stationery, or custom note"
+    examples: "Repairs, jiko weld, security, stationery, or custom note"
   }
 ];
 
@@ -133,6 +169,50 @@ export const QUICK_EXPENSE_PRESETS: Array<{
   }
 ];
 
+export const EATERY_QUICK_PRESETS: Array<{
+  label: string;
+  category: ExpenseCategoryMeta["id"];
+  defaultNote: string;
+  defaultPayee: string;
+}> = [
+  {
+    label: "Foodstuff (Meat / Unga / Greens)",
+    category: "FOODSTUFF",
+    defaultNote: "Daily market purchase — meat, unga, rice & greens",
+    defaultPayee: "Market / Butcher"
+  },
+  {
+    label: "Viungo & Cooking Oil",
+    category: "VIUNGO_SPICES",
+    defaultNote: "Tomatoes, onions, royco, spices & cooking oil",
+    defaultPayee: "Mama Mboga / Vendor"
+  },
+  {
+    label: "Cooking Fuel (Charcoal / LPG)",
+    category: "COOKING_FUEL",
+    defaultNote: "Charcoal (makaa) / LPG gas refill for jiko",
+    defaultPayee: "Fuel / Gas Vendor"
+  },
+  {
+    label: "Support Staff Salary (1–2 Helpers)",
+    category: "WAGES",
+    defaultNote: "Daily/weekly wage for kitchen & serving helper",
+    defaultPayee: "Support Staff"
+  },
+  {
+    label: "Stall / Kiosk Rent",
+    category: "RENT",
+    defaultNote: "Roadside kiosk / structure rent payment",
+    defaultPayee: "Landlord"
+  },
+  {
+    label: "Personal Withdrawal",
+    category: "PERSONAL_WITHDRAWAL",
+    defaultNote: "Owner personal survival/home withdrawal",
+    defaultPayee: "Owner (Self)"
+  }
+];
+
 export default function OwnerExpensesTab({
   state,
   onAddExpense,
@@ -140,13 +220,17 @@ export default function OwnerExpensesTab({
   onDeleteExpense
 }: OwnerExpensesTabProps) {
   const { currency = "KSh", payouts = [] } = state;
+  const isEatery = isEateryBusinessState(state);
+  const activeChannels = resolvePaymentChannels(state);
 
   // Form state
-  const [selectedCategory, setSelectedCategory] = useState<ExpenseCategoryMeta["id"]>("RENT");
+  const [selectedCategory, setSelectedCategory] = useState<ExpenseCategoryMeta["id"]>(
+    isEatery ? "FOODSTUFF" : "RENT"
+  );
   const [customCategoryLabel, setCustomCategoryLabel] = useState<string>("");
   const [amountInput, setAmountInput] = useState<string>("");
   const [expenseDate, setExpenseDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [paymentChannel, setPaymentChannel] = useState<"CASH_DRAWER" | "MPESA_TILL" | "BANK_TRANSFER">("CASH_DRAWER");
+  const [paymentChannel, setPaymentChannel] = useState<string>(() => activeChannels[0]?.id || "CASH_DRAWER");
   const [payeeInput, setPayeeInput] = useState<string>("");
   const [notesInput, setNotesInput] = useState<string>("");
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
@@ -170,25 +254,37 @@ export default function OwnerExpensesTab({
       if (found) return found;
     }
     const lower = (p.notes || "").toLowerCase();
-    if (lower.includes("rent") || lower.includes("lease") || lower.includes("stall")) {
-      return EXPENSE_CATEGORIES[0];
+    const byId = (id: ExpenseCategoryMeta["id"]) =>
+      EXPENSE_CATEGORIES.find((c) => c.id === id) || EXPENSE_CATEGORIES[0];
+
+    if (lower.includes("viungo") || lower.includes("spice") || lower.includes("tomato") || lower.includes("onion") || lower.includes("royco") || lower.includes("cooking oil")) {
+      return byId("VIUNGO_SPICES");
+    }
+    if (lower.includes("charcoal") || lower.includes("makaa") || lower.includes("lpg") || lower.includes("gas") || lower.includes("firewood") || lower.includes("kuni")) {
+      return byId("COOKING_FUEL");
+    }
+    if (lower.includes("foodstuff") || lower.includes("meat") || lower.includes("beef") || lower.includes("sukuma") || lower.includes("mboga") || lower.includes("beans") || lower.includes("rice") || lower.includes("unga")) {
+      return byId("FOODSTUFF");
+    }
+    if (lower.includes("rent") || lower.includes("lease") || lower.includes("stall") || lower.includes("kibanda")) {
+      return byId("RENT");
     }
     if (lower.includes("travel") || lower.includes("boda") || lower.includes("fare") || lower.includes("transport") || lower.includes("fuel")) {
-      return EXPENSE_CATEGORIES[2];
+      return byId("TRAVEL");
     }
     if (p.type === "OWNER_DRAWING" || lower.includes("personal") || lower.includes("withdrawal") || lower.includes("drawing") || lower.includes("home")) {
-      return EXPENSE_CATEGORIES[3];
+      return byId("PERSONAL_WITHDRAWAL");
     }
     if (lower.includes("kplc") || lower.includes("token") || lower.includes("electric") || lower.includes("water") || lower.includes("wifi")) {
-      return EXPENSE_CATEGORIES[4];
+      return byId("UTILITIES");
     }
-    if (lower.includes("wage") || lower.includes("salary") || lower.includes("casual")) {
-      return EXPENSE_CATEGORIES[5];
+    if (lower.includes("wage") || lower.includes("salary") || lower.includes("casual") || lower.includes("helper") || lower.includes("staff")) {
+      return byId("WAGES");
     }
     if (lower.includes("permit") || lower.includes("council") || lower.includes("license")) {
-      return EXPENSE_CATEGORIES[6];
+      return byId("SUPPLIES");
     }
-    return EXPENSE_CATEGORIES[1]; // MISC
+    return byId("MISC");
   };
 
   // All non-supplier payouts (Rent, Misc, Travel, Personal Withdrawal, Utilities, Wages, etc.)
@@ -241,7 +337,7 @@ export default function OwnerExpensesTab({
       return;
     }
 
-    const catMeta = EXPENSE_CATEGORIES.find((c) => c.id === selectedCategory) || EXPENSE_CATEGORIES[1];
+    const catMeta = EXPENSE_CATEGORIES.find((c) => c.id === selectedCategory) || EXPENSE_CATEGORIES[0];
     const displayTag =
       selectedCategory === "OTHER_CUSTOM" && customCategoryLabel.trim()
         ? customCategoryLabel.trim()
@@ -287,7 +383,7 @@ export default function OwnerExpensesTab({
   const handleSaveEdit = (id: string) => {
     const parsedAmt = parseFloat(editAmount);
     if (isNaN(parsedAmt) || parsedAmt <= 0) return;
-    const catMeta = EXPENSE_CATEGORIES.find((c) => c.id === editCategory) || EXPENSE_CATEGORIES[1];
+    const catMeta = EXPENSE_CATEGORIES.find((c) => c.id === editCategory) || EXPENSE_CATEGORIES[0];
 
     if (onEditExpense) {
       onEditExpense(id, {
@@ -306,6 +402,12 @@ export default function OwnerExpensesTab({
 
   const getCategoryIcon = (catId: string) => {
     switch (catId) {
+      case "FOODSTUFF":
+        return <UtensilsCrossed size={14} />;
+      case "VIUNGO_SPICES":
+        return <Droplets size={14} />;
+      case "COOKING_FUEL":
+        return <Flame size={14} />;
       case "RENT":
         return <Home size={14} />;
       case "TRAVEL":
@@ -324,24 +426,22 @@ export default function OwnerExpensesTab({
   };
 
   const activeCategoryMeta = EXPENSE_CATEGORIES.find((c) => c.id === selectedCategory) || EXPENSE_CATEGORIES[0];
+  const activePresets = isEatery ? EATERY_QUICK_PRESETS : QUICK_EXPENSE_PRESETS;
 
-  // Quick inline notepad state (moved from Home Page into Expenses -> Owner Expenses module)
-  const [quickExpCategory, setQuickExpCategory] = useState<"RENT" | "MISC" | "TRAVEL" | "PERSONAL_WITHDRAWAL">("RENT");
+  // Quick inline notepad state
+  const [quickExpCategory, setQuickExpCategory] = useState<ExpenseCategoryMeta["id"]>(
+    isEatery ? "FOODSTUFF" : "RENT"
+  );
   const [quickExpAmount, setQuickExpAmount] = useState("");
   const [quickExpNote, setQuickExpNote] = useState("");
-  const [quickExpChannel, setQuickExpChannel] = useState<"CASH_DRAWER" | "MPESA_TILL">("CASH_DRAWER");
+  const [quickExpChannel, setQuickExpChannel] = useState<string>(() => activeChannels[0]?.id || "CASH_DRAWER");
 
   const handleQuickExpenseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const num = parseFloat(quickExpAmount);
     if (isNaN(num) || num <= 0) return;
-    const catLabels: Record<string, string> = {
-      RENT: "Rent",
-      MISC: "Misc",
-      TRAVEL: "Travel",
-      PERSONAL_WITHDRAWAL: "Personal Withdrawal"
-    };
-    const shortLabel = catLabels[quickExpCategory] || "Misc";
+    const catMeta = EXPENSE_CATEGORIES.find((c) => c.id === quickExpCategory);
+    const shortLabel = catMeta?.shortLabel || "Misc";
     const newRecord: PayoutOrDrawing = {
       id: `exp_quick_${Date.now()}`,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -400,10 +500,14 @@ export default function OwnerExpensesTab({
             </div>
             <div>
               <h3 className="text-xs sm:text-sm font-bold text-slate-900">
-                Quick Note: Owner Expense or Personal Withdrawal (Rent &bull; Misc &bull; Travel &bull; Personal Withdrawal)
+                {isEatery
+                  ? "Fast Kitchen & Eatery Expense Note (Foodstuff • Viungo • Fuel • Staff Wages • Rent)"
+                  : "Quick Note: Owner Expense or Personal Withdrawal (Rent • Misc • Travel • Personal Withdrawal)"}
               </h3>
               <p className="text-[11px] text-slate-500">
-                Fast 1-line entry for shop rent, miscellaneous upkeep, travel/boda fare, or personal cash withdrawals.
+                {isEatery
+                  ? "Zero-delay logging at the counter — keeps foodstuff, viungo, 1–2 helpers & rent clear without slowing sales."
+                  : "Fast 1-line entry for shop rent, miscellaneous upkeep, travel/boda fare, or personal cash withdrawals."}
               </p>
             </div>
           </div>
@@ -411,16 +515,26 @@ export default function OwnerExpensesTab({
 
         <form onSubmit={handleQuickExpenseSubmit} className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
           <div className="flex items-center gap-1.5 flex-wrap">
-            {[
-              { id: "RENT", label: "Rent", icon: <Home size={12} /> },
-              { id: "MISC", label: "Misc", icon: <Coffee size={12} /> },
-              { id: "TRAVEL", label: "Travel", icon: <Car size={12} /> },
-              { id: "PERSONAL_WITHDRAWAL", label: "Personal Withdrawal", icon: <UserMinus size={12} /> }
-            ].map((cat) => (
+            {(isEatery
+              ? [
+                  { id: "FOODSTUFF", label: "Foodstuff", icon: <UtensilsCrossed size={12} /> },
+                  { id: "VIUNGO_SPICES", label: "Viungo / Oil", icon: <Droplets size={12} /> },
+                  { id: "COOKING_FUEL", label: "Fuel / Gas", icon: <Flame size={12} /> },
+                  { id: "WAGES", label: "Staff Wage", icon: <Users size={12} /> },
+                  { id: "RENT", label: "Rent", icon: <Home size={12} /> },
+                  { id: "PERSONAL_WITHDRAWAL", label: "Personal Drawing", icon: <UserMinus size={12} /> }
+                ]
+              : [
+                  { id: "RENT", label: "Rent", icon: <Home size={12} /> },
+                  { id: "MISC", label: "Misc", icon: <Coffee size={12} /> },
+                  { id: "TRAVEL", label: "Travel", icon: <Car size={12} /> },
+                  { id: "PERSONAL_WITHDRAWAL", label: "Personal Withdrawal", icon: <UserMinus size={12} /> }
+                ]
+            ).map((cat) => (
               <button
                 key={cat.id}
                 type="button"
-                onClick={() => setQuickExpCategory(cat.id as any)}
+                onClick={() => setQuickExpCategory(cat.id as ExpenseCategoryMeta["id"])}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border ${
                   quickExpCategory === cat.id
                     ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
@@ -448,16 +562,23 @@ export default function OwnerExpensesTab({
               type="text"
               value={quickExpNote}
               onChange={(e) => setQuickExpNote(e.target.value)}
-              placeholder="Note (e.g. Stall rent, boda fare, packaging bags, home drawing...)"
+              placeholder={
+                isEatery
+                  ? "Note (e.g. Nyama 3kg, nyanya & viungo, makaa, helper daily wage...)"
+                  : "Note (e.g. Stall rent, boda fare, packaging bags, home drawing...)"
+              }
               className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
             />
             <select
               value={quickExpChannel}
-              onChange={(e) => setQuickExpChannel(e.target.value as any)}
+              onChange={(e) => setQuickExpChannel(e.target.value)}
               className="bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-800"
             >
-              <option value="CASH_DRAWER">Cash</option>
-              <option value="MPESA_TILL">M-Pesa</option>
+              {activeChannels.map((ch) => (
+                <option key={ch.id} value={ch.id}>
+                  {ch.label}
+                </option>
+              ))}
             </select>
             <button
               type="submit"
@@ -525,10 +646,12 @@ export default function OwnerExpensesTab({
         {/* 1-TAP QUICK FILL PRESETS */}
         <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 space-y-2">
           <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 block">
-            1-Tap Quick Templates (Rent &bull; Misc &bull; Travel &bull; Personal Withdrawal):
+            {isEatery
+              ? "1-Tap Open Eatery Templates (Foodstuff • Viungo • Fuel • Support Staff • Rent):"
+              : "1-Tap Quick Templates (Rent • Misc • Travel • Personal Withdrawal):"}
           </span>
           <div className="flex items-center gap-1.5 flex-wrap">
-            {QUICK_EXPENSE_PRESETS.map((preset) => (
+            {activePresets.map((preset) => (
               <button
                 key={preset.label}
                 type="button"
@@ -622,12 +745,14 @@ export default function OwnerExpensesTab({
               </label>
               <select
                 value={paymentChannel}
-                onChange={(e) => setPaymentChannel(e.target.value as any)}
+                onChange={(e) => setPaymentChannel(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
               >
-                <option value="CASH_DRAWER">Cash Drawer / Till</option>
-                <option value="MPESA_TILL">M-Pesa Business Till</option>
-                <option value="BANK_TRANSFER">Bank / Equitel</option>
+                {activeChannels.map((ch) => (
+                  <option key={ch.id} value={ch.id}>
+                    {ch.label} ({currency} {ch.balance.toLocaleString()})
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -783,9 +908,14 @@ export default function OwnerExpensesTab({
                           onChange={(e) => setEditChannel(e.target.value)}
                           className="w-full bg-white border border-slate-300 rounded-lg p-1.5 text-xs"
                         >
-                          <option value="CASH_DRAWER">Cash Drawer</option>
-                          <option value="MPESA_TILL">M-Pesa Till</option>
-                          <option value="BANK_TRANSFER">Bank / Equitel</option>
+                          {activeChannels.map((ch) => (
+                            <option key={ch.id} value={ch.id}>
+                              {ch.label}
+                            </option>
+                          ))}
+                          {!activeChannels.some((ch) => ch.id === editChannel) && (
+                            <option value={editChannel}>{editChannel}</option>
+                          )}
                         </select>
                       </div>
                     </div>

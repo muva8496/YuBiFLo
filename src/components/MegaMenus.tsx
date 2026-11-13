@@ -196,7 +196,7 @@ export const BUSINESS_TYPES_CONFIG: BusinessTypeItem[] = [
   { name: "Electronics and phone accessories", status: "soon", category: "shops", categoryLabel: "Shops and trade", description: "Warranty serials, high-ticket repairs" },
 
   // Food and services
-  { name: "Eatery and bakery", status: "soon", category: "food", categoryLabel: "Food and services", description: "Flour batch yields, daily perishable sales" },
+  { name: "Open eatery & roadside kiosk", status: "available", category: "food", categoryLabel: "Food and services", description: "Cash & Mobile Money (Pochi / Send Money / Paybill / Till), foodstuff & viungo supplies, support staff wages & rent" },
   { name: "M-Pesa agent", status: "request", category: "food", categoryLabel: "Food and services", description: "Float balancing, commissions, bank float sweeps" },
   { name: "Salon & Barber", status: "request", category: "food", categoryLabel: "Food and services", description: "Chair commission splits, product usage" },
   { name: "Cyber cafe", status: "request", category: "food", categoryLabel: "Food and services", description: "Printing reams, time tracking, stationery" },
@@ -226,7 +226,7 @@ export function getSavedRequestCounts(): Record<string, number> {
     "Wholesale": 22,
     "Agrovet": 18,
     "M-Pesa agent": 31,
-    "Eatery and bakery": 12,
+    "Open eatery & roadside kiosk": 19,
     "Transport": 9
   };
 }

@@ -15,6 +15,7 @@ interface DataVaultModalProps {
   isOpen: boolean;
   onClose: () => void;
   masterState: AlacioMasterState;
+  accountId?: string;
   onStateRestored: (newState: AlacioMasterState) => void;
 }
 
@@ -22,6 +23,7 @@ export default function DataVaultModal({
   isOpen,
   onClose,
   masterState,
+  accountId,
   onStateRestored
 }: DataVaultModalProps) {
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -86,12 +88,13 @@ export default function DataVaultModal({
     setActionErrorMsg(null);
     setIsCloudSyncing(true);
 
-    const email = masterState.user_email || "default";
+    const email = masterState.user_email || "mosesmukangai75@gmail.com";
+    const resolvedAccountId = accountId || (masterState as any).account_id;
     try {
-      const restored = await restoreUserStateFromCloud(email);
+      const restored = await restoreUserStateFromCloud(email, resolvedAccountId);
       if (restored) {
         onStateRestored(restored);
-        setActionSuccessMsg(`Restored from Cloud Database! ${restored.inventory.length} stock items and ledger verified.`);
+        setActionSuccessMsg(`Cloud sync complete! ${restored.inventory.length} stock items, ${restored.receiptsArchive?.length || 0} receipts & ${restored.payouts?.length || 0} expense notes verified.`);
       } else {
         setActionSuccessMsg("Cloud database verified. Local records are up-to-date with your cloud copy.");
       }

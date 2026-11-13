@@ -60,7 +60,7 @@ export interface RestockItemRow {
 
 const CATEGORIES = [
   "Dairy & Fresh",
-  "Bakery & Snacks",
+  "Bread & Snacks",
   "Beverages",
   "Grains & Cereals",
   "Cooking & Oils",

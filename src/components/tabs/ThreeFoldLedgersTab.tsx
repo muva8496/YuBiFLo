@@ -34,10 +34,12 @@ export default function ThreeFoldLedgersTab({ state, onPaySupplier }: ThreeFoldL
 
   const [activeTab, setActiveTab] = useState<"P" | "R" | "N">("P");
   
-  // Selected Supplier for Individual Sub-Ledger (e.g. "Jeremiah_bread")
+  const isCleanShell = Boolean(state.is_skeleton);
+
+  // Selected Supplier for Individual Sub-Ledger (only use real suppliers on clean/eatery shells)
   const defaultSupplierName = suppliers.length > 0 
     ? suppliers[0].name 
-    : (receiptsArchive.length > 0 ? receiptsArchive[0].supplierName : "Jeremiah_bread");
+    : (receiptsArchive.length > 0 ? receiptsArchive[0].supplierName : (isCleanShell ? "" : "Jeremiah_bread"));
   const [selectedSupplierName, setSelectedSupplierName] = useState<string>(defaultSupplierName);
   const [payAmount, setPayAmount] = useState<string>("");
   const [payChannel, setPayChannel] = useState<"CASH_DRAWER" | "MPESA_TILL" | "NATIONAL_ID_DEPOSIT">("CASH_DRAWER");
@@ -48,25 +50,25 @@ export default function ThreeFoldLedgersTab({ state, onPaySupplier }: ThreeFoldL
 
   // Supplier accounts calculation
   const allSupplierNames = Array.from(new Set([
-    "Jeremiah_bread",
+    ...(!isCleanShell ? ["Jeremiah_bread"] : []),
     ...suppliers.map((s) => s.name),
     ...receiptsArchive.map((r) => r.supplierName)
-  ]));
+  ])).filter(Boolean);
 
   // Selected supplier profile & ledger entries
   const currentSupplierProfile = suppliers.find(
     (s) => s.name.toLowerCase().trim() === selectedSupplierName.toLowerCase().trim()
   ) || {
     id: `supp_${selectedSupplierName.toLowerCase().replace(/[^a-z0-9]/g, "_")}`,
-    name: selectedSupplierName,
-    company: selectedSupplierName,
-    phone: "0722 000 111",
-    national_id: "ID-29481023",
-    category: "Wholesale Bakery",
-    total_orders_cost: 1132,
-    last_delivery_date: "2026-11-11",
+    name: selectedSupplierName || "No Supplier Selected",
+    company: selectedSupplierName || "Unassigned",
+    phone: isCleanShell ? "Pending KYC" : "0722 000 111",
+    national_id: isCleanShell ? "Pending" : "ID-29481023",
+    category: "Foodstuff & Bread Wholesale",
+    total_orders_cost: 0,
+    last_delivery_date: "Pending",
     payment_preference: "CASH_DRAWER" as const,
-    supplied_items: ["Supa Loaf 400gm White", "Supa Loaf 400gm Brown", "Scones 6-Pack"]
+    supplied_items: []
   };
 
   // Supplies delivered by this supplier
@@ -74,8 +76,8 @@ export default function ThreeFoldLedgersTab({ state, onPaySupplier }: ThreeFoldL
     (r) => r.supplierName.toLowerCase().trim() === selectedSupplierName.toLowerCase().trim()
   );
 
-  // If Jeremiah_bread has no receipts in archive yet, provide sample delivery lines
-  const deliveredBatches = supplierReceipts.length > 0 ? supplierReceipts : [
+  // If clean shell has no receipts yet, keep empty rather than injecting sample lines
+  const deliveredBatches = supplierReceipts.length > 0 || isCleanShell ? supplierReceipts : [
     {
       id: "rcpt_jb_sample_1",
       receiptNumber: "JB-101",

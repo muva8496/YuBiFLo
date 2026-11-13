@@ -6,6 +6,7 @@ import {
   Users, BookOpen, Layers, Truck, Camera, Sparkles, ArrowRight, Wallet, Plus, Home, Car, Coffee, UserMinus
 } from "lucide-react";
 import { AlacioMasterState, PayoutOrDrawing } from "../../types/alacio";
+import { isEateryBusinessState, resolvePaymentChannels } from "../../services/alacioStorage";
 import { LaunchpadProgress } from "./LaunchpadTab";
 
 interface SaasDashboardTabProps {
@@ -87,18 +88,19 @@ export default function SaasDashboardTab({
   const hour = now.getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  // Check if active business is Alacio Mini shop (client owned by Rose, managed by Moses)
+  // Check if active business is Alacio Mini shop vs Open Eatery shell vs generic business
   const isAlacioShop = 
     (businessName && businessName.toLowerCase().includes("alacio")) ||
     (state.merchant_name && state.merchant_name.toLowerCase().includes("alacio"));
+  const isEateryShell = !isDemo && isEateryBusinessState(state);
 
   const firstName = isDemo
     ? "Musa"
-    : (proprietorName || (isAlacioShop ? "Rose" : (userName && userName !== "Trader" && userName !== "Alacio" ? userName.trim().split(" ")[0] : "Moses")));
+    : (proprietorName || state.proprietor_name || (isAlacioShop ? "Rose" : (userName && userName !== "Trader" && userName !== "Alacio" ? userName.trim().split(" ")[0] : "Owner")));
 
   const merchantDisplayName = isDemo
     ? "Duka Space (Demo Sandbox)"
-    : (businessName || state.merchant_name || (isAlacioShop ? "Alacio Mini shop" : "Mukangai Wholesalers & Supplies"));
+    : (businessName || state.merchant_name || (isAlacioShop ? "Alacio Mini shop" : "My Business"));
 
   const todayIso = now.toISOString().slice(0, 10); // YYYY-MM-DD (e.g. 2026-10-17)
   const currentMonthPrefix = todayIso.slice(0, 7); // YYYY-MM (e.g. 2026-10)
@@ -173,21 +175,34 @@ export default function SaasDashboardTab({
   let wagesAndLaborAmt = 0;
   let miscAndPermitsAmt = 0;
   let supplierPayoutsAmt = 0;
+  let eateryKitchenSuppliesAmt = 0;
 
   filteredPayouts.forEach(p => {
-    const amt = safeNum(p.amount, p.type === "SUPPLIER_PAYOUT" ? 4160 : 0, 5_000_000);
+    const amt = safeNum(p.amount, 0, 5_000_000);
     const cat = p.expense_category;
     const notesLower = (p.notes || "").toLowerCase();
 
     if (p.type === "SUPPLIER_PAYOUT") {
       supplierPayoutsAmt += amt;
+    } else if (
+      cat === "FOODSTUFF" ||
+      cat === "VIUNGO_SPICES" ||
+      cat === "COOKING_FUEL" ||
+      notesLower.includes("[foodstuff]") ||
+      notesLower.includes("[viungo]") ||
+      notesLower.includes("[cooking fuel]") ||
+      notesLower.includes("viungo") ||
+      notesLower.includes("makaa") ||
+      notesLower.includes("charcoal")
+    ) {
+      eateryKitchenSuppliesAmt += amt;
     } else if (p.type === "OWNER_DRAWING" || cat === "PERSONAL_WITHDRAWAL" || notesLower.includes("[personal withdrawal]")) {
       personalWithdrawalsAmt += amt;
     } else if (cat === "RENT" || cat === "UTILITIES" || notesLower.includes("[rent]") || notesLower.includes("[utilities]") || notesLower.includes("rent") || notesLower.includes("kplc")) {
       rentAndUtilitiesAmt += amt;
     } else if (cat === "TRAVEL" || notesLower.includes("[travel]") || notesLower.includes("boda") || notesLower.includes("fare") || notesLower.includes("transport")) {
       travelAndTransportAmt += amt;
-    } else if (cat === "WAGES" || notesLower.includes("[wages]") || notesLower.includes("wage") || notesLower.includes("casual") || notesLower.includes("payroll")) {
+    } else if (cat === "WAGES" || notesLower.includes("[wages]") || notesLower.includes("wage") || notesLower.includes("salary") || notesLower.includes("casual") || notesLower.includes("payroll")) {
       wagesAndLaborAmt += amt;
     } else {
       miscAndPermitsAmt += amt;
@@ -195,18 +210,29 @@ export default function SaasDashboardTab({
   });
 
   // Include approved receipt purchases if not already duplicated in supplier payouts, or active stock cost if no supplier payouts yet
-  const receiptsTotalCost = filteredReceipts.reduce((acc, r) => acc + safeNum(r.totalCost, 4160, 5_000_000), 0);
-  const effectiveStockPurchasesAmt = Math.max(supplierPayoutsAmt, receiptsTotalCost, (!isDemo && supplierPayoutsAmt === 0 && receiptsTotalCost === 0 ? totalStockCost : 0));
+  const receiptsTotalCost = filteredReceipts.reduce((acc, r) => acc + safeNum(r.totalCost, 0, 5_000_000), 0);
+  const effectiveStockPurchasesAmt =
+    Math.max(supplierPayoutsAmt, receiptsTotalCost, (!isDemo && supplierPayoutsAmt === 0 && receiptsTotalCost === 0 ? totalStockCost : 0)) +
+    eateryKitchenSuppliesAmt;
   const ownerExpensesTotalAmt = rentAndUtilitiesAmt + personalWithdrawalsAmt + travelAndTransportAmt + miscAndPermitsAmt;
 
-  const realRawSegments = [
-    { id: 1, label: "Stock & Restock", rawAmount: effectiveStockPurchasesAmt, color: "#EA580C", hasAlert: false, isHatched: false },
-    { id: 2, label: "Owner Expenses (Rent, Misc, Travel)", rawAmount: rentAndUtilitiesAmt + travelAndTransportAmt + miscAndPermitsAmt, color: "#6366F1", hasAlert: false, isHatched: false },
-    { id: 3, label: "Personal Withdrawals", rawAmount: personalWithdrawalsAmt, color: "#F59E0B", hasAlert: personalWithdrawalsAmt > 5000, isHatched: false },
-    { id: 4, label: "Shop Rent & Utilities", rawAmount: rentAndUtilitiesAmt, color: "#8B5CF6", hasAlert: false, isHatched: false },
-    { id: 5, label: "Wages & Labor", rawAmount: wagesAndLaborAmt, color: "#3B82F6", hasAlert: false, isHatched: false },
-    { id: 6, label: "Travel & Misc Upkeep", rawAmount: travelAndTransportAmt + miscAndPermitsAmt, color: "#94A3B8", hasAlert: false, isHatched: true }
-  ];
+  const realRawSegments = isEateryShell
+    ? [
+        { id: 1, label: "Foodstuff, Viungo & Fuel", rawAmount: effectiveStockPurchasesAmt, color: "#EA580C", hasAlert: false, isHatched: false },
+        { id: 2, label: "Support Staff Wages (1–2)", rawAmount: wagesAndLaborAmt, color: "#3B82F6", hasAlert: false, isHatched: false },
+        { id: 3, label: "Stall Rent & Utilities", rawAmount: rentAndUtilitiesAmt, color: "#8B5CF6", hasAlert: false, isHatched: false },
+        { id: 4, label: "Owner Drawings", rawAmount: personalWithdrawalsAmt, color: "#F59E0B", hasAlert: personalWithdrawalsAmt > 5000, isHatched: false },
+        { id: 5, label: "Transport & Market Runs", rawAmount: travelAndTransportAmt, color: "#6366F1", hasAlert: false, isHatched: false },
+        { id: 6, label: "Misc & Packaging", rawAmount: miscAndPermitsAmt, color: "#94A3B8", hasAlert: false, isHatched: true }
+      ]
+    : [
+        { id: 1, label: "Stock & Restock", rawAmount: effectiveStockPurchasesAmt, color: "#EA580C", hasAlert: false, isHatched: false },
+        { id: 2, label: "Owner Expenses (Rent, Misc, Travel)", rawAmount: rentAndUtilitiesAmt + travelAndTransportAmt + miscAndPermitsAmt, color: "#6366F1", hasAlert: false, isHatched: false },
+        { id: 3, label: "Personal Withdrawals", rawAmount: personalWithdrawalsAmt, color: "#F59E0B", hasAlert: personalWithdrawalsAmt > 5000, isHatched: false },
+        { id: 4, label: "Shop Rent & Utilities", rawAmount: rentAndUtilitiesAmt, color: "#8B5CF6", hasAlert: false, isHatched: false },
+        { id: 5, label: "Wages & Labor", rawAmount: wagesAndLaborAmt, color: "#3B82F6", hasAlert: false, isHatched: false },
+        { id: 6, label: "Travel & Misc Upkeep", rawAmount: travelAndTransportAmt + miscAndPermitsAmt, color: "#94A3B8", hasAlert: false, isHatched: true }
+      ];
 
   const totalRealExpensesBreakdown = effectiveStockPurchasesAmt + ownerExpensesTotalAmt + wagesAndLaborAmt;
 
@@ -424,10 +450,15 @@ export default function SaasDashboardTab({
               <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
               Client Retail Duka &bull; Proprietor: <strong>Rose</strong> &bull; Managed by <strong>Moses</strong>
             </span>
+          ) : isEateryShell ? (
+            <span className="text-[11px] font-medium bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+              Open Eatery &amp; Kiosk Shell &bull; <strong>{merchantDisplayName}</strong> &bull; Fast Cash &amp; Mobile Money
+            </span>
           ) : (
             <span className="text-[11px] font-medium bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 shadow-2xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-              Enterprise Workspace &bull; Owner: <strong>Moses Mukangai</strong>
+              {state.client_type || "Business Workspace"} &bull; {merchantDisplayName}
             </span>
           )}
         </div>
@@ -936,111 +967,103 @@ export default function SaasDashboardTab({
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 pt-1">
         
-        {/* CARD 3: CONNECTED ACCOUNTS (LIVE CLIENT CHANNELS) */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base sm:text-lg font-semibold text-slate-900">
-                Connected accounts &amp; till channels (3)
-              </h3>
-              <p className="text-[11px] text-slate-500">
-                Live liquidity balances from Dawn Lock &amp; counter transactions
-              </p>
-            </div>
-            <button 
-              onClick={() => onNavigateTab("dawn_lock")}
-              className="px-3 py-1 rounded-full border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-semibold transition cursor-pointer"
-            >
-              Adjust Float
-            </button>
-          </div>
+        {/* CARD 3: CONNECTED ACCOUNTS (DYNAMIC CONFIGURED PAYMENT CHANNELS) */}
+        {(() => {
+          const activeChannels = isDemo
+            ? [
+                { id: "demo_cash", label: "Physical Cash Drawer / Counter Till", shortCode: "CSH", category: "CASH" as const, subType: "CASH_DRAWER" as const, balance: liveCashDrawer, enabled: true },
+                { id: "demo_mpesa", label: "Safaricom M-Pesa Till / Float", shortCode: "M-P", category: "MOBILE_MONEY" as const, subType: "MPESA_TILL" as const, balance: liveMpesaFloat, enabled: true },
+                { id: "demo_bank", label: "Equity Bank Paybill / Operating Account", shortCode: "BNK", category: "BANK" as const, subType: "EQUITEL" as const, balance: liveBankEquitel, enabled: true }
+              ]
+            : resolvePaymentChannels(state);
 
-          <div className="space-y-2.5">
-            {/* ACCOUNT 1: PHYSICAL CASH DRAWER */}
-            <div
-              onClick={() => onNavigateTab("dawn_lock")}
-              className="p-3 bg-slate-50/80 hover:bg-slate-100/80 rounded-xl border border-slate-200/70 flex items-center justify-between transition cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-xs font-mono">
-                  CSH
-                </div>
+          const subTypeLabels: Record<string, string> = {
+            CASH_DRAWER: "Physical Counter Cash",
+            MPESA_TILL: "M-Pesa Buy Goods Till",
+            PAYBILL: "M-Pesa Paybill",
+            POCHI_LA_BIASHARA: "Pochi la Biashara",
+            SEND_MONEY: "M-Pesa Send Money",
+            EQUITEL: "Bank Paybill Account",
+            BANK_TRANSFER: "Bank Transfer Account"
+          };
+
+          return (
+            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-4">
+              <div className="flex items-center justify-between gap-2">
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900">
-                    Physical Cash Drawer / Counter Till
-                  </h4>
+                  <h3 className="text-base sm:text-lg font-semibold text-slate-900">
+                    Payment channels &amp; liquidity ({activeChannels.length})
+                  </h3>
                   <p className="text-[11px] text-slate-500">
-                    Counter Cash &bull; Updated with Cash Sales &amp; Cash Expenses
+                    {isEateryShell
+                      ? "Cash portfolio + Mobile Money (Pochi / Send Money / Paybill / Till)"
+                      : "Live balances synced across Cash, Mobile Money & Bank channels"}
                   </p>
                 </div>
+                <button
+                  onClick={() => onNavigateTab("dawn_lock")}
+                  className="px-3 py-1 rounded-full border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-semibold transition cursor-pointer shrink-0"
+                >
+                  Configure &amp; Lock
+                </button>
               </div>
-              <div className="text-right font-mono">
-                <span className="text-sm font-bold text-slate-900">
-                  {currency} {liveCashDrawer.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                </span>
-                <span className="text-[10px] text-amber-700 font-semibold block">
-                  Live Drawer Cash
-                </span>
-              </div>
-            </div>
 
-            {/* ACCOUNT 2: M-PESA TILL */}
-            <div
-              onClick={() => onNavigateTab("dawn_lock")}
-              className="p-3 bg-slate-50/80 hover:bg-slate-100/80 rounded-xl border border-slate-200/70 flex items-center justify-between transition cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs font-mono">
-                  M
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900">
-                    Safaricom M-Pesa Till / Float
-                  </h4>
-                  <p className="text-[11px] text-slate-500">
-                    Buy Goods &amp; Mobile Money &bull; Live Digital Float
-                  </p>
-                </div>
-              </div>
-              <div className="text-right font-mono">
-                <span className="text-sm font-bold text-slate-900">
-                  {currency} {liveMpesaFloat.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                </span>
-                <span className="text-[10px] text-emerald-600 font-semibold block">
-                  Active Float
-                </span>
-              </div>
-            </div>
+              <div className="space-y-2.5">
+                {activeChannels.map((ch) => {
+                  const isCash = ch.category === "CASH";
+                  const isBank = ch.category === "BANK";
+                  const badgeCode = isCash ? "CSH" : isBank ? "BNK" : ch.subType === "POCHI_LA_BIASHARA" ? "PCH" : "M-P";
+                  const badgeClass = isCash
+                    ? "bg-amber-100 text-amber-800"
+                    : isBank
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-emerald-100 text-emerald-700";
+                  const statusClass = isCash
+                    ? "text-amber-700"
+                    : isBank
+                    ? "text-blue-600"
+                    : "text-emerald-600";
+                  const statusText = isCash
+                    ? "Cash Portfolio"
+                    : isBank
+                    ? (latestBookend ? `Dawn Lock: ${latestBookend.date}` : "Bank Reserve")
+                    : "Mobile Money Float";
 
-            {/* ACCOUNT 3: BANK PAYBILL / EQUITEL */}
-            <div
-              onClick={() => onNavigateTab("dawn_lock")}
-              className="p-3 bg-slate-50/80 hover:bg-slate-100/80 rounded-xl border border-slate-200/70 flex items-center justify-between transition cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs font-mono">
-                  BNK
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900">
-                    Equity Bank Paybill / Operating Account
-                  </h4>
-                  <p className="text-[11px] text-slate-500">
-                    {latestBookend ? `Dawn Lock Date: ${latestBookend.date}` : "Operating Bank Reserve"}
-                  </p>
-                </div>
-              </div>
-              <div className="text-right font-mono">
-                <span className="text-sm font-bold text-slate-900">
-                  {currency} {liveBankEquitel.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                </span>
-                <span className="text-[10px] text-blue-600 font-semibold block">
-                  Dawn Locked
-                </span>
+                  return (
+                    <div
+                      key={ch.id}
+                      onClick={() => onNavigateTab("dawn_lock")}
+                      className="p-3 bg-slate-50/80 hover:bg-slate-100/80 rounded-xl border border-slate-200/70 flex items-center justify-between transition cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-9 h-9 rounded-xl ${badgeClass} flex items-center justify-center font-bold text-xs font-mono shrink-0`}>
+                          {badgeCode}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-slate-900 truncate">
+                            {ch.label}
+                          </h4>
+                          <p className="text-[11px] text-slate-500 truncate">
+                            {subTypeLabels[ch.subType] || ch.subType}
+                            {ch.accountRef ? ` • ${ch.accountRef}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right font-mono shrink-0 pl-2">
+                        <span className="text-sm font-bold text-slate-900">
+                          {currency} {safeNum(ch.balance, 0, 50_000_000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                        </span>
+                        <span className={`text-[10px] ${statusClass} font-semibold block`}>
+                          {statusText}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* CARD 4: PROFIT & LOSS (REAL CLIENT DATA) */}
         <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">

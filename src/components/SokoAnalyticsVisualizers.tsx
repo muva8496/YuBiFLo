@@ -231,7 +231,7 @@ export const SokoAnalyticsVisualizers: React.FC<SokoAnalyticsVisualizersProps> =
 
   // 8. Category Gross Margin Contribution
   const categoryMarginData = useMemo(() => {
-    const categories = ["Dairy", "Flour", "Oil", "Hygiene", "Bakery", "Spices"];
+    const categories = ["Dairy", "Flour", "Oil", "Hygiene", "Bread & Snacks", "Spices"];
     return categories.map((cat) => {
       const catItems = items.filter((i) => i.category.toLowerCase().includes(cat.toLowerCase()));
       const avgMargin = catItems.length > 0

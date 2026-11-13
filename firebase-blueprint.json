@@ -2,18 +2,21 @@
   "entities": {
     "Workspace": {
       "title": "Workspace",
-      "description": "Tenant business workspace (e.g. Alacio Mini Shop)",
+      "description": "Tenant business workspace or encrypted user account directory (e.g. Alacio Mini shop)",
       "type": "object",
       "properties": {
         "id": { "type": "string", "maxLength": 128 },
         "business_name": { "type": "string", "maxLength": 100 },
-        "blueprint_type": { "type": "string", "maxLength": 50 },
-        "currency": { "type": "string", "maxLength": 10 },
-        "owner_id": { "type": "string", "maxLength": 128 },
-        "created_at": { "type": "string" },
-        "updated_at": { "type": "string" }
+        "client_type": { "type": "string", "maxLength": 80 },
+        "account_id": { "type": "string", "maxLength": 80 },
+        "record_type": { "type": "string", "maxLength": 50 },
+        "record_score": { "type": "number" },
+        "schema_version": { "type": "number" },
+        "e2ee_protected": { "type": "boolean" },
+        "e2ee_vault": { "type": "object" },
+        "last_updated": { "type": "string" }
       },
-      "required": ["id", "business_name", "blueprint_type", "currency"]
+      "required": ["id"]
     },
     "InventoryItem": {
       "title": "InventoryItem",

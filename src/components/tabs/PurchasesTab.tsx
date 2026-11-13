@@ -27,6 +27,7 @@ import {
   getSupplyUnitMultiplier,
   deriveUnitWholesaleCost
 } from "../../services/bulkConversionEngine";
+import { isEateryBusinessState } from "../../services/alacioStorage";
 
 export interface PurchaseItemLine {
   id: string;
@@ -98,6 +99,8 @@ export default function PurchasesTab({
   onUpdateInventoryItem
 }: PurchasesTabProps) {
   const { currency, inventory = [], suppliers = [], payouts = [], restockCards = [], receiptsArchive = [] } = state;
+  const isCleanShell = Boolean(state.is_skeleton);
+  const isEateryShell = isEateryBusinessState(state);
   const [showAllRestockCards, setShowAllRestockCards] = useState<boolean>(false);
   const [activeSubSection, setActiveSubSection] = useState<"ALL" | "EXPENSES_ONLY">("ALL");
 
@@ -127,16 +130,20 @@ export default function PurchasesTab({
   // Purchase Builder State (Lot of Goods)
   const [isAddingPurchase, setIsAddingPurchase] = useState(false);
   const [selectedSupplierName, setSelectedSupplierName] = useState(
-    initialSupplier || (suppliers[0]?.name || "Jahdithma Wholesalers")
+    initialSupplier || (suppliers[0]?.name || (isCleanShell || isEateryShell ? "" : "Jahdithma Wholesalers"))
   );
   const supplierDropdownRef = useRef<HTMLDivElement>(null);
   const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
   const [supplierSearchQuery, setSupplierSearchQuery] = useState("");
-  const [supplierSelectMode, setSupplierSelectMode] = useState<"dropdown" | "type">("dropdown");
+  const [supplierSelectMode, setSupplierSelectMode] = useState<"dropdown" | "type">(
+    suppliers.length === 0 ? "type" : "dropdown"
+  );
   const [isReconExpanded, setIsReconExpanded] = useState<boolean>(() => restockCards.some(c => c.status === "PENDING_AUTHORIZATION"));
   const [deliveryNoteNumber, setDeliveryNoteNumber] = useState(`DN-${Math.floor(1000 + Math.random() * 9000)}`);
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [paymentChannel, setPaymentChannel] = useState<"CASH" | "MPESA" | "NATIONAL_ID_DEPOSIT" | "SUPPLIER_CREDIT">("NATIONAL_ID_DEPOSIT");
+  const [paymentChannel, setPaymentChannel] = useState<"CASH" | "MPESA" | "NATIONAL_ID_DEPOSIT" | "SUPPLIER_CREDIT">(
+    isEateryShell || isCleanShell ? "CASH" : "NATIONAL_ID_DEPOSIT"
+  );
   const [notes, setNotes] = useState("");
   const [attachedReceiptUrl, setAttachedReceiptUrl] = useState<string | null>(null);
 
@@ -156,38 +163,53 @@ export default function PurchasesTab({
   }, []);
 
   // Multiple item lines in a lot of goods (Suppliers supply 1 to many goods)
-  const [itemLines, setItemLines] = useState<PurchaseItemLine[]>([
-    {
-      id: "line_ngano",
-      itemName: "Ngano Swan 2kg",
-      category: "Flour & Cereals",
-      quantity: 1,
-      unit: "Bale (12pkts)",
-      unitCost: 173.33,
-      retailPrice: 200,
-      totalCost: 2080
-    },
-    {
-      id: "line_1",
-      itemName: "Brookside Fresh Milk 500ml",
-      category: "Dairy & Chilled",
-      quantity: 2,
-      unit: "Crate (24pkts)",
-      unitCost: 55,
-      retailPrice: 65,
-      totalCost: 2640
-    },
-    {
-      id: "line_2",
-      itemName: "Brookside Lala / Mala 500ml",
-      category: "Dairy & Chilled",
-      quantity: 1,
-      unit: "Crate (24pkts)",
-      unitCost: 65,
-      retailPrice: 80,
-      totalCost: 1560
-    }
-  ]);
+  const [itemLines, setItemLines] = useState<PurchaseItemLine[]>(() =>
+    isCleanShell || isEateryShell
+      ? [
+          {
+            id: `line_${Date.now()}`,
+            itemName: "",
+            category: isEateryShell ? "Foodstuff & Viungo" : "General Goods",
+            quantity: 1,
+            unit: isEateryShell ? "Pcs / Kg" : "Bale (12pkts)",
+            unitCost: 0,
+            retailPrice: 0,
+            totalCost: 0
+          }
+        ]
+      : [
+          {
+            id: "line_ngano",
+            itemName: "Ngano Swan 2kg",
+            category: "Flour & Cereals",
+            quantity: 1,
+            unit: "Bale (12pkts)",
+            unitCost: 173.33,
+            retailPrice: 200,
+            totalCost: 2080
+          },
+          {
+            id: "line_1",
+            itemName: "Brookside Fresh Milk 500ml",
+            category: "Dairy & Chilled",
+            quantity: 2,
+            unit: "Crate (24pkts)",
+            unitCost: 55,
+            retailPrice: 65,
+            totalCost: 2640
+          },
+          {
+            id: "line_2",
+            itemName: "Brookside Lala / Mala 500ml",
+            category: "Dairy & Chilled",
+            quantity: 1,
+            unit: "Crate (24pkts)",
+            unitCost: 65,
+            retailPrice: 80,
+            totalCost: 1560
+          }
+        ]
+  );
 
   // Selected supplier object lookup
   const currentSupplier = suppliers.find(
@@ -2854,10 +2876,10 @@ export default function PurchasesTab({
                     onChange={(e) => setPaymentChannel(e.target.value as any)}
                     className="bg-white border border-emerald-300 rounded-lg p-1 text-xs text-slate-800 font-medium"
                   >
-                    <option value="NATIONAL_ID_DEPOSIT">🏦 Agency Bank OTC via National ID</option>
-                    <option value="MPESA">📱 M-Pesa Buy Goods / Till</option>
-                    <option value="CASH">💵 Cash Drawer Outflow</option>
-                    <option value="SUPPLIER_CREDIT">📜 Supplier Credit (Pay Later)</option>
+                    <option value="CASH">Cash Portfolio Outflow</option>
+                    <option value="MPESA">Mobile Money (M-Pesa / Pochi / Send Money / Paybill)</option>
+                    <option value="NATIONAL_ID_DEPOSIT">Agency Bank OTC via National ID</option>
+                    <option value="SUPPLIER_CREDIT">Supplier Credit (Pay Later)</option>
                   </select>
                 </div>
               </div>
@@ -2946,6 +2968,7 @@ export default function PurchasesTab({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  {!isCleanShell && !isEateryShell && (
                   <button
                     type="button"
                     onClick={() => {
@@ -2999,6 +3022,7 @@ export default function PurchasesTab({
                   >
                     Sample Cargo
                   </button>
+                  )}
 
                   <button
                     type="button"

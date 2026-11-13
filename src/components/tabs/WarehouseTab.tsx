@@ -121,7 +121,7 @@ export default function WarehouseTab({
   const totalUnits = warehouse.reduce((acc, b) => acc + b.bulk_quantity, 0);
   const lowBufferCount = warehouse.filter((b) => b.bulk_quantity <= b.reorder_threshold).length;
 
-  const categories = ["All", "Flour", "Dairy", "Cooking & Oils", "Poultry", "Sugar", "Bakery"];
+  const categories = ["All", "Flour", "Dairy", "Cooking & Oils", "Poultry", "Sugar", "Bread & Snacks"];
 
   const filteredBatches = warehouse.filter((b) => {
     return selectedCategory === "All" || b.category.toLowerCase() === selectedCategory.toLowerCase();

@@ -5,7 +5,7 @@ import {
   X, Menu, AlertCircle, Mic, MicOff, Volume2, Store,
   Pause, Play, Shield, HelpCircle, Sparkles, ChevronRight,
   TrendingUp, Clock, Package, Truck, Layers, Wrench, CheckCircle2,
-  FileText
+  FileText, Utensils
 } from "lucide-react";
 import PrdViewerModal from "./PrdViewerModal";
 import LoopingDashboardDemo from "./LoopingDashboardDemo";
@@ -197,7 +197,7 @@ export default function YuBiFloLandingPage({
   const [waitlistSuccess, setWaitlistSuccess] = useState(false);
 
   // Business Type Tabs: "See your kind of business"
-  const [selectedBusinessType, setSelectedBusinessType] = useState<"duka" | "hardware" | "wholesale">("duka");
+  const [selectedBusinessType, setSelectedBusinessType] = useState<"duka" | "eatery" | "hardware" | "wholesale">("duka");
 
   // VCR Live Feed State (Counting up and heard sale stream)
   const [vcrIsPaused, setVcrIsPaused] = useState(false);
@@ -979,11 +979,11 @@ export default function YuBiFloLandingPage({
 
           {/* TAB BUTTONS */}
           <div className="flex justify-center mb-8">
-            <div className="inline-flex p-1.5 bg-white border border-[#e4e4e7] rounded-2xl shadow-xs gap-1.5">
+            <div className="inline-flex flex-wrap justify-center p-1.5 bg-white border border-[#e4e4e7] rounded-2xl shadow-xs gap-1.5">
               
               <button
                 onClick={() => setSelectedBusinessType("duka")}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                   selectedBusinessType === "duka"
                     ? "bg-[#000000] text-white shadow-sm"
                     : "text-[#555555] hover:text-[#000000]"
@@ -999,8 +999,25 @@ export default function YuBiFloLandingPage({
               </button>
 
               <button
+                onClick={() => setSelectedBusinessType("eatery")}
+                className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  selectedBusinessType === "eatery"
+                    ? "bg-[#000000] text-white shadow-sm"
+                    : "text-[#555555] hover:text-[#000000]"
+                }`}
+              >
+                <Utensils size={15} />
+                <span>Open Eatery &amp; Kiosk</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+                  selectedBusinessType === "eatery" ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                }`}>
+                  Available now
+                </span>
+              </button>
+
+              <button
                 onClick={() => setSelectedBusinessType("hardware")}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                   selectedBusinessType === "hardware"
                     ? "bg-[#000000] text-white shadow-sm"
                     : "text-[#555555] hover:text-[#000000]"
@@ -1017,7 +1034,7 @@ export default function YuBiFloLandingPage({
 
               <button
                 onClick={() => setSelectedBusinessType("wholesale")}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                   selectedBusinessType === "wholesale"
                     ? "bg-[#000000] text-white shadow-sm"
                     : "text-[#555555] hover:text-[#000000]"
@@ -1086,6 +1103,62 @@ export default function YuBiFloLandingPage({
                   <div className="text-[11px] text-[#666666]">Dawn drawer check</div>
                   <div className="text-2xl font-serif font-bold text-[#000000] mt-1">KSh 6,500</div>
                   <div className="text-[10px] text-[#000000]">05:57 AM baseline locked</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 1B: OPEN EATERY & ROADSIDE KIOSK LIVE SHELL */}
+          {selectedBusinessType === "eatery" && (
+            <div className="bg-white rounded-3xl border border-[#e4e4e7] p-6 sm:p-8 shadow-md space-y-6 animate-in fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e5e7eb] pb-4">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-xl font-serif font-bold text-[#000000]">
+                      Open Eatery &amp; Roadside Kiosk Shell
+                    </h3>
+                    <span className="text-[10px] font-mono uppercase tracking-wider bg-emerald-500/15 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded-full font-bold">
+                      CLEAN NON-PERSONALIZED SHELL
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#666666] mt-0.5">
+                    Built for roadside kiosks &amp; simple-structure eateries operating fast on cash &amp; mobile money turnover — zero counter delay.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (onOpenAuth) onOpenAuth("signup");
+                    else handleStartOnboarding("A");
+                  }}
+                  className="px-5 py-2 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs shadow-xs cursor-pointer shrink-0"
+                >
+                  Launch Open Eatery Shell
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-4 rounded-2xl bg-[#f9fafb] border border-[#e4e4e7]">
+                  <div className="text-[11px] font-bold text-[#666666]">1. Cash Portfolio</div>
+                  <div className="text-base font-serif font-bold text-[#000000] mt-1">Fast Counter Cash</div>
+                  <div className="text-[10px] text-[#555555] mt-1">Dawn cash lock &amp; instant change flow with zero queue delay</div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#f9fafb] border border-[#e4e4e7]">
+                  <div className="text-[11px] font-bold text-[#666666]">2. Mobile Money Channel</div>
+                  <div className="text-base font-serif font-bold text-[#000000] mt-1">Pochi / Send Money / Till</div>
+                  <div className="text-[10px] text-[#555555] mt-1">Configure Till, Paybill, Pochi la Biashara or Send Money</div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#FAF6EE] border border-[#EADBBD]">
+                  <div className="text-[11px] font-bold text-[#996515]">3. Supply Side</div>
+                  <div className="text-base font-serif font-bold text-[#996515] mt-1">Foodstuff, Viungo &amp; Fuel</div>
+                  <div className="text-[10px] text-[#996515] mt-1">Meat, unga, tomatoes, spices, cooking oil &amp; charcoal/LPG</div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#f9fafb] border border-[#e4e4e7]">
+                  <div className="text-[11px] font-bold text-[#666666]">4. Kitchen Support</div>
+                  <div className="text-base font-serif font-bold text-[#000000] mt-1">1&ndash;2 Staff &amp; Stall Rent</div>
+                  <div className="text-[10px] text-[#555555] mt-1">Helper daily wages &amp; structure rent tracked in one clean ledger</div>
                 </div>
               </div>
             </div>
@@ -1347,6 +1420,7 @@ export default function YuBiFloLandingPage({
               <div className="font-bold text-white uppercase tracking-wider text-[11px]">Business Apps</div>
               <ul className="space-y-1.5 text-slate-400">
                 <li><button onClick={() => { if (onLaunchDukaDemo) onLaunchDukaDemo(); else handleLaunchWorkspace(); }} className="hover:text-white transition cursor-pointer">Duka &amp; Retail (Available now)</button></li>
+                <li><button onClick={() => { if (onOpenAuth) onOpenAuth("signup"); else handleStartOnboarding("A"); }} className="hover:text-white transition cursor-pointer">Open Eatery &amp; Roadside Kiosk (Available now)</button></li>
                 <li><button onClick={() => setWaitlistModalApp("Hardware & Construction")} className="hover:text-white transition">Hardware (Coming next)</button></li>
                 <li><button onClick={() => setWaitlistModalApp("Wholesale & Distribution")} className="hover:text-white transition">Wholesale (Coming soon)</button></li>
               </ul>

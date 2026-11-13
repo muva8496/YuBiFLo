@@ -5,8 +5,8 @@ import {
   X, Check, RefreshCw, Volume2, HelpCircle, DollarSign,
   Smartphone, Database, Layers, ArrowLeft
 } from "lucide-react";
-import { AlacioMasterState, Blueprint } from "../types/alacio";
-import { PLATFORM_BLUEPRINTS } from "../services/alacioStorage";
+import { AlacioMasterState, Blueprint, PaymentChannelConfig, PaymentChannelSubType } from "../types/alacio";
+import { PLATFORM_BLUEPRINTS, getDefaultPaymentChannelsForBlueprint, isEateryBusinessType } from "../services/alacioStorage";
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -40,16 +40,19 @@ export default function OnboardingModal({
   const [selectedPath, setSelectedPath] = useState<"A" | "B" | null>(initialPath || null);
   const [currentStep, setCurrentStep] = useState<number>(1);
 
-  // Common Business Setup
-  const [selectedBlueprint, setSelectedBlueprint] = useState<Blueprint>(PLATFORM_BLUEPRINTS[0]);
-  const [businessName, setBusinessName] = useState<string>("Boma Star Mini Mart");
-  const [ownerName, setOwnerName] = useState<string>("Jane Muthoni");
-  const [location, setLocation] = useState<string>("Ruiru, Kiambu");
-  const [phone, setPhone] = useState<string>("0712 345 678");
+  // Common Business Setup (clean non-personalized defaults)
+  const [selectedBlueprint, setSelectedBlueprint] = useState<Blueprint>(
+    PLATFORM_BLUEPRINTS.find((b) => b.id === "open_eatery") || PLATFORM_BLUEPRINTS[0]
+  );
+  const [businessName, setBusinessName] = useState<string>("");
+  const [ownerName, setOwnerName] = useState<string>("");
+  const [location, setLocation] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
 
-  // Path A Specifics: Starting Balances & VCR
-  const [morningCashTill, setMorningCashTill] = useState<string>("3500");
-  const [morningMpesaFloat, setMorningMpesaFloat] = useState<string>("12000");
+  // Path A Specifics: Configurable Payment Channels & VCR
+  const [morningCashTill, setMorningCashTill] = useState<string>("0");
+  const [morningMpesaFloat, setMorningMpesaFloat] = useState<string>("0");
+  const [mobileSubType, setMobileSubType] = useState<PaymentChannelSubType>("POCHI_LA_BIASHARA");
   const [vcrConsentAgreed, setVcrConsentAgreed] = useState<boolean>(true);
   const [vcrTestSuccess, setVcrTestSuccess] = useState<boolean>(false);
 
@@ -137,15 +140,49 @@ export default function OnboardingModal({
 
   // Finalize Onboarding & Launch Dashboard
   const handleFinishAndLaunch = () => {
+    const cleanBiz = businessName.trim() || selectedBlueprint.name;
+    const cleanOwner = ownerName.trim() || "Owner";
+    const isEatery = isEateryBusinessType(selectedBlueprint.name) || selectedBlueprint.id === "open_eatery";
+
     if (selectedPath === "A") {
-      const cash = parseFloat(morningCashTill) || 3500;
-      const float = parseFloat(morningMpesaFloat) || 12000;
+      const cash = parseFloat(morningCashTill) || 0;
+      const mobile = parseFloat(morningMpesaFloat) || 0;
       const todayStr = new Date().toISOString().split("T")[0];
-      
+
+      const mobileLabelMap: Record<string, string> = {
+        POCHI_LA_BIASHARA: "Pochi la Biashara (Mobile Money)",
+        SEND_MONEY: "M-Pesa Send Money",
+        MPESA_TILL: "M-Pesa Buy Goods Till",
+        PAYBILL: "M-Pesa Paybill"
+      };
+
+      const baseChannels = getDefaultPaymentChannelsForBlueprint(selectedBlueprint.name);
+      const configuredChannels: PaymentChannelConfig[] = baseChannels.map((ch) => {
+        if (ch.category === "CASH") {
+          return { ...ch, balance: cash };
+        }
+        if (ch.category === "MOBILE_MONEY") {
+          return {
+            ...ch,
+            subType: mobileSubType,
+            label: mobileLabelMap[mobileSubType] || ch.label,
+            accountRef: phone.trim() || undefined,
+            balance: mobile
+          };
+        }
+        return ch;
+      });
+
       onCompleteOnboarding({
-        merchant_name: businessName,
+        merchant_name: cleanBiz,
+        proprietor_name: cleanOwner,
+        client_type: selectedBlueprint.name,
+        business_blueprint_id: selectedBlueprint.id,
+        is_skeleton: true,
+        paymentChannels: configuredChannels,
         cash_register_balance: cash,
-        mpesa_float_balance: float,
+        mpesa_float_balance: mobile,
+        bank_equitel_balance: 0,
         morning_bookends: [
           {
             id: `mb_${Date.now()}`,
@@ -154,22 +191,28 @@ export default function OnboardingModal({
             timestamp: new Date().toLocaleTimeString(),
             status: "LOCKED_DAWN",
             cash_float: cash,
-            mpesa_float: float,
+            mpesa_float: mobile,
             equitel_balance: 0,
-            total_liquidity: cash + float,
+            total_liquidity: cash + mobile,
             debtors_count: 0,
             total_customer_debt: 0,
-            opening_shelf_units: 140,
-            opening_shelf_value: 35000,
-            notes: "Initial Path A morning bookend"
+            opening_shelf_units: 0,
+            opening_shelf_value: 0,
+            notes: isEatery
+              ? "Open Eatery shell — Cash & Mobile Money opening float"
+              : "Initial Path A morning bookend"
           }
         ]
       });
     } else {
       // Path B State
       onCompleteOnboarding({
-        merchant_name: businessName,
-        clean_trading_days: 30 // Path B backfills 30 days of clean history! Unlocks forecasting!
+        merchant_name: cleanBiz,
+        proprietor_name: cleanOwner,
+        client_type: selectedBlueprint.name,
+        business_blueprint_id: selectedBlueprint.id,
+        is_skeleton: true,
+        clean_trading_days: 30
       });
     }
 
@@ -390,11 +433,12 @@ export default function OnboardingModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="text-slate-300 font-bold block mb-1">Business / Shop Name</label>
+                    <label className="text-slate-300 font-bold block mb-1">Business / Eatery Name</label>
                     <input 
                       type="text"
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
+                      placeholder="e.g. Mama Njeri Eatery, Corner Duka"
                       className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-[#FFD54F] focus:outline-none text-white font-medium"
                     />
                   </div>
@@ -404,6 +448,7 @@ export default function OnboardingModal({
                       type="text"
                       value={ownerName}
                       onChange={(e) => setOwnerName(e.target.value)}
+                      placeholder="Your name (owner)"
                       className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-[#FFD54F] focus:outline-none text-white font-medium"
                     />
                   </div>
@@ -413,15 +458,17 @@ export default function OnboardingModal({
                       type="text"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
+                      placeholder="e.g. Stage / Estate / Market"
                       className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-[#FFD54F] focus:outline-none text-white font-medium"
                     />
                   </div>
                   <div>
-                    <label className="text-slate-300 font-bold block mb-1">Safaricom / Till Phone</label>
+                    <label className="text-slate-300 font-bold block mb-1">Mobile Money Phone / Till / Paybill</label>
                     <input 
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Optional (Pochi / Send Money / Till)"
                       className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-[#FFD54F] focus:outline-none text-white font-medium"
                     />
                   </div>
@@ -454,7 +501,7 @@ export default function OnboardingModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
                     <span className="text-[10px] font-mono uppercase text-[#FFD54F] font-bold block">
-                      1. Drawer Till Cash (KES)
+                      1. Cash Portfolio Opening (KES)
                     </span>
                     <div className="relative">
                       <span className="absolute left-3 top-3 text-slate-500 font-bold text-xs">KES</span>
@@ -466,14 +513,26 @@ export default function OnboardingModal({
                       />
                     </div>
                     <p className="text-[11px] text-slate-400">
-                      Physical notes &amp; coins in the till at opening.
+                      Physical notes &amp; coins in your counter box or apron pocket (leave 0 to start clean).
                     </p>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-                    <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold block">
-                      2. M-Pesa Float Balance (KES)
-                    </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold block">
+                        2. Mobile Money Portfolio (KES)
+                      </span>
+                      <select
+                        value={mobileSubType}
+                        onChange={(e) => setMobileSubType(e.target.value as PaymentChannelSubType)}
+                        className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-0.5 text-[10px] font-semibold text-emerald-300"
+                      >
+                        <option value="POCHI_LA_BIASHARA">Pochi la Biashara</option>
+                        <option value="SEND_MONEY">Send Money</option>
+                        <option value="MPESA_TILL">M-Pesa Till</option>
+                        <option value="PAYBILL">Paybill</option>
+                      </select>
+                    </div>
                     <div className="relative">
                       <span className="absolute left-3 top-3 text-slate-500 font-bold text-xs">KES</span>
                       <input 
@@ -484,7 +543,7 @@ export default function OnboardingModal({
                       />
                     </div>
                     <p className="text-[11px] text-slate-400">
-                      Till / Buy Goods starting balance from morning SMS.
+                      Supports Pochi la Biashara, Send Money, M-Pesa Till, or Paybill (customizable anytime).
                     </p>
                   </div>
                 </div>

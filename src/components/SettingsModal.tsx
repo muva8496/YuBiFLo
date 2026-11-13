@@ -238,7 +238,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <option value="Agrovet">Agrovet</option>
                   <option value="Bar & Liquor Store">Bar & Liquor Store</option>
                   <option value="Wholesale & Retail">Wholesale & Retail</option>
-                  <option value="Bakery & Eatery">Bakery & Eatery</option>
+                  <option value="Open Eatery & Roadside Kiosk">Open Eatery & Roadside Kiosk</option>
                 </select>
               </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from "react";
+import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
 import { 
   Building2, Globe, Plus, ChevronDown, Copy, X, ArrowRight, Sparkles, 
   AlertTriangle, Layers, Database, BarChart3, BrainCircuit, Eye, 
@@ -22,16 +22,22 @@ import {
   RestockReconciliationCard,
   SavedReceiptRecord,
   SupplierBatchCard,
-  BatchTurnoverItem
+  BatchTurnoverItem,
+  PaymentChannelConfig
 } from "./types/alacio";
 import { 
   loadAlacioState, 
   saveAlacioState, 
+  syncWorkspaceWithCloud,
+  subscribeToWorkspaceCloud,
+  hasRealLocalSavedState,
   calculateKpis,
   createSkeletonBusinessState,
   restoreUserStateFromCloud,
   PLATFORM_BLUEPRINTS,
-  PROJECT_ALACIO_CASE_STUDY
+  PROJECT_ALACIO_CASE_STUDY,
+  resolvePaymentChannels,
+  syncLegacyBalancesFromChannels
 } from "./services/alacioStorage";
 import {
   getSupplyUnitMultiplier,
@@ -89,8 +95,59 @@ import {
   getUserAccounts,
   getActiveAccountId,
   setActiveAccountId,
-  createAccountForUser
+  createAccountForUser,
+  saveUserAccounts,
+  hasLocalSavedAccounts,
+  syncAccountDirectoryFromCloud,
+  saveAccountDirectoryToCloud
 } from "./services/accountManagementService";
+
+function applyDeltaToPaymentChannels(
+  prevState: AlacioMasterState,
+  deltas: { cashDelta?: number; mpesaDelta?: number; bankDelta?: number; specificChannelId?: string }
+): {
+  paymentChannels: PaymentChannelConfig[];
+  cash_register_balance: number;
+  mpesa_float_balance: number;
+  equitel_account_balance: number;
+} {
+  const baseChannels = resolvePaymentChannels(prevState).map((ch) => ({ ...ch }));
+  const round2 = (n: number) => Math.max(0, Math.round(n * 100) / 100);
+
+  if (deltas.specificChannelId) {
+    const idx = baseChannels.findIndex((c) => c.id === deltas.specificChannelId);
+    if (idx >= 0) {
+      const ch = baseChannels[idx];
+      const delta =
+        ch.category === "CASH"
+          ? (deltas.cashDelta || 0)
+          : ch.category === "BANK"
+          ? (deltas.bankDelta ?? deltas.mpesaDelta ?? deltas.cashDelta ?? 0)
+          : (deltas.mpesaDelta ?? deltas.cashDelta ?? 0);
+      baseChannels[idx] = { ...ch, balance: round2((Number(ch.balance) || 0) + delta) };
+      const synced = syncLegacyBalancesFromChannels(baseChannels);
+      return { paymentChannels: baseChannels, ...synced };
+    }
+  }
+
+  const applyCategoryDelta = (cat: "CASH" | "MOBILE_MONEY" | "BANK", delta: number) => {
+    if (!delta) return;
+    const idx = baseChannels.findIndex((c) => c.category === cat);
+    if (idx >= 0) {
+      baseChannels[idx] = {
+        ...baseChannels[idx],
+        balance: round2((Number(baseChannels[idx].balance) || 0) + delta)
+      };
+    }
+  };
+
+  if (deltas.cashDelta) applyCategoryDelta("CASH", deltas.cashDelta);
+  if (deltas.mpesaDelta) applyCategoryDelta("MOBILE_MONEY", deltas.mpesaDelta);
+  if (deltas.bankDelta) applyCategoryDelta("BANK", deltas.bankDelta);
+
+  const synced = syncLegacyBalancesFromChannels(baseChannels);
+  return { paymentChannels: baseChannels, ...synced };
+}
 
 function TabLoadingSkeleton() {
   return (
@@ -196,10 +253,90 @@ export default function App() {
   // Active state pointer: demoState when in demo, alacioState when in real workspace
   const currentMasterState = isDemoMode ? demoState : alacioState;
 
-  // Persist real state to multi-tier storage with account-isolation and zero-data-loss snapshots
+  // Cloud hydration guards: prevent untouched sample seed from overwriting Cloud Firestore before hydration
+  const cloudHydratedKeyRef = useRef<string | null>(null);
+  const hasUserEditedRef = useRef<boolean>(false);
+  const latestAlacioStateRef = useRef<AlacioMasterState>(alacioState);
+  latestAlacioStateRef.current = alacioState;
+
+  const effectiveOwnerEmail = (currentUser?.email || alacioState.user_email || "mosesmukangai75@gmail.com").trim().toLowerCase();
+
+  // Persist real state locally & mirror encrypted E2EE vault to Firestore once cloud-armed
   useEffect(() => {
-    saveAlacioState(alacioState, currentUser?.email, activeAccountId);
-  }, [alacioState, currentUser?.email, activeAccountId]);
+    const syncKey = `${effectiveOwnerEmail}::${activeAccountId}`;
+    const allowCloudWrite =
+      !isDemoMode &&
+      (cloudHydratedKeyRef.current === syncKey ||
+        hasUserEditedRef.current ||
+        hasRealLocalSavedState(effectiveOwnerEmail, activeAccountId));
+
+    saveAlacioState(alacioState, effectiveOwnerEmail, activeAccountId, {
+      skipCloud: !allowCloudWrite
+    });
+  }, [alacioState, effectiveOwnerEmail, activeAccountId, isDemoMode]);
+
+  // Twitter -> X Cross-Domain Cloud Hydration & Live Sync Effect (runs automatically on boot & account switch)
+  useEffect(() => {
+    let cancelled = false;
+    let unsubscribeSnapshot: (() => void) | undefined;
+    const syncKey = `${effectiveOwnerEmail}::${activeAccountId}`;
+
+    const runCloudSync = async () => {
+      try {
+        // 1. Sync user's business account directory & launchpad progress across domains
+        const dirResult = await syncAccountDirectoryFromCloud(effectiveOwnerEmail, realLaunchpadProgress);
+        if (cancelled) return;
+
+        if (dirResult.accounts && dirResult.accounts.length > 0) {
+          setAccounts(dirResult.accounts);
+        }
+        if (dirResult.launchpadProgress) {
+          setRealLaunchpadProgress((prev) => ({
+            ...prev,
+            ...(dirResult.launchpadProgress as unknown as Partial<LaunchpadProgress>)
+          }));
+        }
+
+        // 2. Sync active business workspace (pulls cloud on new domain OR pushes richer local data like 29 expenses & 26 receipts)
+        const hasRealLocal = hasRealLocalSavedState(effectiveOwnerEmail, activeAccountId);
+        const localCandidate = hasRealLocal ? latestAlacioStateRef.current : undefined;
+        const syncResult = await syncWorkspaceWithCloud(effectiveOwnerEmail, activeAccountId, localCandidate);
+
+        if (cancelled) return;
+        cloudHydratedKeyRef.current = syncKey;
+
+        if (syncResult.state && (syncResult.source === "cloud" || syncResult.source === "in_sync")) {
+          setAlacioState(syncResult.state);
+        }
+
+        // 3. Attach real-time cross-device/domain listener
+        unsubscribeSnapshot = subscribeToWorkspaceCloud(effectiveOwnerEmail, activeAccountId, (remoteState) => {
+          if (!cancelled) {
+            setAlacioState(remoteState);
+          }
+        });
+      } catch (err) {
+        console.warn("[YuBiFlo Cloud Boot] Operating in offline-first cache mode:", err);
+        cloudHydratedKeyRef.current = syncKey;
+      }
+    };
+
+    runCloudSync();
+
+    // Flush pending workspace changes immediately on tab close / domain navigation
+    const handlePageHide = () => {
+      if (!isDemoMode && (hasUserEditedRef.current || hasRealLocalSavedState(effectiveOwnerEmail, activeAccountId))) {
+        saveAlacioState(latestAlacioStateRef.current, effectiveOwnerEmail, activeAccountId, { immediate: true });
+      }
+    };
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      cancelled = true;
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, [effectiveOwnerEmail, activeAccountId]);
 
   // Persist demo state strictly to isolated sandbox storage
   useEffect(() => {
@@ -208,9 +345,17 @@ export default function App() {
     }
   }, [demoState, isDemoMode]);
 
-  // Persist real launchpad progress
+  // Persist real launchpad progress locally & in encrypted cloud directory
   useEffect(() => {
     localStorage.setItem("yubiflo_real_launchpad_progress", JSON.stringify(realLaunchpadProgress));
+    if (currentUser?.email) {
+      saveAccountDirectoryToCloud(
+        currentUser.email,
+        accounts,
+        activeAccountId,
+        realLaunchpadProgress as unknown as Record<string, boolean>
+      ).catch(() => {});
+    }
   }, [realLaunchpadProgress]);
 
   // Sync browser document title based on workspace mode
@@ -255,39 +400,64 @@ export default function App() {
   };
 
   const handleSwitchAccount = (accountId: string) => {
-    const email = currentUser?.email || "mosesmukangai75@gmail.com";
-    // 1. Persist current state before switching
-    saveAlacioState(alacioState, email, activeAccountId);
-    // 2. Set active account ID in storage and state
+    const email = effectiveOwnerEmail;
+    // 1. Flush current account state immediately before switching
+    saveAlacioState(alacioState, email, activeAccountId, { immediate: true });
+    // 2. Disarm hydration lock for incoming account so Cloud Sync inspects & merges cleanly
+    cloudHydratedKeyRef.current = null;
+    hasUserEditedRef.current = false;
+    // 3. Set active account ID in storage and state
     setActiveAccountId(email, accountId);
     setActiveAccountIdState(accountId);
-    // 3. Load target account state with zero-data-loss isolation
+    // 4. Load local cached target account state immediately while cloud sync effect runs
     const targetState = loadAlacioState(email, accountId);
+    targetState.user_email = email;
     (targetState as any).account_id = accountId;
     const targetAcc = accounts.find((a) => a.id === accountId);
-    if (targetAcc && (!targetState.merchant_name || targetState.merchant_name === "YuBiFlo Merchant")) {
+    if (targetAcc && (!targetState.merchant_name || targetState.merchant_name === "YuBiFlo Merchant" || targetState.merchant_name === "My Business Branch")) {
       targetState.merchant_name = targetAcc.businessName;
+      targetState.client_type = targetAcc.businessType;
     }
     setAlacioState(targetState);
   };
 
-  const handleCreateAccount = (businessName: string, businessType: string) => {
-    const email = currentUser?.email || "mosesmukangai75@gmail.com";
-    // 1. Persist current state
-    saveAlacioState(alacioState, email, activeAccountId);
-    // 2. Create new business account under the Gmail
-    const newAcc = createAccountForUser(email, businessName, businessType);
+  const handleCreateAccount = (
+    businessName: string,
+    businessType: string,
+    options?: {
+      proprietorName?: string;
+      paymentChannels?: PaymentChannelConfig[];
+      blueprintId?: string;
+    }
+  ) => {
+    const email = effectiveOwnerEmail;
+    const proprietor =
+      options?.proprietorName?.trim() ||
+      currentUser?.firstName ||
+      currentUser?.name?.split(" ")[0] ||
+      "Owner";
+    // 1. Flush current state immediately
+    saveAlacioState(alacioState, email, activeAccountId, { immediate: true });
+    // 2. Create new business account under Gmail (automatically syncs account directory to cloud)
+    const newAcc = createAccountForUser(email, businessName, businessType, "KSh", proprietor, "OWNER");
     const updatedAccounts = getUserAccounts(email);
     setAccounts(updatedAccounts);
     setActiveAccountIdState(newAcc.id);
-    // 3. Initialize fresh isolated skeleton state for this new shop
-    const freshState = createSkeletonBusinessState(businessName, businessType);
+    // 3. Initialize clean non-personalized shell for this new business & push immediately to Firestore
+    const freshState = createSkeletonBusinessState(businessName, businessType, {
+      proprietorName: proprietor,
+      paymentChannels: options?.paymentChannels,
+      blueprintId: options?.blueprintId
+    });
     freshState.user_email = email;
     (freshState as any).account_id = newAcc.id;
     freshState.merchant_name = businessName;
     freshState.client_type = businessType;
+    hasUserEditedRef.current = true;
+    cloudHydratedKeyRef.current = `${email}::${newAcc.id}`;
     setAlacioState(freshState);
-    saveAlacioState(freshState, email, newAcc.id);
+    saveAlacioState(freshState, email, newAcc.id, { immediate: true, forceCloud: true });
+    setActiveTab("launchpad");
   };
 
   const handleAuthSuccess = async (user: UserProfile) => {
@@ -296,47 +466,83 @@ export default function App() {
     setIsDemoMode(false);
     resetDemoSandbox();
 
-    // Refresh user accounts under this Gmail
-    const userAccs = getUserAccounts(user.email);
+    const cleanEmail = (user.email || "mosesmukangai75@gmail.com").trim().toLowerCase();
+    const hadLocalAccsBefore = hasLocalSavedAccounts(cleanEmail);
+
+    // 1. Sync multi-account directory & launchpad from Cloud Firestore first
+    let userAccs = getUserAccounts(cleanEmail);
+    let userAccId = getActiveAccountId(cleanEmail);
+    try {
+      const dirRes = await syncAccountDirectoryFromCloud(cleanEmail, realLaunchpadProgress);
+      userAccs = dirRes.accounts;
+      userAccId = dirRes.activeAccountId;
+      if (dirRes.launchpadProgress) {
+        setRealLaunchpadProgress((prev) => ({
+          ...prev,
+          ...(dirRes.launchpadProgress as unknown as Partial<LaunchpadProgress>)
+        }));
+      }
+    } catch {}
+
+    // If new non-Moses user just signed up with a chosen Business Name & Type, replace the generic placeholder account
+    const isGenericPlaceholder =
+      userAccs.length === 1 &&
+      userAccs[0].businessName === "My Business" &&
+      !hadLocalAccsBefore &&
+      user.businessName;
+    if (isGenericPlaceholder) {
+      const personalizedAcc: UserAccount = {
+        ...userAccs[0],
+        businessName: user.businessName,
+        businessType: user.businessType || "Retail / Duka",
+        proprietorName: user.firstName || user.name?.split(" ")[0] || "Owner",
+        lastAccessedAt: new Date().toISOString()
+      };
+      userAccs = [personalizedAcc];
+      userAccId = personalizedAcc.id;
+      saveUserAccounts(cleanEmail, userAccs);
+      setActiveAccountId(cleanEmail, userAccId);
+    }
+
     setAccounts(userAccs);
-    const userAccId = getActiveAccountId(user.email);
     setActiveAccountIdState(userAccId);
 
-    // Zero Data Loss: Check if this user already has saved state in local cache or backups
-    const existingUserState = loadAlacioState(user.email, userAccId);
-    const hasExistingData = 
-      (existingUserState.inventory && existingUserState.inventory.length > 0) ||
-      (existingUserState.salesLedger && existingUserState.salesLedger.length > 0) ||
-      (existingUserState.payouts && existingUserState.payouts.length > 0) ||
-      (existingUserState.suppliers && existingUserState.suppliers.length > 1) ||
-      (existingUserState.merchant_name === user.businessName && existingUserState.is_skeleton === true);
+    // 2. Check if THIS domain/device holds real unsynced merchant data (not untouched INITIAL_ALACIO_STATE seed)
+    const hasLocalReal = hasRealLocalSavedState(cleanEmail, userAccId);
+    const existingLocalState = hasLocalReal ? loadAlacioState(cleanEmail, userAccId) : undefined;
 
-    if (hasExistingData) {
-      // Existing client logging in or returning: DO NOT OVERWRITE! Restore their goods and ledger!
-      existingUserState.user_email = user.email;
-      (existingUserState as any).account_id = userAccId;
-      setAlacioState(existingUserState);
-      saveAlacioState(existingUserState, user.email, userAccId);
-    } else {
-      // Check Firestore cloud mirror in case they are on a new device or cleared cache
-      try {
-        const cloudState = await restoreUserStateFromCloud(user.email, userAccId);
-        if (cloudState && ((cloudState.inventory && cloudState.inventory.length > 0) || (cloudState.salesLedger && cloudState.salesLedger.length > 0))) {
-          setAlacioState(cloudState);
-          setCurrentView("workspace");
-          setActiveTab("dashboard");
-          return;
-        }
-      } catch (e) {
-        console.warn("[YuBiFlo Storage] Cloud state check notice:", e);
+    // 3. Twitter -> X Unified Cloud Resolution: pulls cloud if richer (new domain/device), or pushes richer local up
+    try {
+      const syncRes = await syncWorkspaceWithCloud(cleanEmail, userAccId, existingLocalState);
+      cloudHydratedKeyRef.current = `${cleanEmail}::${userAccId}`;
+
+      if (syncRes.state) {
+        setAlacioState(syncRes.state);
+        setCurrentView("workspace");
+        setActiveTab("dashboard");
+        return;
       }
+    } catch (e) {
+      console.warn("[YuBiFlo Storage] Cloud auth sync notice:", e);
+    }
 
-      // First-time signup with no prior data: initialize clean skeleton ready for their goods
-      const skeletonState = createSkeletonBusinessState(user.businessName, user.businessType);
-      skeletonState.user_email = user.email;
+    if (existingLocalState) {
+      existingLocalState.user_email = cleanEmail;
+      (existingLocalState as any).account_id = userAccId;
+      hasUserEditedRef.current = true;
+      setAlacioState(existingLocalState);
+      saveAlacioState(existingLocalState, cleanEmail, userAccId, { immediate: true });
+    } else {
+      // Genuine brand-new user with no local or cloud records yet: initialize clean non-personalized shell
+      const skeletonState = createSkeletonBusinessState(user.businessName, user.businessType, {
+        proprietorName: user.firstName || user.name?.split(" ")[0] || "Owner"
+      });
+      skeletonState.user_email = cleanEmail;
       (skeletonState as any).account_id = userAccId;
+      hasUserEditedRef.current = true;
+      cloudHydratedKeyRef.current = `${cleanEmail}::${userAccId}`;
       setAlacioState(skeletonState);
-      saveAlacioState(skeletonState, user.email, userAccId);
+      saveAlacioState(skeletonState, cleanEmail, userAccId, { immediate: true, forceCloud: true });
 
       const freshLaunchpad: LaunchpadProgress = {
         step1_dawnLock: false,
@@ -360,6 +566,7 @@ export default function App() {
     if (isDemoMode) {
       setDemoState(updater);
     } else {
+      hasUserEditedRef.current = true;
       setAlacioState(updater);
     }
   };
@@ -472,8 +679,10 @@ export default function App() {
       };
 
       const newSalesLedger = [newSalesRecord, ...(prev.salesLedger || [])];
-      const newCash = prev.cash_register_balance + payload.cashPaid;
-      const newMpesa = prev.mpesa_float_balance + payload.mpesaPaid;
+      const channelUpdates = applyDeltaToPaymentChannels(prev, {
+        cashDelta: payload.cashPaid,
+        mpesaDelta: payload.mpesaPaid
+      });
       const newKpis = calculateKpis(updatedInventory, prev.warehouse);
 
       setLastVoiceLog(`Processed VCR sale: ${payload.total} (${payload.customer})`);
@@ -483,8 +692,7 @@ export default function App() {
         inventory: updatedInventory,
         customers: updatedCustomers,
         salesLedger: newSalesLedger,
-        cash_register_balance: newCash,
-        mpesa_float_balance: newMpesa,
+        ...channelUpdates,
         kpis: newKpis,
         vcr_daily_count: (prev.vcr_daily_count || 0) + 1,
         last_updated: new Date().toISOString()
@@ -557,15 +765,16 @@ export default function App() {
       }
 
       const newSales = [record, ...(prev.salesLedger || [])];
-      const newCash = record.payment_method === "CASH" ? prev.cash_register_balance + record.total_amount : prev.cash_register_balance;
-      const newMpesa = record.payment_method === "MPESA" ? prev.mpesa_float_balance + record.total_amount : prev.mpesa_float_balance;
+      const channelUpdates = applyDeltaToPaymentChannels(prev, {
+        cashDelta: record.payment_method === "CASH" ? record.total_amount : 0,
+        mpesaDelta: record.payment_method === "MPESA" ? record.total_amount : 0
+      });
 
       return {
         ...prev,
         inventory: updatedInv,
         salesLedger: newSales,
-        cash_register_balance: newCash,
-        mpesa_float_balance: newMpesa,
+        ...channelUpdates,
         last_updated: new Date().toISOString()
       };
     });
@@ -605,10 +814,11 @@ export default function App() {
         return c;
       });
 
+      const channelUpdates = applyDeltaToPaymentChannels(prev, { cashDelta: amount });
       return {
         ...prev,
         customers: updatedCustomers,
-        cash_register_balance: prev.cash_register_balance + amount,
+        ...channelUpdates,
         last_updated: new Date().toISOString()
       };
     });
@@ -661,11 +871,51 @@ export default function App() {
 
   const handleUpdateFloat = (payload: any) => {
     setMasterState((prev) => {
+      if (payload && typeof payload === "object" && Array.isArray(payload.channels)) {
+        const cleanChannels: PaymentChannelConfig[] = payload.channels.map((ch: PaymentChannelConfig) => ({
+          ...ch,
+          balance: Math.max(0, Number(ch.balance) || 0)
+        }));
+        const synced = syncLegacyBalancesFromChannels(cleanChannels);
+        const total = cleanChannels.reduce((acc, ch) => acc + (Number(ch.balance) || 0), 0);
+
+        const newBookend = {
+          id: `mb_dawn_${Date.now()}`,
+          date: payload.operatingDate || new Date().toISOString().slice(0, 10),
+          timestamp: new Date().toISOString(),
+          iso_date: payload.operatingDate || new Date().toISOString().slice(0, 10),
+          cash_float: synced.cash_register_balance,
+          mpesa_float: synced.mpesa_float_balance,
+          equitel_balance: synced.equitel_account_balance,
+          total_liquidity: total,
+          debtors_count: (prev.customers || []).length,
+          total_customer_debt: (prev.customers || []).reduce((acc, c) => acc + (c.debt_balance || 0), 0),
+          opening_shelf_units: (prev.inventory || []).reduce((acc, i) => acc + (i.current_stock || 0), 0),
+          opening_shelf_value: (prev.inventory || []).reduce((acc, i) => acc + (i.total_shelf_value || 0), 0),
+          status: "LOCKED_DAWN" as const
+        };
+
+        return {
+          ...prev,
+          paymentChannels: cleanChannels,
+          ...synced,
+          morning_bookends: [newBookend, ...(prev.morning_bookends || [])],
+          last_updated: new Date().toISOString()
+        };
+      }
+
       if (payload && typeof payload === "object" && "cashBalance" in payload) {
         const cash = Number(payload.cashBalance) || 0;
         const mpesa = Number(payload.mpesaFloat) || 0;
         const bank = Number(payload.bankPaybillBalance) || 0;
         const total = cash + mpesa + bank;
+
+        const updatedChannels = resolvePaymentChannels(prev).map((ch) => {
+          if (ch.category === "CASH") return { ...ch, balance: cash };
+          if (ch.category === "MOBILE_MONEY") return { ...ch, balance: mpesa };
+          if (ch.category === "BANK") return { ...ch, balance: bank, label: payload.bankName || ch.label };
+          return ch;
+        });
 
         const newBookend = {
           id: `mb_dawn_${Date.now()}`,
@@ -685,6 +935,7 @@ export default function App() {
 
         return {
           ...prev,
+          paymentChannels: updatedChannels,
           cash_register_balance: cash,
           mpesa_float_balance: mpesa,
           equitel_account_balance: bank,
@@ -702,10 +953,14 @@ export default function App() {
         };
       });
       const totalCashDrawer = updatedDenoms.reduce((acc, d) => acc + d.value * d.count, 0);
+      const syncedChannels = resolvePaymentChannels(prev).map((ch) =>
+        ch.category === "CASH" ? { ...ch, balance: totalCashDrawer } : ch
+      );
 
       return {
         ...prev,
         floatDenominations: updatedDenoms,
+        paymentChannels: syncedChannels,
         cash_register_balance: totalCashDrawer,
         last_updated: new Date().toISOString()
       };
@@ -723,13 +978,32 @@ export default function App() {
   const handleAddExpense = (expense: PayoutOrDrawing) => {
     setMasterState((prev) => {
       const amt = parseFloat(String(expense.amount)) || 0;
-      const isMpesa = (expense.payment_channel || "").includes("MPESA");
-      const isCash = !isMpesa && !(expense.payment_channel || "").includes("BANK");
+      const chHint = (expense.payment_channel || "").toUpperCase();
+      const channels = resolvePaymentChannels(prev);
+      const exactMatch = channels.find(
+        (c) => c.id.toUpperCase() === chHint || c.subType.toUpperCase() === chHint
+      );
+
+      const isBank =
+        !exactMatch &&
+        (chHint.includes("BANK") || chHint.includes("EQUITEL"));
+      const isMpesa =
+        !exactMatch &&
+        !isBank &&
+        (chHint.includes("MPESA") || chHint.includes("POCHI") || chHint.includes("SEND_MONEY") || chHint.includes("PAYBILL") || chHint.includes("TILL") || chHint.includes("MOBILE"));
+      const isCash = !exactMatch && !isBank && !isMpesa;
+
+      const channelUpdates = applyDeltaToPaymentChannels(prev, {
+        specificChannelId: exactMatch?.id,
+        cashDelta: exactMatch?.category === "CASH" || isCash ? -amt : 0,
+        mpesaDelta: exactMatch?.category === "MOBILE_MONEY" || isMpesa ? -amt : 0,
+        bankDelta: exactMatch?.category === "BANK" || isBank ? -amt : 0
+      });
+
       return {
         ...prev,
         payouts: [expense, ...(prev.payouts || [])],
-        cash_register_balance: isCash ? Math.max(0, Math.round(((prev.cash_register_balance || 0) - amt) * 100) / 100) : prev.cash_register_balance,
-        mpesa_float_balance: isMpesa ? Math.max(0, Math.round(((prev.mpesa_float_balance || 0) - amt) * 100) / 100) : prev.mpesa_float_balance,
+        ...channelUpdates,
         last_updated: new Date().toISOString()
       };
     });
@@ -1058,19 +1332,22 @@ export default function App() {
         return card;
       });
 
-      const isCashOutflow = purchase.payment_channel === "CASH";
-      const isMpesaOutflow = purchase.payment_channel === "MPESA";
+      const chUpper = String(purchase.payment_channel || "").toUpperCase();
+      const isCashOutflow = chUpper === "CASH";
+      const isMpesaOutflow = chUpper === "MPESA" || chUpper === "POCHI" || chUpper === "SEND_MONEY" || chUpper === "PAYBILL";
+      const isBankOutflow = chUpper === "BANK_TRANSFER";
+
+      const channelUpdates = applyDeltaToPaymentChannels(prev, {
+        cashDelta: isCashOutflow ? -cleanPurchaseAmt : 0,
+        mpesaDelta: isMpesaOutflow ? -cleanPurchaseAmt : 0,
+        bankDelta: isBankOutflow ? -cleanPurchaseAmt : 0
+      });
 
       const nextState: AlacioMasterState = {
         ...prev,
         inventory: updatedInventory,
         payouts: [newPayout, ...existingPayouts],
-        cash_register_balance: isCashOutflow
-          ? Math.max(0, Math.round(((Number(prev.cash_register_balance) || 0) - cleanPurchaseAmt) * 100) / 100)
-          : prev.cash_register_balance,
-        mpesa_float_balance: isMpesaOutflow
-          ? Math.max(0, Math.round(((Number(prev.mpesa_float_balance) || 0) - cleanPurchaseAmt) * 100) / 100)
-          : prev.mpesa_float_balance,
+        ...channelUpdates,
         suppliers: updatedSuppliers,
         receiptsArchive: updatedArchive,
         restockCards: [...newlyGeneratedRestockCards, ...closedPreviousCards],
@@ -1203,6 +1480,7 @@ export default function App() {
 
       const cashDelta = payload.paymentMethod === "CASH" ? payload.revenue : (payload.paymentMethod === "SPLIT" ? payload.revenue / 2 : 0);
       const mpesaDelta = payload.paymentMethod === "MPESA" ? payload.revenue : (payload.paymentMethod === "SPLIT" ? payload.revenue / 2 : 0);
+      const channelUpdates = applyDeltaToPaymentChannels(prev, { cashDelta, mpesaDelta });
 
       return {
         ...prev,
@@ -1210,8 +1488,7 @@ export default function App() {
         salesLedger: [newSale, ...(prev.salesLedger || [])],
         payouts: newPayouts,
         restockCards: updatedRestockCards,
-        cash_register_balance: prev.cash_register_balance + cashDelta,
-        mpesa_float_balance: prev.mpesa_float_balance + mpesaDelta,
+        ...channelUpdates,
         last_updated: new Date().toISOString()
       };
     });
@@ -1376,6 +1653,8 @@ export default function App() {
         return b;
       });
 
+      const channelUpdates = applyDeltaToPaymentChannels(prev, { cashDelta, mpesaDelta });
+
       return {
         ...prev,
         inventory: updatedInventory,
@@ -1383,8 +1662,7 @@ export default function App() {
         payouts: newPayouts,
         suppliers: updatedSuppliers,
         supplierBatchCards: updatedBatchCards,
-        cash_register_balance: (Number(prev.cash_register_balance) || 0) + cashDelta,
-        mpesa_float_balance: (Number(prev.mpesa_float_balance) || 0) + mpesaDelta,
+        ...channelUpdates,
         kpis: newKpis,
         last_updated: new Date().toISOString()
       };
@@ -1436,7 +1714,7 @@ export default function App() {
             setCurrentView("yubiflo_command");
           }}
           onOpenBlueprints={() => {
-            const bp = PLATFORM_BLUEPRINTS[1];
+            const bp = PLATFORM_BLUEPRINTS.find((b) => b.status === "IN_DEVELOPMENT") || PLATFORM_BLUEPRINTS[2];
             setActiveDevelopingBlueprint(bp);
             setCurrentView("developing");
           }}
@@ -1496,11 +1774,17 @@ export default function App() {
   }
 
   const handleResetToSkeleton = () => {
-    const bizName = currentUser?.businessName || "Musa General Retailers";
-    const bizType = currentUser?.businessType || "Retail / Duka";
-    const skeleton = createSkeletonBusinessState(bizName, bizType);
+    const activeAcc = accounts.find((a) => a.id === activeAccountId);
+    const bizName = activeAcc?.businessName || currentUser?.businessName || alacioState.merchant_name || "My Business";
+    const bizType = activeAcc?.businessType || currentUser?.businessType || alacioState.client_type || "Retail / Duka";
+    const skeleton = createSkeletonBusinessState(bizName, bizType, {
+      proprietorName: activeAcc?.proprietorName || alacioState.proprietor_name || currentUser?.firstName
+    });
+    skeleton.user_email = effectiveOwnerEmail;
+    (skeleton as any).account_id = activeAccountId;
+    hasUserEditedRef.current = true;
     setAlacioState(skeleton);
-    saveAlacioState(skeleton);
+    saveAlacioState(skeleton, effectiveOwnerEmail, activeAccountId, { immediate: true, forceCloud: true });
     setActiveTab("launchpad");
   };
 
@@ -1567,10 +1851,17 @@ export default function App() {
         {/* TAB 2: DASHBOARD */}
         {activeTab === "dashboard" && (() => {
           const currentActiveAccount = accounts.find((a) => a.id === activeAccountId);
-          const activeBusinessName = currentActiveAccount?.businessName || currentMasterState.merchant_name || "Alacio Mini shop";
+          const activeBusinessName = currentActiveAccount?.businessName || currentMasterState.merchant_name || "My Business";
           const isAlacio = activeBusinessName.toLowerCase().includes("alacio");
-          const activeProprietor = currentActiveAccount?.proprietorName || (isAlacio ? "Rose" : (currentUser?.name?.split(" ")[0] || "Moses"));
-          const activeManager = currentActiveAccount?.managerName || (isAlacio ? "Moses Mukangai" : undefined);
+          const isMosesEmail = (currentUser?.email || "").toLowerCase().includes("moses");
+          const activeProprietor =
+            currentMasterState.proprietor_name ||
+            currentActiveAccount?.proprietorName ||
+            (isAlacio ? "Rose" : (currentUser?.firstName || currentUser?.name?.split(" ")[0] || "Owner"));
+          const activeManager =
+            currentActiveAccount?.managerName && (isAlacio || isMosesEmail)
+              ? currentActiveAccount.managerName
+              : undefined;
 
           return (
             <SaasDashboardTab
@@ -1874,12 +2165,14 @@ export default function App() {
             isOpen={isDataVaultOpen}
             onClose={() => setIsDataVaultOpen(false)}
             masterState={currentMasterState}
+            accountId={activeAccountId}
             onStateRestored={(newState) => {
               if (isDemoMode) {
                 setDemoState(newState);
               } else {
+                hasUserEditedRef.current = true;
                 setAlacioState(newState);
-                saveAlacioState(newState, currentUser?.email, activeAccountId);
+                saveAlacioState(newState, effectiveOwnerEmail, activeAccountId, { immediate: true });
               }
             }}
           />

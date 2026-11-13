@@ -151,7 +151,7 @@ export default function YuBiFloDashboard({
       {
         id: "item-5",
         name: "Broadways Bread 400g",
-        category: "Bakery",
+        category: "Bread & Snacks",
         unit_type: "loaves",
         unit_cost: 58.0,
         unit_retail: 65.0,
@@ -247,7 +247,7 @@ export default function YuBiFloDashboard({
     "Sugar",
     "Spices",
     "Hygiene",
-    "Bakery",
+    "Bread & Snacks",
     "Beverages",
   ];
 

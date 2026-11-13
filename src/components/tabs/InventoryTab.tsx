@@ -18,7 +18,7 @@ export default function InventoryTab({ currency, inventory, onOpenRestock }: Inv
     "Flour",
     "Cooking & Oils",
     "Poultry",
-    "Bakery",
+    "Bread & Snacks",
     "Sugar",
     "Spices",
     "Hygiene",

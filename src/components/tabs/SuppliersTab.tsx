@@ -99,7 +99,8 @@ export default function SuppliersTab({
   const categories = [
     "ALL",
     "Dairy & Chilled",
-    "Bakery",
+    "Foodstuff & Viungo",
+    "Bread & Snacks",
     "Flour & Cereals",
     "Cooking Oils & Soaps",
     "Beverages",

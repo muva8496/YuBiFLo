@@ -134,7 +134,7 @@ export interface Merchant {
   id: string;
   business_name: string;
   owner_name: string;
-  shop_type: "Retail Store / Kiosk" | "Kiosk / Duka" | "Mini-Mart" | "Agrovet" | "Bar & Liquor Store" | "Wholesale & Retail" | "Bakery & Eatery" | string;
+  shop_type: "Retail Store / Kiosk" | "Kiosk / Duka" | "Mini-Mart" | "Open Eatery & Roadside Kiosk" | "Agrovet" | "Bar & Liquor Store" | "Wholesale & Retail" | string;
   currency: CurrencyCode;
   phone: string;
   location: string;

@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { UserProfile, signOut, signOutAllDevices } from "../services/authSessionService";
 import { UserAccount } from "../services/accountManagementService";
+import { PaymentChannelConfig, PaymentChannelSubType } from "../types/alacio";
+import { getDefaultPaymentChannelsForBlueprint } from "../services/alacioStorage";
 import { YuBiFloMark } from "./YuBiFloLogo";
 import VideoFactorModal from "./VideoFactorModal";
 import QuickCreateModal from "./QuickCreateModal";
@@ -28,7 +30,11 @@ interface SaasAppShellProps {
   accounts?: UserAccount[];
   activeAccountId?: string;
   onSwitchAccount?: (accountId: string) => void;
-  onCreateAccount?: (businessName: string, businessType: string) => void;
+  onCreateAccount?: (
+    businessName: string,
+    businessType: string,
+    options?: { proprietorName?: string; paymentChannels?: PaymentChannelConfig[]; blueprintId?: string }
+  ) => void;
   activeTab: string;
   onNavigateTab: (tabId: string) => void;
   onSignOut: () => void;
@@ -71,7 +77,11 @@ export default function SaasAppShell({
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
   const [newBizName, setNewBizName] = useState("");
-  const [newBizType, setNewBizType] = useState("Retail / Duka");
+  const [newBizType, setNewBizType] = useState("Open Eatery & Roadside Kiosk");
+  const [newProprietorName, setNewProprietorName] = useState("");
+  const [newChannelLayout, setNewChannelLayout] = useState<"2_CHANNEL_MOBILE" | "3_CHANNEL_BANK">("2_CHANNEL_MOBILE");
+  const [newMobileSubType, setNewMobileSubType] = useState<PaymentChannelSubType>("POCHI_LA_BIASHARA");
+  const [newMobileRef, setNewMobileRef] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
@@ -208,8 +218,8 @@ export default function SaasAppShell({
                 </span>
                 <span className="text-[9px] text-blue-700 font-medium truncate hidden sm:inline">
                   {activeAccount?.role === "MANAGER" || currentWorkspaceName.toLowerCase().includes("alacio")
-                    ? "Client (Rose) • Managed by Moses"
-                    : `${currentBusinessType} • Owned by Moses`}
+                    ? `Client (${activeAccount?.proprietorName || "Rose"}) • Managed by ${activeAccount?.managerName || user?.firstName || "Manager"}`
+                    : `${currentBusinessType} • ${activeAccount?.proprietorName || user?.firstName || "Owner"}`}
                 </span>
               </div>
 
@@ -277,8 +287,8 @@ export default function SaasAppShell({
                                 <div className="truncate text-xs font-semibold leading-tight">{acc.businessName}</div>
                                 <div className="text-[10px] text-slate-500 font-normal truncate mt-0.5">
                                   {isClient 
-                                    ? `Client (Owned by Rose) • Managed by Moses` 
-                                    : `${acc.businessType} • Owned by Moses`}
+                                    ? `Client (${acc.proprietorName || "Rose"}) • Managed by ${acc.managerName || user?.firstName || "Manager"}` 
+                                    : `${acc.businessType} • ${acc.proprietorName || user?.firstName || "Owner"}`}
                                 </div>
                               </div>
                             </div>
@@ -689,57 +699,191 @@ export default function SaasAppShell({
                 e.preventDefault();
                 if (!newBizName.trim()) return;
                 if (onCreateAccount) {
-                  onCreateAccount(newBizName.trim(), newBizType);
+                  const baseChannels = getDefaultPaymentChannelsForBlueprint(newBizType);
+                  const mobileLabelMap: Record<string, string> = {
+                    POCHI_LA_BIASHARA: "Pochi la Biashara (Mobile Money)",
+                    SEND_MONEY: "M-Pesa Send Money",
+                    MPESA_TILL: "M-Pesa Buy Goods Till",
+                    PAYBILL: "M-Pesa Paybill"
+                  };
+                  const existingCash = baseChannels.find((c) => c.category === "CASH");
+                  const configuredChannels: PaymentChannelConfig[] = [
+                    existingCash || {
+                      id: "ch_cash",
+                      label: "Cash Portfolio",
+                      shortCode: "CSH",
+                      category: "CASH",
+                      subType: "CASH_DRAWER",
+                      balance: 0,
+                      enabled: true
+                    },
+                    {
+                      id: "ch_mobile",
+                      label: mobileLabelMap[newMobileSubType] || "Mobile Money Portfolio",
+                      shortCode: newMobileSubType === "POCHI_LA_BIASHARA" ? "PCH" : "MOB",
+                      category: "MOBILE_MONEY",
+                      subType: newMobileSubType,
+                      accountRef: newMobileRef.trim() || undefined,
+                      balance: 0,
+                      enabled: true
+                    }
+                  ];
+                  if (newChannelLayout === "3_CHANNEL_BANK") {
+                    configuredChannels.push({
+                      id: "ch_bank",
+                      label: "Bank Transfer / Paybill Account",
+                      shortCode: "BNK",
+                      category: "BANK",
+                      subType: "BANK_TRANSFER",
+                      balance: 0,
+                      enabled: true
+                    });
+                  }
+                  const cleanProprietor = newProprietorName.trim() || user?.name || user?.firstName || "Owner";
+                  onCreateAccount(newBizName.trim(), newBizType, {
+                    proprietorName: cleanProprietor,
+                    paymentChannels: configuredChannels,
+                    blueprintId: newBizType.toLowerCase().includes("eatery") ? "open_eatery" : "retail_duka"
+                  });
                 }
                 setNewBizName("");
+                setNewProprietorName("");
+                setNewMobileRef("");
                 setIsAddAccountModalOpen(false);
               }}
-              className="p-6 space-y-4 text-xs"
+              className="p-6 space-y-3.5 text-xs max-h-[82vh] overflow-y-auto"
             >
-              <div>
-                <label className="block text-slate-700 font-bold mb-1.5">
-                  Business / Shop Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Alacio Wholesale Depot, Branch 2 Supermarket"
-                  value={newBizName}
-                  onChange={(e) => setNewBizName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 text-xs"
-                  autoFocus
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    Business / Eatery Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Mama Njeri Eatery, Corner Duka"
+                    value={newBizName}
+                    onChange={(e) => setNewBizName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 text-xs"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    Owner / Proprietor Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={user?.name || "e.g. Solo Owner"}
+                    value={newProprietorName}
+                    onChange={(e) => setNewProprietorName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 text-xs"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1.5">
-                  Category / Business Model
+                <label className="block text-slate-700 font-bold mb-1">
+                  Category / Business Shell
                 </label>
                 <select
                   value={newBizType}
-                  onChange={(e) => setNewBizType(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewBizType(val);
+                    if (val.toLowerCase().includes("eatery")) {
+                      setNewChannelLayout("2_CHANNEL_MOBILE");
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 text-xs bg-white"
                 >
+                  <option value="Open Eatery & Roadside Kiosk">Open Eatery &amp; Roadside Kiosk (Live Shell &mdash; Cash &amp; Mobile Money)</option>
                   <option value="Retail / Duka">Retail / Duka (General FMCG)</option>
-                  <option value="Wholesale & Cargo Depot">Wholesale & Cargo Depot (Bulk Supplies)</option>
-                  <option value="Hardware & Building Supplies">Hardware & Building Supplies</option>
-                  <option value="Pharmacy & Chemist">Pharmacy & Chemist</option>
-                  <option value="Agrovet & Farm Inputs">Agrovet & Farm Inputs</option>
-                  <option value="Electronics & Phone Accessories">Electronics & Accessories</option>
+                  <option value="Wholesale & Cargo Depot">Wholesale &amp; Cargo Depot (Bulk Supplies)</option>
+                  <option value="Hardware & Building Supplies">Hardware &amp; Building Supplies</option>
+                  <option value="Pharmacy & Chemist">Pharmacy &amp; Chemist</option>
+                  <option value="Agrovet & Farm Inputs">Agrovet &amp; Farm Inputs</option>
+                  <option value="Electronics & Phone Accessories">Electronics &amp; Accessories</option>
                 </select>
+              </div>
+
+              {/* CONFIGURABLE PAYMENT CHANNELS SHELL SETUP */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                <div className="font-bold text-slate-800 flex items-center justify-between">
+                  <span>Payment Channels Shell</span>
+                  <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    Customizable Anytime
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewChannelLayout("2_CHANNEL_MOBILE")}
+                    className={`p-2 rounded-lg border text-left transition cursor-pointer ${
+                      newChannelLayout === "2_CHANNEL_MOBILE"
+                        ? "bg-blue-50 border-blue-500 text-blue-950 font-bold"
+                        : "bg-white border-slate-200 text-slate-600"
+                    }`}
+                  >
+                    <div className="text-[11px]">2 Channels (Fast Counter)</div>
+                    <div className="text-[10px] font-normal opacity-80">Cash + Mobile Money</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewChannelLayout("3_CHANNEL_BANK")}
+                    className={`p-2 rounded-lg border text-left transition cursor-pointer ${
+                      newChannelLayout === "3_CHANNEL_BANK"
+                        ? "bg-blue-50 border-blue-500 text-blue-950 font-bold"
+                        : "bg-white border-slate-200 text-slate-600"
+                    }`}
+                  >
+                    <div className="text-[11px]">3 Channels (+ Bank)</div>
+                    <div className="text-[10px] font-normal opacity-80">Cash + Mobile + Bank</div>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                      Mobile Money Channel Mode
+                    </label>
+                    <select
+                      value={newMobileSubType}
+                      onChange={(e) => setNewMobileSubType(e.target.value as PaymentChannelSubType)}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 font-semibold"
+                    >
+                      <option value="POCHI_LA_BIASHARA">Pochi la Biashara</option>
+                      <option value="SEND_MONEY">M-Pesa Send Money</option>
+                      <option value="MPESA_TILL">M-Pesa Till / Buy Goods</option>
+                      <option value="PAYBILL">M-Pesa Paybill</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                      Till / Phone / Ref (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={newMobileRef}
+                      onChange={(e) => setNewMobileRef(e.target.value)}
+                      placeholder="e.g. 07xx / Till No."
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="p-3 bg-blue-50/70 border border-blue-200/60 rounded-xl text-[11px] text-blue-900 space-y-1">
                 <div className="font-bold flex items-center gap-1.5">
                   <ShieldCheck size={13} className="text-blue-600" />
-                  Independent Workspace Isolation
+                  Clean Non-Personalized Shell
                 </div>
                 <p className="text-slate-600">
-                  This new business will have its own separate inventory, sales batches, 3-fold ledgers, and cash balances, completely isolated while remaining linked to your single Gmail login.
+                  Starts completely blank at zero balances with zero shared client data — ready for your own daily supplies, staff wages, rent &amp; fast sales.
                 </p>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-1">
                 <button
                   type="button"
                   onClick={() => setIsAddAccountModalOpen(false)}
@@ -753,7 +897,7 @@ export default function SaasAppShell({
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl font-bold transition cursor-pointer shadow-xs flex items-center gap-1.5"
                 >
                   <Plus size={14} />
-                  <span>Create Business Workspace</span>
+                  <span>Create Business Shell</span>
                 </button>
               </div>
             </form>

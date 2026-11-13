@@ -2506,7 +2506,7 @@ export const PeopleLedgerView: React.FC<PeopleLedgerViewProps> = ({
                     <option value="Edibles & Fats">Edibles & Fats</option>
                     <option value="Poultry & Dairy">Poultry & Dairy</option>
                     <option value="Beverages & Drinks">Beverages & Drinks</option>
-                    <option value="Bakery & Confectionery">Bakery & Confectionery</option>
+                    <option value="Foodstuff, Viungo & Bread">Foodstuff, Viungo &amp; Bread</option>
                     <option value="General FMCG">General FMCG</option>
                   </select>
                 </div>
