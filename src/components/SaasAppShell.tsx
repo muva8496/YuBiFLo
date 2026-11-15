@@ -11,6 +11,7 @@ import { UserAccount } from "../services/accountManagementService";
 import { PaymentChannelConfig, PaymentChannelSubType } from "../types/alacio";
 import { getDefaultPaymentChannelsForBlueprint } from "../services/alacioStorage";
 import { YuBiFloMark } from "./YuBiFloLogo";
+import type { DemoPreset } from "../services/dukaDemoSandbox";
 import VideoFactorModal from "./VideoFactorModal";
 import QuickCreateModal from "./QuickCreateModal";
 
@@ -42,6 +43,9 @@ interface SaasAppShellProps {
   onOpenSettings: () => void;
   onSwitchWorkspace?: (target: "real" | "demo") => void;
   isDemo?: boolean;
+  demoPreset?: DemoPreset;
+  onSwitchDemoPreset?: (preset: DemoPreset) => void;
+  onResetDemoSandbox?: () => void;
   onStartRealWorkspace?: () => void;
   onExitDemo?: () => void;
   onOpenQuickSale?: () => void;
@@ -65,6 +69,9 @@ export default function SaasAppShell({
   onOpenSettings,
   onSwitchWorkspace,
   isDemo = false,
+  demoPreset = "duka",
+  onSwitchDemoPreset,
+  onResetDemoSandbox,
   onStartRealWorkspace,
   onExitDemo,
   onOpenQuickSale,
@@ -131,16 +138,24 @@ export default function SaasAppShell({
   ];
 
   const activeAccount = accounts.find((a) => a.id === activeAccountId);
-  const currentWorkspaceName = activeAccount?.businessName || user?.businessName || "Alacio Mini shop";
-  const currentBusinessType = activeAccount?.businessType || user?.businessType || "Retail / Duka";
+  const currentWorkspaceName = isDemo
+    ? demoPreset === "eatery"
+      ? "Mtaani Eats (Demo)"
+      : "Duka Space (Demo)"
+    : activeAccount?.businessName || user?.businessName || "My Business";
+  const currentBusinessType = isDemo
+    ? demoPreset === "eatery"
+      ? "Open Eatery & Kiosk"
+      : "Retail / Duka"
+    : activeAccount?.businessType || user?.businessType || "Retail / Duka";
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans flex flex-col selection:bg-blue-100 selection:text-blue-900 relative">
+    <div className="min-h-screen yubiflo-blue-gold-canvas text-slate-900 font-sans flex flex-col selection:bg-blue-100 selection:text-blue-900 relative">
       
       {/* ========================================================================= */}
-      {/* 1. TOP BAR (WHITE, SLATE BORDER, BUSINESS NAME AT TOP RIGHT CORNER)        */}
+      {/* 1. TOP BAR (FROSTED BLUE SURFACE WITH HAIRLINE GOLD CROWN)                 */}
       {/* ========================================================================= */}
-      <header className="h-14 bg-white border-b border-[#E5E9EE] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40">
+      <header className="h-14 bg-[#F3F8FD]/95 backdrop-blur-md border-b border-[#C8D9EA] border-t-2 border-t-[#D4AF37]/65 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40">
         
         {/* LEFT: LOGO & MOBILE HAMBURGER */}
         <div className="flex items-center gap-3">
@@ -217,9 +232,11 @@ export default function SaasAppShell({
                   {currentWorkspaceName}
                 </span>
                 <span className="text-[9px] text-blue-700 font-medium truncate hidden sm:inline">
-                  {activeAccount?.role === "MANAGER" || currentWorkspaceName.toLowerCase().includes("alacio")
-                    ? `Client (${activeAccount?.proprietorName || "Rose"}) • Managed by ${activeAccount?.managerName || user?.firstName || "Manager"}`
-                    : `${currentBusinessType} • ${activeAccount?.proprietorName || user?.firstName || "Owner"}`}
+                  {isDemo
+                    ? `${currentBusinessType} • Live Interactive Preview`
+                    : activeAccount?.role === "MANAGER" || currentWorkspaceName.toLowerCase().includes("alacio")
+                      ? `Client (${activeAccount?.proprietorName || "Rose"}) • Managed by ${activeAccount?.managerName || user?.firstName || "Manager"}`
+                      : `${currentBusinessType} • ${activeAccount?.proprietorName || user?.firstName || "Owner"}`}
                 </span>
               </div>
 
@@ -232,19 +249,28 @@ export default function SaasAppShell({
                 className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-xl p-2.5 space-y-2 z-50 text-xs font-sans animate-in fade-in zoom-in-95"
                 onMouseLeave={() => setUserDropdownOpen(false)}
               >
-                {/* GMAIL ACCOUNT BADGE */}
+                {/* ACCOUNT OR GUEST PREVIEW BADGE */}
                 <div className="px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Connected Gmail</span>
-                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-medium border border-emerald-200/60">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                      {user?.email ? "Connected Gmail" : "Interactive Preview"}
+                    </span>
+                    <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded font-medium border ${
+                      user?.email
+                        ? "text-emerald-700 bg-emerald-50 border-emerald-200/60"
+                        : "text-[#996515] bg-[#FDF5E2] border-[#E6CF8B]"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${user?.email ? "bg-emerald-500" : "bg-[#D4AF37]"}`}></span>
+                      {user?.email ? "Active" : "No Sign-In Needed"}
                     </span>
                   </div>
                   <strong className="text-slate-900 text-xs block truncate mt-0.5">
-                    {user?.email || "mosesmukangai75@gmail.com"}
+                    {user?.email || "Guest Interactive Sandbox"}
                   </strong>
                   <span className="text-[10px] text-slate-500 block truncate mt-0.5">
-                    {user?.name ? `${user.name} (Manager & Owner)` : "Manager & Owner"}
+                    {user?.name
+                      ? `${user.name} (Manager & Owner)`
+                      : "Explore all modules freely without signing up"}
                   </span>
                 </div>
 
@@ -318,17 +344,50 @@ export default function SaasAppShell({
                   </div>
                 )}
 
-                {/* WORKSPACE SWITCHER SECTION (Real vs Demo) */}
+                {/* WORKSPACE SWITCHER SECTION (Real vs Demo + Demo Business Presets) */}
                 <div className="border-t border-slate-100 pt-1.5 space-y-1">
                   <span className="text-[10px] font-bold text-slate-500 uppercase px-2 block">
-                    Exploration:
+                    {isDemo ? "Switch Interactive Sample:" : "Exploration:"}
                   </span>
+
+                  {isDemo && onSwitchDemoPreset && (
+                    <div className="grid grid-cols-2 gap-1.5 px-1 pb-1">
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          onSwitchDemoPreset("duka");
+                        }}
+                        className={`px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition cursor-pointer ${
+                          demoPreset === "duka"
+                            ? "bg-[#0B1B32] text-[#F5D061] border-[#D4AF37]"
+                            : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        Retail Duka
+                      </button>
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          onSwitchDemoPreset("eatery");
+                        }}
+                        className={`px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition cursor-pointer ${
+                          demoPreset === "eatery"
+                            ? "bg-[#0B1B32] text-[#F5D061] border-[#D4AF37]"
+                            : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        Open Eatery
+                      </button>
+                    </div>
+                  )}
 
                   {/* DUKA SPACE DEMO OPTION */}
                   <button
                     onClick={() => {
                       setUserDropdownOpen(false);
-                      if (onSwitchWorkspace) {
+                      if (isDemo && !user && onStartRealWorkspace) {
+                        onStartRealWorkspace();
+                      } else if (onSwitchWorkspace) {
                         onSwitchWorkspace(isDemo ? "real" : "demo");
                       }
                     }}
@@ -338,9 +397,15 @@ export default function SaasAppShell({
                   >
                     <div className="flex items-center gap-2 truncate">
                       <Sparkles size={13} className="text-amber-500 shrink-0" />
-                      <span className="truncate">{isDemo ? "Return to My Real Accounts" : "Try Duka Space (Interactive Demo)"}</span>
+                      <span className="truncate">
+                        {isDemo
+                          ? user
+                            ? "Return to My Real Accounts"
+                            : "Start My Free 6-Month Account"
+                          : "Try Duka Space (Interactive Demo)"}
+                      </span>
                     </div>
-                    {isDemo && <Check size={13} className="text-amber-600 shrink-0" />}
+                    {isDemo && <ArrowRight size={13} className="text-amber-700 shrink-0" />}
                   </button>
                 </div>
 
@@ -433,24 +498,96 @@ export default function SaasAppShell({
       </header>
 
       {/* ========================================================================= */}
-      {/* SLIM BANNER UNDER TOP BAR ON EVERY PAGE WHEN IN DEMO                      */}
+      {/* SLIM INTERACTIVE DEMO BANNER (ZERO SIGN-UP EXPERIENCE BAR)                */}
       {/* ========================================================================= */}
+      {isDemo && (
+        <div className="bg-gradient-to-r from-[#0B1B32] via-[#102848] to-[#0B1B32] text-white border-b border-[#D4AF37]/45 px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center flex-wrap gap-2.5">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-[#F5D061]">
+              <span className="w-2 h-2 rounded-full bg-[#F5D061] animate-pulse" />
+              Live Interactive Experience
+            </span>
+            <span className="hidden lg:inline text-slate-300 text-[11px]">
+              &middot; Test Voice Ledger, Dawn Lock, Purchases &amp; Profit freely with sample numbers (no sign-up needed).
+            </span>
+
+            {onSwitchDemoPreset && (
+              <div className="inline-flex items-center bg-white/10 border border-white/15 rounded-full p-0.5 gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => onSwitchDemoPreset("duka")}
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition cursor-pointer ${
+                    demoPreset === "duka"
+                      ? "bg-[#F5D061] text-[#0B1B32]"
+                      : "text-slate-200 hover:text-white"
+                  }`}
+                >
+                  Duka Sample
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSwitchDemoPreset("eatery")}
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition cursor-pointer ${
+                    demoPreset === "eatery"
+                      ? "bg-[#F5D061] text-[#0B1B32]"
+                      : "text-slate-200 hover:text-white"
+                  }`}
+                >
+                  Open Eatery Sample
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 ml-auto">
+            {onResetDemoSandbox && (
+              <button
+                type="button"
+                onClick={onResetDemoSandbox}
+                className="px-2.5 py-1 rounded-full border border-white/20 hover:border-white/40 text-slate-200 hover:text-white text-[11px] font-medium transition cursor-pointer"
+                title="Reset sample numbers back to start"
+              >
+                Reset sample
+              </button>
+            )}
+            {onStartRealWorkspace && !user && (
+              <button
+                type="button"
+                onClick={onStartRealWorkspace}
+                className="px-3.5 py-1 rounded-full bg-gradient-to-r from-[#F5D061] to-[#E5B842] hover:from-[#FFE082] hover:to-[#F5D061] text-[#0B1B32] font-bold text-[11px] transition cursor-pointer flex items-center gap-1 shadow-xs"
+              >
+                <span>Start 6 Months Free</span>
+                <ArrowRight size={12} />
+              </button>
+            )}
+            {onExitDemo && (
+              <button
+                type="button"
+                onClick={onExitDemo}
+                className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition cursor-pointer"
+              >
+                {user ? "Back to My Workspace" : "Exit preview"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 2. BODY: LEFT SIDEBAR + MAIN CONTENT AREA                                 */}
       {/* ========================================================================= */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* LEFT SIDEBAR (WHITE, WAVE-STYLE, EXACT SAME MSME MODULES) */}
-        <aside className="w-60 bg-white border-r border-[#E5E9EE] p-3 sm:p-4 hidden md:flex flex-col justify-between shrink-0 overflow-y-auto">
+        {/* LEFT SIDEBAR (MISTY BLUE SURFACE, WAVE-STYLE, GOLD ACTIVE HIGHLIGHT) */}
+        <aside className="w-60 bg-[#F4F8FD]/95 backdrop-blur-sm border-r border-[#C8D9EA] p-3 sm:p-4 hidden md:flex flex-col justify-between shrink-0 overflow-y-auto">
           <div className="space-y-3">
             
-            {/* "+ Create new" BLUE PILL BUTTON (EXACT SHAPE FROM SCREENSHOT) */}
+            {/* "+ Create new" BUTTON WITH GOLD HALO */}
             <button
               onClick={() => setQuickCreateOpen(true)}
-              className="w-full bg-[#1A56DB] hover:bg-[#1545B3] text-white text-xs font-semibold px-4 py-2.5 rounded-full flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+              className="w-full neuro-cta-gold text-white text-xs font-semibold px-4 py-2.5 rounded-full flex items-center justify-center gap-2 cursor-pointer"
             >
-              <div className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center font-bold">
+              <div className="w-4 h-4 rounded-full bg-[#F5D061]/25 text-[#F5D061] flex items-center justify-center font-bold">
                 <Plus size={13} />
               </div>
               <span>Create new</span>
@@ -458,10 +595,10 @@ export default function SaasAppShell({
 
             {/* MSME WORKSPACE MODULES NAVIGATION */}
             <div className="px-3 pt-1 flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+              <span className="text-[10px] font-mono font-bold text-[#526D8A] uppercase tracking-wider">
                 Modules
               </span>
-              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-[#FDF5E2] text-[#996515] border border-[#E6CF8B] font-bold">
                 12 ACTIVE
               </span>
             </div>
@@ -478,10 +615,10 @@ export default function SaasAppShell({
                       onClick={() => onNavigateTab(item.id)}
                       className={`w-full px-3 py-2 rounded-xl text-xs font-medium transition flex items-center justify-between cursor-pointer ${
                         activeTab === item.id
-                          ? "bg-[#EBF3FC] text-[#1A56DB] font-semibold"
+                          ? "bg-white text-[#0B1B32] font-semibold shadow-2xs border-l-2 border-[#D4AF37]"
                           : isChildActive
-                            ? "bg-slate-50 text-[#1A56DB] font-semibold"
-                            : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
+                            ? "bg-white/80 text-[#1A56DB] font-semibold"
+                            : "text-slate-600 hover:bg-white/70 hover:text-[#0B1B32]"
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">

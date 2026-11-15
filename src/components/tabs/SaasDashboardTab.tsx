@@ -465,6 +465,88 @@ export default function SaasDashboardTab({
       </div>
 
       {/* ========================================================================= */}
+      {/* 1B. DAILY BUSINESS RHYTHM (SUBTLE ZEIGARNIK COMPLETION MOMENTUM)         */}
+      {/* ========================================================================= */}
+      {(() => {
+        const rhythmSteps = [
+          {
+            id: "dawn_lock",
+            label: "1. Dawn Float",
+            done: Boolean(isDemo || launchpadProgress?.step1_dawnLock || latestBookend),
+            hint: "Lock opening cash & mobile money"
+          },
+          {
+            id: "purchases",
+            label: "2. Stock & Supplies",
+            done: Boolean(isDemo || inventory.length > 0 || approvedReceipts.length > 0 || launchpadProgress?.step2_addStock),
+            hint: "Stock catalog & inbound receipts"
+          },
+          {
+            id: "supply_sales",
+            label: "3. Today's Flow",
+            done: Boolean(isDemo || todaySales.length > 0 || salesLedger.length > 0 || launchpadProgress?.step3_firstSale),
+            hint: "Daily inflows & counter sales"
+          },
+          {
+            id: "three_fold_ledgers",
+            label: "4. Profit & Ledgers",
+            done: Boolean(isDemo || totalRevenue > 0 || totalPayouts > 0),
+            hint: "Live margin & 3-fold audit"
+          }
+        ];
+        const doneCount = rhythmSteps.filter((s) => s.done).length;
+        const pct = Math.round((doneCount / rhythmSteps.length) * 100);
+
+        return (
+          <div className="bg-white/90 backdrop-blur-xs rounded-2xl border border-[#C8D9EA] px-4 py-3 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0B1B32] to-[#1A3B66] text-[#F5D061] border border-[#D4AF37]/45 flex items-center justify-center shrink-0 shadow-2xs">
+                <Sparkles size={15} />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-[#0B1B32] tracking-tight">
+                    Daily Business Rhythm
+                  </span>
+                  <span className="text-[11px] font-mono font-bold text-[#996515] tabular-nums">
+                    {doneCount}/{rhythmSteps.length} aligned ({pct}%)
+                  </span>
+                </div>
+                <div className="w-44 sm:w-56 h-1.5 bg-[#E2ECF7] rounded-full overflow-hidden mt-1">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#1A56DB] via-[#D4AF37] to-[#10B981] transition-all duration-500"
+                    style={{ width: `${Math.max(12, pct)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {rhythmSteps.map((step) => (
+                <button
+                  key={step.id}
+                  onClick={() => onNavigateTab(step.id)}
+                  title={step.hint}
+                  className={`px-2.5 py-1.5 rounded-xl border text-left transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+                    step.done
+                      ? "bg-[#FDF9EE] border-[#E6CF8B] text-[#0B1B32] hover:border-[#D4AF37]"
+                      : "bg-[#F5F9FD] border-[#C8D9EA] text-slate-600 hover:bg-white hover:border-[#1A56DB]/50"
+                  }`}
+                >
+                  {step.done ? (
+                    <CheckCircle2 size={13} className="text-[#C8962E] shrink-0" />
+                  ) : (
+                    <span className="w-3 h-3 rounded-full border border-[#94A3B8] shrink-0" />
+                  )}
+                  <span className="text-[11px] font-semibold truncate">{step.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ========================================================================= */}
       {/* 2. ROW OF 4 PASTEL ROUNDED ACTION CARDS                                   */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
@@ -563,7 +645,7 @@ export default function SaasDashboardTab({
         {/* ----------------------------------------------------------------------- */}
         {/* CARD 1: EXPENSES BREAKDOWN                                              */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4 overflow-hidden min-w-0">
+        <div className="bg-white/95 rounded-2xl border border-[#C8D9EA] hover:border-[#D4AF37]/55 transition-colors p-4 sm:p-5 shadow-[0_4px_16px_-6px_rgba(11,27,50,0.08)] flex flex-col justify-between space-y-4 overflow-hidden min-w-0">
           
           {/* HEADER ROW */}
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -749,7 +831,7 @@ export default function SaasDashboardTab({
         {/* ----------------------------------------------------------------------- */}
         {/* CARD 2: CASHFLOW (REAL CURRENT CALENDAR DATES ENDING TODAY)             */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4 overflow-hidden min-w-0">
+        <div className="bg-white/95 rounded-2xl border border-[#C8D9EA] hover:border-[#D4AF37]/55 transition-colors p-4 sm:p-5 shadow-[0_4px_16px_-6px_rgba(11,27,50,0.08)] flex flex-col justify-between space-y-4 overflow-hidden min-w-0">
           
           {/* HEADER ROW */}
           <div className="flex items-center justify-between">
@@ -988,7 +1070,7 @@ export default function SaasDashboardTab({
           };
 
           return (
-            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-4">
+            <div className="bg-white/95 rounded-2xl sm:rounded-3xl border border-[#C8D9EA] hover:border-[#D4AF37]/55 transition-colors p-5 sm:p-6 shadow-[0_4px_16px_-6px_rgba(11,27,50,0.08)] space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <h3 className="text-base sm:text-lg font-semibold text-slate-900">
@@ -1066,7 +1148,7 @@ export default function SaasDashboardTab({
         })()}
 
         {/* CARD 4: PROFIT & LOSS (REAL CLIENT DATA) */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4">
+        <div className="bg-white/95 rounded-2xl sm:rounded-3xl border border-[#C8D9EA] hover:border-[#D4AF37]/55 transition-colors p-5 sm:p-6 shadow-[0_4px_16px_-6px_rgba(11,27,50,0.08)] flex flex-col justify-between space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base sm:text-lg font-semibold text-slate-900">
@@ -1085,27 +1167,27 @@ export default function SaasDashboardTab({
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-1">
-            <div className="p-4 bg-[#F8FAFC] rounded-xl border border-slate-200/80 space-y-1">
+            <div className="p-4 bg-[#F5F9FD] rounded-xl border border-[#C8D9EA] space-y-1">
               <span className="text-xs text-slate-500">
                 {isDemo ? "Total Net Income" : "Net Operating Income (Sales - OpEx)"}
               </span>
-              <div className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">
+              <div className="text-xl sm:text-2xl font-bold text-[#0B1B32] font-mono tabular-nums">
                 {currency} {(isDemo ? 36450 : realNetOperatingIncome).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
               </div>
-              <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                <ArrowUpRight size={13} />
+              <span className="text-[11px] text-[#996515] font-semibold flex items-center gap-1">
+                <ArrowUpRight size={13} className="text-[#C8962E]" />
                 {isDemo
                   ? "+18.4% vs last period"
                   : `Shelf Potential Profit: ${currency} ${totalPotentialProfit.toLocaleString()}`}
               </span>
             </div>
 
-            <div className="p-4 bg-[#F8FAFC] rounded-xl border border-slate-200/80 space-y-1">
-              <span className="text-xs text-slate-500">Gross Margin</span>
-              <div className="text-xl sm:text-2xl font-bold text-slate-900 font-mono">
+            <div className="p-4 bg-[#FDF9EE] rounded-xl border border-[#E6CF8B] space-y-1">
+              <span className="text-xs text-[#7C5212]">Gross Margin</span>
+              <div className="text-xl sm:text-2xl font-bold text-[#0B1B32] font-mono tabular-nums">
                 {isDemo ? "24.8%" : `${realGrossMarginPct}%`}
               </div>
-              <span className="text-[11px] text-blue-600 font-semibold block">
+              <span className="text-[11px] text-[#1A56DB] font-semibold block">
                 {isDemo
                   ? "Shelf capital defended"
                   : `${inventory.length} active SKUs • Markup: ${state.kpis?.avg_markup_percentage || 0}%`}

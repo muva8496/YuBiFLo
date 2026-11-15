@@ -25,18 +25,19 @@ export default function ProofBand({
   const balancePercentage = Math.round((cleanTradingDays / totalTradingDaysRecorded) * 100);
 
   return (
-    <section className="bg-[#000000] border-y border-[#27272a] text-white py-16 sm:py-20 relative overflow-hidden font-sans">
+    <section className="bg-gradient-to-br from-[#081426] via-[#0B1D36] to-[#081324] border-y border-[#1E3A5F] text-white py-16 sm:py-20 relative overflow-hidden font-sans">
       
-      {/* Background glow subtle aura */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#000000]/30 rounded-full blur-3xl pointer-events-none" />
+      {/* Background atmospheric blue & gold luminescence */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-[#1D4ED8]/15 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-12">
         
         {/* Header & Sub-line */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#18181b] border border-[#3f3f46] text-xs font-mono font-semibold text-[#FFD54F]">
-              <Award size={13} className="text-[#FFD54F]" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#102644] border border-[#D4AF37]/40 text-xs font-mono font-semibold text-[#F5D061]">
+              <Award size={13} className="text-[#F5D061]" />
               <span>LIVE EVIDENCE &bull; PROJECT #1</span>
             </div>
 
@@ -44,7 +45,7 @@ export default function ProofBand({
               Proof, in real numbers.
             </h2>
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-              Messy counters, unrecorded credit and supplier deliveries become clear, checked ledgers.
+              Messy counters, untracked credit and supplier deliveries become clear, checked ledgers.
             </p>
           </div>
 
@@ -72,10 +73,10 @@ export default function ProofBand({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           
           {/* Stat 1: Money tracked */}
-          <div className="bg-[#121214] border border-[#000000] rounded-2xl p-6 space-y-2 hover:border-[#FFD54F]/50 transition">
+          <div className="bg-[#0E223D]/85 border border-[#1E3A5F] rounded-2xl p-6 space-y-2 hover:border-[#F5D061]/55 transition">
             <div className="text-xs font-mono uppercase tracking-wider text-slate-300 flex items-center justify-between">
               <span>Money tracked</span>
-              <span className="text-[10px] bg-[#000000] text-[#FFD54F] px-2 py-0.5 rounded font-mono font-bold">
+              <span className="text-[10px] bg-[#081426] text-[#F5D061] border border-[#D4AF37]/30 px-2 py-0.5 rounded font-mono font-bold">
                 Sales captured automatically
               </span>
             </div>
@@ -90,10 +91,10 @@ export default function ProofBand({
           </div>
 
           {/* Stat 2: Products catalogued */}
-          <div className="bg-[#121214] border border-[#000000] rounded-2xl p-6 space-y-2 hover:border-[#FFD54F]/50 transition">
+          <div className="bg-[#0E223D]/85 border border-[#1E3A5F] rounded-2xl p-6 space-y-2 hover:border-[#F5D061]/55 transition">
             <div className="text-xs font-mono uppercase tracking-wider text-slate-300 flex items-center justify-between">
               <span>Products catalogued</span>
-              <span className="text-[10px] bg-[#000000] text-[#e4e4e7] px-2 py-0.5 rounded font-mono font-bold">
+              <span className="text-[10px] bg-[#081426] text-[#e4e4e7] border border-[#2B4C77] px-2 py-0.5 rounded font-mono font-bold">
                 Stock deliveries checked
               </span>
             </div>
@@ -108,10 +109,10 @@ export default function ProofBand({
           </div>
 
           {/* Stat 3: Credit owed (Deni) tracked */}
-          <div className="bg-[#121214] border border-[#000000] rounded-2xl p-6 space-y-2 hover:border-[#FFD54F]/50 transition">
+          <div className="bg-[#0E223D]/85 border border-[#1E3A5F] rounded-2xl p-6 space-y-2 hover:border-[#F5D061]/55 transition">
             <div className="text-xs font-mono uppercase tracking-wider text-slate-300 flex items-center justify-between">
               <span>Credit owed (Deni) tracked</span>
-              <span className="text-[10px] bg-[#000000] text-[#FFD54F] px-2 py-0.5 rounded font-mono font-bold">
+              <span className="text-[10px] bg-[#081426] text-[#F5D061] border border-[#D4AF37]/30 px-2 py-0.5 rounded font-mono font-bold">
                 Daily cash check
               </span>
             </div>
@@ -126,20 +127,20 @@ export default function ProofBand({
           </div>
 
           {/* Stat 4: Books that balance */}
-          <div className="bg-[#121214] border border-[#000000] rounded-2xl p-6 space-y-2 hover:border-[#FFD54F]/50 transition">
+          <div className="bg-[#0E223D]/85 border border-[#1E3A5F] rounded-2xl p-6 space-y-2 hover:border-[#F5D061]/55 transition">
             <div className="text-xs font-mono uppercase tracking-wider text-slate-300 flex items-center justify-between">
               <span>Books that balance</span>
-              <span className="text-[10px] bg-[#000000] text-[#e4e4e7] px-2 py-0.5 rounded font-mono font-bold">
+              <span className="text-[10px] bg-[#081426] text-[#e4e4e7] border border-[#2B4C77] px-2 py-0.5 rounded font-mono font-bold">
                 Measured rate
               </span>
             </div>
             
-            <div className="text-3xl font-black font-serif text-[#FFD54F] pt-1">
+            <div className="text-3xl font-black font-serif tabular-nums text-[#FFD54F] pt-1">
               {cleanTradingDays > 0 ? `${balancePercentage}%` : "- (building)"}
             </div>
             
             <p className="text-xs text-slate-400">
-              Share of recorded days where closing cash matched expected till within KSh 50.
+              Share of audited trading days where closing cash matched expected till within KSh 50.
             </p>
           </div>
 

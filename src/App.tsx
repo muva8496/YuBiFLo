@@ -44,6 +44,9 @@ import {
   deriveUnitWholesaleCost
 } from "./services/bulkConversionEngine";
 import { 
+  DemoPreset,
+  getActiveDemoPreset,
+  setActiveDemoPreset,
   loadDemoSandboxState, 
   saveDemoSandboxState, 
   resetDemoSandbox 
@@ -193,10 +196,11 @@ export default function App() {
     return getActiveAccountId(email);
   });
 
-  // DUKA SPACE DEMO SANDBOX ISOLATION
+  // DUKA & EATERY INTERACTIVE SANDBOX ISOLATION (NO SIGN-IN REQUIRED)
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
+  const [demoPreset, setDemoPreset] = useState<DemoPreset>(() => getActiveDemoPreset());
   const [demoOriginView, setDemoOriginView] = useState<"landing" | "workspace">("landing");
-  const [demoState, setDemoState] = useState<AlacioMasterState>(() => loadDemoSandboxState());
+  const [demoState, setDemoState] = useState<AlacioMasterState>(() => loadDemoSandboxState(getActiveDemoPreset()));
 
   // REAL WORKSPACE STATE (Account-scoped with zero-data-loss fallback)
   const [alacioState, setAlacioState] = useState<AlacioMasterState>(() => {
@@ -261,22 +265,23 @@ export default function App() {
 
   const effectiveOwnerEmail = (currentUser?.email || alacioState.user_email || "mosesmukangai75@gmail.com").trim().toLowerCase();
 
-  // Persist real state locally & mirror encrypted E2EE vault to Firestore once cloud-armed
+  // Persist real state locally & mirror encrypted E2EE vault to Firestore once cloud-armed (only when authenticated)
   useEffect(() => {
+    if (!currentUser?.email || isDemoMode) return;
     const syncKey = `${effectiveOwnerEmail}::${activeAccountId}`;
     const allowCloudWrite =
-      !isDemoMode &&
-      (cloudHydratedKeyRef.current === syncKey ||
-        hasUserEditedRef.current ||
-        hasRealLocalSavedState(effectiveOwnerEmail, activeAccountId));
+      cloudHydratedKeyRef.current === syncKey ||
+      hasUserEditedRef.current ||
+      hasRealLocalSavedState(effectiveOwnerEmail, activeAccountId);
 
     saveAlacioState(alacioState, effectiveOwnerEmail, activeAccountId, {
       skipCloud: !allowCloudWrite
     });
-  }, [alacioState, effectiveOwnerEmail, activeAccountId, isDemoMode]);
+  }, [alacioState, effectiveOwnerEmail, activeAccountId, isDemoMode, currentUser?.email]);
 
-  // Twitter -> X Cross-Domain Cloud Hydration & Live Sync Effect (runs automatically on boot & account switch)
+  // Cross-Domain Cloud Hydration & Live Sync Effect (runs only when user has signed in)
   useEffect(() => {
+    if (!currentUser?.email) return;
     let cancelled = false;
     let unsubscribeSnapshot: (() => void) | undefined;
     const syncKey = `${effectiveOwnerEmail}::${activeAccountId}`;
@@ -336,14 +341,14 @@ export default function App() {
       if (unsubscribeSnapshot) unsubscribeSnapshot();
       window.removeEventListener("pagehide", handlePageHide);
     };
-  }, [effectiveOwnerEmail, activeAccountId]);
+  }, [effectiveOwnerEmail, activeAccountId, currentUser?.email]);
 
-  // Persist demo state strictly to isolated sandbox storage
+  // Persist demo state strictly to isolated sandbox storage (never touches cloud or real accounts)
   useEffect(() => {
     if (isDemoMode) {
-      saveDemoSandboxState(demoState);
+      saveDemoSandboxState(demoState, demoPreset);
     }
-  }, [demoState, isDemoMode]);
+  }, [demoState, isDemoMode, demoPreset]);
 
   // Persist real launchpad progress locally & in encrypted cloud directory
   useEffect(() => {
@@ -368,18 +373,29 @@ export default function App() {
   }, [isDemoMode]);
 
   // -------------------------------------------------------------
-  // DUKA SPACE DEMO: ENTRY & EXIT HANDLERS
+  // INTERACTIVE DEMO SANDBOX: ENTRY & EXIT HANDLERS (NO SIGN-IN NEEDED)
   // -------------------------------------------------------------
-  const handleEnterDukaSpace = (origin: "landing" | "workspace" = currentView === "landing" ? "landing" : "workspace") => {
+  const handleEnterDukaSpace = (
+    origin: "landing" | "workspace" = currentView === "landing" ? "landing" : "workspace",
+    options?: { tab?: string; preset?: DemoPreset }
+  ) => {
+    const targetPreset: DemoPreset = options?.preset || demoPreset || "duka";
+    if (targetPreset !== demoPreset) {
+      setDemoPreset(targetPreset);
+      setActiveDemoPreset(targetPreset);
+      setDemoState(loadDemoSandboxState(targetPreset));
+    } else if (!demoState || !demoState.inventory?.length) {
+      setDemoState(loadDemoSandboxState(targetPreset));
+    }
     setDemoOriginView(origin);
     setIsDemoMode(true);
     setCurrentView("workspace");
-    setActiveTab("dashboard");
+    setActiveTab(options?.tab || "dashboard");
   };
 
   const handleExitDukaSpace = () => {
     setIsDemoMode(false);
-    resetDemoSandbox();
+    setDemoState(resetDemoSandbox(demoPreset));
     if (demoOriginView === "landing" && !currentUser) {
       setCurrentView("landing");
     } else {
@@ -1691,14 +1707,17 @@ export default function App() {
             setIsAuthModalOpen(true);
           }}
           onLaunchDukaDemo={() => {
-            handleEnterDukaSpace("landing");
+            handleEnterDukaSpace("landing", { tab: "dashboard", preset: "duka" });
+          }}
+          onLaunchDemoTab={(tabId, preset) => {
+            handleEnterDukaSpace("landing", { tab: tabId || "dashboard", preset: preset || "duka" });
           }}
           onGetStarted={() => {
             if (currentUser) {
               setCurrentView("workspace");
               setActiveTab("dashboard");
             } else {
-              handleEnterDukaSpace("landing");
+              handleEnterDukaSpace("landing", { tab: "dashboard", preset: "duka" });
             }
           }}
           onLaunchRetailWorkspace={() => {
@@ -1706,8 +1725,7 @@ export default function App() {
               setCurrentView("workspace");
               setActiveTab("dashboard");
             } else {
-              setAuthModalMode("signin");
-              setIsAuthModalOpen(true);
+              handleEnterDukaSpace("landing", { tab: "dashboard", preset: "duka" });
             }
           }}
           onOpenSovereignCommand={() => {
@@ -1796,13 +1814,20 @@ export default function App() {
     <>
       <SaasAppShell
         user={currentUser}
-        accounts={accounts}
+        accounts={isDemoMode && !currentUser ? [] : accounts}
         activeAccountId={activeAccountId}
         onSwitchAccount={handleSwitchAccount}
         onCreateAccount={handleCreateAccount}
         activeTab={activeTab}
         onNavigateTab={setActiveTab}
         isDemo={isDemoMode}
+        demoPreset={demoPreset}
+        onSwitchDemoPreset={(nextPreset) => {
+          handleEnterDukaSpace(demoOriginView, { tab: activeTab, preset: nextPreset });
+        }}
+        onResetDemoSandbox={() => {
+          setDemoState(resetDemoSandbox(demoPreset));
+        }}
         onSwitchWorkspace={(target) => {
           if (target === "demo") {
             handleEnterDukaSpace("workspace");
@@ -1850,16 +1875,19 @@ export default function App() {
 
         {/* TAB 2: DASHBOARD */}
         {activeTab === "dashboard" && (() => {
-          const currentActiveAccount = accounts.find((a) => a.id === activeAccountId);
-          const activeBusinessName = currentActiveAccount?.businessName || currentMasterState.merchant_name || "My Business";
-          const isAlacio = activeBusinessName.toLowerCase().includes("alacio");
-          const isMosesEmail = (currentUser?.email || "").toLowerCase().includes("moses");
-          const activeProprietor =
-            currentMasterState.proprietor_name ||
-            currentActiveAccount?.proprietorName ||
-            (isAlacio ? "Rose" : (currentUser?.firstName || currentUser?.name?.split(" ")[0] || "Owner"));
+          const currentActiveAccount = isDemoMode ? undefined : accounts.find((a) => a.id === activeAccountId);
+          const activeBusinessName = isDemoMode
+            ? currentMasterState.merchant_name
+            : currentActiveAccount?.businessName || currentMasterState.merchant_name || "My Business";
+          const isAlacio = !isDemoMode && activeBusinessName.toLowerCase().includes("alacio");
+          const isMosesEmail = !isDemoMode && (currentUser?.email || "").toLowerCase().includes("moses");
+          const activeProprietor = isDemoMode
+            ? "Guest"
+            : currentMasterState.proprietor_name ||
+              currentActiveAccount?.proprietorName ||
+              (isAlacio ? "Rose" : (currentUser?.firstName || currentUser?.name?.split(" ")[0] || "Owner"));
           const activeManager =
-            currentActiveAccount?.managerName && (isAlacio || isMosesEmail)
+            !isDemoMode && currentActiveAccount?.managerName && (isAlacio || isMosesEmail)
               ? currentActiveAccount.managerName
               : undefined;
 
@@ -1870,7 +1898,7 @@ export default function App() {
               proprietorName={activeProprietor}
               managerName={activeManager}
               businessName={activeBusinessName}
-              accountRole={currentActiveAccount?.role || (isAlacio ? "MANAGER" : "OWNER")}
+              accountRole={isDemoMode ? "OWNER" : currentActiveAccount?.role || (isAlacio ? "MANAGER" : "OWNER")}
               onNavigateTab={setActiveTab}
               onOpenQuickSale={() => setActiveTab("voice_ledger")}
               onOpenQuickPurchase={() => setActiveTab("purchases")}

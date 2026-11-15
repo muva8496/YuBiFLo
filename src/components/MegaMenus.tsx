@@ -373,11 +373,11 @@ export function SolutionsMegaMenu({
             <button
               onClick={() => {
                 onClose();
-                onLaunchWorkspace();
+                onSelectSolution("vcr_voice");
               }}
               className="w-full py-2.5 px-4 rounded-xl bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
             >
-              <span>Launch VCR Workspace</span>
+              <span>Try Live VCR (No Sign-Up)</span>
               <ArrowRight size={13} />
             </button>
 
@@ -693,6 +693,9 @@ export function MobileNavAccordions({
   isOpen,
   onClose,
   onLaunchWorkspace,
+  onSelectSolution,
+  onSelectBusinessType,
+  onOpenAuth,
   onOpenPRD,
   onOpenEngineeringLab,
   onOpenWaitlist,
@@ -702,6 +705,9 @@ export function MobileNavAccordions({
   isOpen: boolean;
   onClose: () => void;
   onLaunchWorkspace: () => void;
+  onSelectSolution?: (solutionId: string) => void;
+  onSelectBusinessType?: (name: string) => void;
+  onOpenAuth?: (mode: "signin" | "signup") => void;
   onOpenPRD: () => void;
   onOpenEngineeringLab: () => void;
   onOpenWaitlist: (name: string) => void;
@@ -723,7 +729,7 @@ export function MobileNavAccordions({
           onClick={() => setSolutionsExpanded(!solutionsExpanded)}
           className="w-full p-3.5 bg-[#fafafa] flex items-center justify-between text-left font-bold text-[#000000]"
         >
-          <span>Solutions</span>
+          <span>Solutions (Try Live Free)</span>
           <ChevronDown size={16} className={`transition-transform ${solutionsExpanded ? "rotate-180" : ""}`} />
         </button>
 
@@ -739,7 +745,8 @@ export function MobileNavAccordions({
                     key={item.id} 
                     onClick={() => {
                       onClose();
-                      onLaunchWorkspace();
+                      if (onSelectSolution) onSelectSolution(item.id);
+                      else onLaunchWorkspace();
                     }}
                     className="py-1 flex items-center justify-between cursor-pointer"
                   >
@@ -770,8 +777,12 @@ export function MobileNavAccordions({
                 key={b.name}
                 onClick={() => {
                   onClose();
-                  if (b.status === "available") onLaunchWorkspace();
-                  else onOpenWaitlist(b.name);
+                  if (b.status === "available") {
+                    if (onSelectBusinessType) onSelectBusinessType(b.name);
+                    else onLaunchWorkspace();
+                  } else {
+                    onOpenWaitlist(b.name);
+                  }
                 }}
                 className="py-1.5 flex items-center justify-between border-b border-[#f4f4f5] last:border-none cursor-pointer"
               >
@@ -832,19 +843,33 @@ export function MobileNavAccordions({
             onClose();
             onLaunchWorkspace();
           }}
-          className="w-full py-2.5 rounded-full border border-[#000000] text-[#000000] font-bold text-center cursor-pointer"
+          className="w-full py-3 rounded-full bg-[#0B1B32] text-[#F5D061] border border-[#D4AF37]/60 font-bold text-center shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
         >
-          Sign in
+          <Sparkles size={14} />
+          <span>Explore Live Demo (No Sign-Up)</span>
         </button>
-        <button
-          onClick={() => {
-            onClose();
-            onLaunchWorkspace();
-          }}
-          className="w-full py-3 rounded-full bg-[#000000] text-white font-bold text-center shadow-sm cursor-pointer"
-        >
-          Sign up
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => {
+              onClose();
+              if (onOpenAuth) onOpenAuth("signin");
+              else onLaunchWorkspace();
+            }}
+            className="w-full py-2.5 rounded-full border border-[#000000] text-[#000000] font-bold text-center cursor-pointer"
+          >
+            Sign in
+          </button>
+          <button
+            onClick={() => {
+              onClose();
+              if (onOpenAuth) onOpenAuth("signup");
+              else onLaunchWorkspace();
+            }}
+            className="w-full py-2.5 rounded-full bg-[#000000] text-white font-bold text-center shadow-sm cursor-pointer"
+          >
+            Sign up
+          </button>
+        </div>
       </div>
 
     </div>

@@ -308,14 +308,14 @@ export default function OnboardingModal({
                     Path B &bull; Instant History
                   </span>
                   <h5 className="font-serif font-black text-base text-white">
-                    Already keep records?
+                    Already have M-Pesa alerts or notes?
                   </h5>
                   <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    Bring your Excel sheets, till exports or M-Pesa statements. We organise them, find what they are telling you, and show where your business is heading.
+                    Drop in your M-Pesa statements, till exports, or simple sheets. We sort them out automatically and show where your business is heading.
                   </p>
                 </div>
                 <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-emerald-400">
-                  <span>Bring my records</span>
+                  <span>Bring what I already have</span>
                   <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
@@ -707,10 +707,10 @@ export default function OnboardingModal({
               <div className="space-y-4">
                 <div>
                   <h4 className="font-serif font-bold text-base text-white">
-                    Step 2: Upload your existing records
+                    Step 2: Drop in what you already have
                   </h4>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Excel/CSV sheets, till exports, POS dumps or 30-day M-Pesa statements.
+                    M-Pesa statements, till exports, POS dumps or simple Excel/CSV sheets.
                   </p>
                 </div>
 

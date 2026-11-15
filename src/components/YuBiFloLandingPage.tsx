@@ -34,6 +34,7 @@ interface YuBiFloLandingPageProps {
   onOpenAuth?: (mode: "signin" | "signup") => void;
   isLoggedIn?: boolean;
   onLaunchDukaDemo?: () => void;
+  onLaunchDemoTab?: (tabId?: string, preset?: "duka" | "eatery") => void;
 }
 
 // -------------------------------------------------------------
@@ -162,9 +163,35 @@ export default function YuBiFloLandingPage({
   onCompleteOnboarding,
   onOpenAuth,
   isLoggedIn = false,
-  onLaunchDukaDemo
+  onLaunchDukaDemo,
+  onLaunchDemoTab
 }: YuBiFloLandingPageProps) {
   const handleLaunchWorkspace = onLaunchRetailWorkspace || onLaunchAlacioShop || onGetStarted;
+
+  const launchSolutionDemo = (solutionId: string, preset: "duka" | "eatery" = "duka") => {
+    const tabMap: Record<string, string> = {
+      daily_cash: "dawn_lock",
+      profit_summary: "analytics",
+      bloom_dashboard: "dashboard",
+      vcr_voice: "voice_ledger",
+      mpesa_import: "supply_sales",
+      supplier_photo: "receipt_ocr",
+      credit_deni: "customer_deni",
+      restock_engine: "purchases",
+      supplier_ranking: "suppliers",
+      forecasts: "analytics",
+      benchmarks: "analytics",
+      three_fold: "three_fold_ledgers"
+    };
+    const targetTab = tabMap[solutionId] || "dashboard";
+    if (onLaunchDemoTab) {
+      onLaunchDemoTab(targetTab, preset);
+    } else if (onLaunchDukaDemo) {
+      onLaunchDukaDemo();
+    } else {
+      handleLaunchWorkspace();
+    }
+  };
 
   // Onboarding Modal state (Path A: Start Fresh, Path B: Bring your records)
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
@@ -198,6 +225,7 @@ export default function YuBiFloLandingPage({
 
   // Business Type Tabs: "See your kind of business"
   const [selectedBusinessType, setSelectedBusinessType] = useState<"duka" | "eatery" | "hardware" | "wholesale">("duka");
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
 
   // VCR Live Feed State (Counting up and heard sale stream)
   const [vcrIsPaused, setVcrIsPaused] = useState(false);
@@ -314,13 +342,13 @@ export default function YuBiFloLandingPage({
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F4F8] text-[#0F1A24] font-sans antialiased selection:bg-[#2D5577] selection:text-white deep-steel-blue-bg">
+    <div className="min-h-screen yubiflo-blue-gold-canvas text-[#0F1A24] font-sans antialiased selection:bg-[#1A56DB] selection:text-white">
       
       {/* ========================================================================= */}
       {/* 1. NAVIGATION BAR                                                         */}
       {/* ========================================================================= */}
-      <header className="sticky top-0 z-40 bg-[#F0F4F8]/90 backdrop-blur-md border-b border-[#C8D7E3]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-[#EDF4FB]/90 backdrop-blur-md border-b border-[#C8D9EA] border-t-2 border-t-[#D4AF37]/60">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 h-20 flex items-center justify-between">
           
           {/* Logo & Brand Signature */}
           <div className="flex items-center gap-8 lg:gap-10">
@@ -383,9 +411,23 @@ export default function YuBiFloLandingPage({
                   const el = document.getElementById("projects-section");
                   el?.scrollIntoView({ behavior: "smooth" });
                 }}
-                className="hover:text-[#000000] transition cursor-pointer"
+                className="hover:text-[#0B1B32] transition cursor-pointer whitespace-nowrap shrink-0"
               >
                 Projects
+              </button>
+
+              {/* 4. Pricing */}
+              <button 
+                onClick={() => {
+                  setSolutionsMenuOpen(false);
+                  setBusinessTypesMenuOpen(false);
+                  setResourcesMenuOpen(false);
+                  const el = document.getElementById("pricing-section");
+                  el?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="hover:text-[#0B1B32] transition cursor-pointer whitespace-nowrap shrink-0"
+              >
+                Pricing
               </button>
 
               {/* 4. Resources Dropdown */}
@@ -440,7 +482,7 @@ export default function YuBiFloLandingPage({
 
                 <button
                   onClick={() => onOpenAuth ? onOpenAuth("signup") : handleLaunchWorkspace()}
-                  className="px-5 py-2.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-semibold text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-5 py-2.5 rounded-full neuro-cta-gold text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
                   title="Sign up and start using the app directly"
                 >
                   <span>Meet Your Biz</span>
@@ -495,18 +537,18 @@ export default function YuBiFloLandingPage({
         <SolutionsMegaMenu
           isOpen={solutionsMenuOpen}
           onClose={() => setSolutionsMenuOpen(false)}
-          onSelectSolution={(solId) => {
-            if (solId === "vcr_voice") setIsVoiceRecordingModalOpen(true);
-            else handleLaunchWorkspace();
-          }}
-          onLaunchWorkspace={handleLaunchWorkspace}
+          onSelectSolution={(solId) => launchSolutionDemo(solId)}
+          onLaunchWorkspace={() => launchSolutionDemo("bloom_dashboard")}
           onRequestSetup={() => setWaitlistModalApp("Done-For-You Setup Service")}
         />
 
         <BusinessTypesMegaMenu
           isOpen={businessTypesMenuOpen}
           onClose={() => setBusinessTypesMenuOpen(false)}
-          onSelectAvailableType={() => handleLaunchWorkspace()}
+          onSelectAvailableType={(name) => {
+            const preset = name.toLowerCase().includes("eatery") ? "eatery" : "duka";
+            launchSolutionDemo("bloom_dashboard", preset);
+          }}
           onOpenWaitlist={(name) => setWaitlistModalApp(name)}
         />
 
@@ -531,7 +573,13 @@ export default function YuBiFloLandingPage({
         <MobileNavAccordions
           isOpen={mobileMenuOpen}
           onClose={() => setMobileMenuOpen(false)}
-          onLaunchWorkspace={handleLaunchWorkspace}
+          onLaunchWorkspace={() => launchSolutionDemo("bloom_dashboard")}
+          onSelectSolution={(solId) => launchSolutionDemo(solId)}
+          onSelectBusinessType={(name) => {
+            const preset = name.toLowerCase().includes("eatery") ? "eatery" : "duka";
+            launchSolutionDemo("bloom_dashboard", preset);
+          }}
+          onOpenAuth={onOpenAuth}
           onOpenPRD={() => setIsPrdModalOpen(true)}
           onOpenEngineeringLab={() => setIsEngineeringLabOpen(true)}
           onOpenWaitlist={(name) => setWaitlistModalApp(name)}
@@ -541,69 +589,65 @@ export default function YuBiFloLandingPage({
       </header>
 
       {/* ========================================================================= */}
-      {/* 2. HERO SECTION                                                           */}
+      {/* 2. HERO SECTION (SIDE-BY-SIDE WORDING + LIVE DASHBOARD)                   */}
       {/* ========================================================================= */}
-      <section className="pt-12 sm:pt-16 pb-20 bg-gradient-to-b from-[#F0F4F8] via-[#DDE7F0]/60 to-[#CFDEEB]/40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <section className="pt-8 sm:pt-14 lg:pt-16 pb-14 sm:pb-20 lg:pb-24 yubiflo-hero-aura border-b border-[#C8D9EA]">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-14 items-center">
             
             {/* HERO LEFT: COPY */}
-            <div className="lg:col-span-5 space-y-6">
-              
-              {/* Trust Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#f4f4f5] text-xs text-[#000000] font-medium border border-[#e4e4e7]">
-                <Shield size={14} className="text-[#000000]" />
-                <span>Built with Kenya&apos;s Data Protection Act in mind</span>
-              </div>
+            <div className="md:col-span-5 space-y-6">
 
               {/* Hero Headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-black text-[#000000] tracking-tight leading-[1.12]">
+              <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] xl:text-5xl font-serif font-black text-[#0B1B32] tracking-tight leading-[1.12] [text-wrap:balance]">
                 Your business,{" "}
-                <span className="italic bg-gradient-to-r from-blue-600 via-amber-500 to-[#B8860B] bg-clip-text text-transparent">
+                <span className="italic bg-gradient-to-r from-[#1A56DB] via-[#D4AF37] to-[#996515] bg-clip-text text-transparent neuro-gold-underline">
                   finally in numbers
                 </span>
                 .
               </h1>
 
-              {/* Body Text */}
-              <p className="text-base sm:text-lg text-[#444444] leading-relaxed max-w-[60ch]">
-                YuBiFLo sets up how your business collects, keeps and understands its numbers. Start fresh or bring the records you already keep, and your dashboard shows what happened, why, and what to do next.
+              {/* Body Text: Whole-SME Problem -> Agitate -> Solution */}
+              <p className="text-sm sm:text-base text-[#334155] leading-relaxed max-w-[54ch]">
+                Across eateries, retail shops, hardware stores, salons, wholesale depots, and service businesses&mdash;cash, mobile money, supplier bills, staff pay, and rent all move fast through one blur. Stopping to write books slows down customers, yet guessing leaves real money leaking unseen. <strong className="text-[#0B1B32] font-semibold">YuBiFLo gives SMEs instant clarity</strong> across every shilling, channel, and cost&mdash;without holding up work.
               </p>
 
               {/* Action Buttons */}
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
                 <button
                   onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
-                  className="px-7 py-3.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-sm shadow-md shadow-[#000000]/20 transition cursor-pointer text-center flex items-center justify-center gap-2 group"
+                  className="px-6 py-3 rounded-full neuro-cta-gold text-white font-bold text-sm cursor-pointer text-center flex items-center justify-center gap-2 group"
                   title="Sign up and start using the app for your business"
                 >
                   <span>Meet Your Biz</span>
-                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight size={16} className="text-[#F5D061] group-hover:translate-x-1 transition-transform" />
                 </button>
 
                 <button
-                  onClick={() => onLaunchDukaDemo ? onLaunchDukaDemo() : handleLaunchWorkspace()}
-                  className="px-7 py-3.5 rounded-full bg-white hover:bg-zinc-50 border-2 border-[#000000] text-[#000000] font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                  title="Explore live demo duka"
+                  onClick={() => launchSolutionDemo("bloom_dashboard", "duka")}
+                  className="px-6 py-3 rounded-full bg-white/95 hover:bg-white border border-[#9BB6D3] hover:border-[#D4AF37] text-[#0B1B32] font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  title="Experience every solution live without signing in"
                 >
-                  <Sparkles size={16} className="text-[#B8860B]" />
-                  <span>Meet the Demo</span>
+                  <Sparkles size={16} className="text-[#C8962E]" />
+                  <span>Try Live — No Sign-Up</span>
                 </button>
               </div>
 
-              {/* Trust line */}
-              <div className="pt-2 flex items-center gap-2 text-xs text-[#555555]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#B8860B]" />
-                <span className="font-medium italic">&ldquo;We keep the numbers, not the conversations.&rdquo;</span>
+              {/* Subtle Neuro-Ease Trust Cue */}
+              <div className="pt-1 flex items-center flex-wrap gap-2 text-xs text-[#475569]">
+                <Shield size={13} className="text-[#C8962E] shrink-0" />
+                <span className="font-medium">&ldquo;We keep the numbers, not the conversations.&rdquo;</span>
+                <span aria-hidden="true" className="text-[#94A3B8]">&middot;</span>
+                <span className="text-[#1E3A5F] font-semibold">Experience everything before signing up</span>
               </div>
 
             </div>
 
-            {/* HERO RIGHT: OWNER'S DAILY DASHBOARD (REAL WORKSPACE DEMONSTRATION) */}
-            <div className="lg:col-span-7">
+            {/* HERO RIGHT: LIVE WORKSPACE DASHBOARD (SIDE-BY-SIDE ON SAME PAGE) */}
+            <div className="md:col-span-7 min-w-0">
               <LoopingDashboardDemo 
                 userName="Musa"
-                businessName="Musa General Retailers"
+                businessName="Horizon SME Enterprises"
                 onLaunchWorkspace={() => {
                   if (onLaunchDukaDemo) {
                     onLaunchDukaDemo();
@@ -619,92 +663,112 @@ export default function YuBiFloLandingPage({
       </section>
 
       {/* ========================================================================= */}
-      {/* 2.5 VALUE PROPOSITION SECTION (MANDATED SPEC)                             */}
+      {/* 2.5 PROBLEM -> AGITATE -> SOLUTION SECTION                                */}
       {/* ========================================================================= */}
-      <section className="py-16 sm:py-20 bg-white border-y border-[#C8D7E3]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      <section className="py-20 sm:py-28 bg-[#F0F5FB] border-b border-[#C8D9EA]">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 space-y-14 sm:space-y-16">
           
           <div className="text-center max-w-3xl mx-auto space-y-3">
+            <div className="text-xs font-bold uppercase tracking-widest text-[#B8860B]">
+              Built For Growing SMEs
+            </div>
             <h2 className="text-3xl sm:text-4xl font-serif font-black text-[#000000] tracking-tight">
-              We set up how your business collects, keeps and understands its numbers.
+              Hard work across your business shouldn&apos;t end in guesswork.
             </h2>
             <p className="text-base sm:text-lg text-[#555555]">
-              Then your dashboard tells you what happened, why, and what to do next.
+              Whether your SME sells goods, meals, hardware, or daily services—delayed visibility costs real working capital.
             </p>
           </div>
 
-          {/* Two Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Three PAS Cards: Problem, Agitate, Solution */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             
-            {/* Card 1: Starting from scratch */}
-            <div className="p-8 sm:p-10 rounded-3xl bg-[#F0F4F8] border border-[#C8D7E3] space-y-5 flex flex-col justify-between shadow-xs">
+            {/* 1. PROBLEM */}
+            <div className="p-7 sm:p-8 rounded-3xl neuro-surface-card space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
-                <span className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold block">
-                  Path A &bull; Start Fresh
+                <span className="text-xs font-mono uppercase tracking-wider text-rose-700 font-bold block">
+                  01 &bull; The Problem
                 </span>
-                <h3 className="text-2xl font-serif font-black text-[#000000]">
-                  Starting from scratch?
+                <h3 className="text-2xl font-serif font-black text-[#0B1B32]">
+                  Everything moves through one blur
                 </h3>
-                <p className="text-sm sm:text-base text-[#444444] leading-relaxed">
-                  We design how your shop collects its numbers (voice, M-Pesa, a daily cash check), keep them safe, and turn them into a dashboard you can read in a minute.
+                <p className="text-sm sm:text-base text-[#334155] leading-relaxed">
+                  Cash on hand, mobile money (Till, Paybill, Pochi, or Send Money), supplier bills, staff wages, rent, and client credit all mix in the same fast-moving business day.
                 </p>
               </div>
-
-              <div className="pt-2">
-                <button
-                  onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
-                  className="px-6 py-3.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
-                >
-                  <span>Meet Your Biz (Start Fresh)</span>
-                  <ArrowRight size={14} />
-                </button>
+              <div className="pt-2 text-xs font-semibold text-rose-700">
+                High revenue &ne; clear profit.
               </div>
             </div>
 
-            {/* Card 2: Already keep records */}
-            <div className="p-8 sm:p-10 rounded-3xl bg-[#F0F4F8] border border-[#C8D7E3] space-y-5 flex flex-col justify-between shadow-xs">
+            {/* 2. AGITATE */}
+            <div className="p-7 sm:p-8 rounded-3xl bg-[#FDF9EE] border border-[#E6CF8B] space-y-4 flex flex-col justify-between shadow-xs hover:-translate-y-0.5 transition-transform duration-200">
               <div className="space-y-3">
-                <span className="text-xs font-mono uppercase tracking-wider text-emerald-700 font-bold block">
-                  Path B &bull; Bring Your Data
+                <span className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold block">
+                  02 &bull; Why It Hurts
                 </span>
-                <h3 className="text-2xl font-serif font-black text-[#000000]">
-                  Already keep records?
+                <h3 className="text-2xl font-serif font-black text-[#0B1B32]">
+                  Stopping to write slows the whole business
                 </h3>
-                <p className="text-sm sm:text-base text-[#444444] leading-relaxed">
-                  Bring your Excel sheets, till exports or M-Pesa statements. We organise them, find what they are telling you, and show where your business is heading.
+                <p className="text-sm sm:text-base text-[#334155] leading-relaxed">
+                  Busy SMEs cannot pause clients to type spreadsheets or chase notebooks. Uncounted expenses drain working capital, receivables get forgotten, and full weeks of effort still leave profit unclear.
+                </p>
+              </div>
+              <div className="pt-2 text-xs font-semibold text-[#996515]">
+                Every uncounted leak shrinks tomorrow&apos;s growth.
+              </div>
+            </div>
+
+            {/* 3. SOLUTION */}
+            <div className="p-7 sm:p-8 rounded-3xl bg-gradient-to-br from-[#0B1B32] via-[#102848] to-[#081324] text-white border border-[#D4AF37]/50 space-y-5 flex flex-col justify-between shadow-lg hover:-translate-y-0.5 transition-transform duration-200">
+              <div className="space-y-3">
+                <span className="text-xs font-mono uppercase tracking-wider text-[#F5D061] font-bold block">
+                  03 &bull; The Solution
+                </span>
+                <h3 className="text-2xl font-serif font-black text-white">
+                  Instant financial clarity for any SME
+                </h3>
+                <p className="text-sm sm:text-base text-slate-200 leading-relaxed">
+                  YuBiFLo adapts to your payment channels and workflow&mdash;tracking inflows, supplies, wages, rent, and credit automatically so owners see real earnings at a glance.
                 </p>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-1 flex flex-wrap items-center gap-3">
                 <button
-                  onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("B")}
-                  className="px-6 py-3.5 rounded-full bg-[#262626] hover:bg-[#000000] text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
+                  onClick={() => launchSolutionDemo("bloom_dashboard", "duka")}
+                  className="px-6 py-3 rounded-full bg-gradient-to-r from-[#F5D061] to-[#E5B842] hover:from-[#FFE082] hover:to-[#F5D061] text-[#0B1B32] font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
                 >
-                  <span>Meet Your Biz (Bring Records)</span>
+                  <span>Experience Live — No Sign-Up</span>
                   <ArrowRight size={14} />
+                </button>
+                <button
+                  onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
+                  className="text-xs font-semibold text-slate-300 hover:text-[#F5D061] underline underline-offset-4 cursor-pointer"
+                >
+                  Create Free Account
                 </button>
               </div>
             </div>
 
           </div>
 
-          {/* Under the cards: Four-step strip */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-[#FAF6EE] border border-[#EADBBD] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-[#222222]">
-            <div className="space-y-1">
-              <div className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold">1. Collect</div>
-              <p className="text-xs sm:text-sm text-[#444444]">Voice at the counter, till cash &amp; M-Pesa float each morning.</p>
+          {/* Outcome Guarantee Strip */}
+          <div className="p-6 sm:p-8 rounded-3xl neuro-surface-card grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 text-[#0B1B32]">
+            <div className="space-y-1.5">
+              <div className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold">Zero Service Delay</div>
+              <p className="text-xs sm:text-sm text-[#334155]">Keep serving clients fast&mdash;capture cash, mobile money, and voice effortlessly.</p>
             </div>
-            <div className="space-y-1">
-              <div className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold">2. Keep safe</div>
-              <p className="text-xs sm:text-sm text-[#444444]">Numbers kept, raw voice discarded immediately after parsing.</p>
+            <div className="space-y-1.5">
+              <div className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold">Protected Privacy</div>
+              <p className="text-xs sm:text-sm text-[#334155]">Raw audio is discarded immediately; your SME numbers stay encrypted.</p>
             </div>
-            <div className="space-y-1">
-              <div className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold">3. Understand</div>
-              <p className="text-xs sm:text-sm text-[#444444]">Real profit, inventory velocity and credit (deni) without typing.</p>
+            <div className="space-y-1.5">
+              <div className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold">Real Margin Truth</div>
+              <p className="text-xs sm:text-sm text-[#334155]">Separate supplies, inventory, staff wages, and rent from true net profit.</p>
             </div>
-            <div className="space-y-1">
-              <div className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold">4. Decide</div>
-              <p className="text-xs sm:text-sm text-[#444444]">Plain actions on restocks, debt collection and margin leaks.</p>
+            <div className="space-y-1.5">
+              <div className="text-xs font-mono uppercase tracking-wider text-[#996515] font-bold">Confident Growth</div>
+              <p className="text-xs sm:text-sm text-[#334155]">Know what to restock, who owes you, and what capital is safe to reinvest.</p>
             </div>
           </div>
 
@@ -714,56 +778,56 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 3. PROBLEM SECTION                                                        */}
       {/* ========================================================================= */}
-      <section className="py-20 bg-transparent border-t border-[#C8D7E3]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-20 sm:py-28 bg-transparent">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
           
           <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
             <h2 className="text-3xl sm:text-4xl font-serif font-black text-[#000000] tracking-tight">
               Busy all day. Still no clear numbers.
             </h2>
             <p className="text-base text-[#555555]">
-              You sell from dawn to dusk, but at the end of the day the truth slips away.
+              SMEs operate from dawn to dusk, yet by closing time the real financial picture slips away.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
             {/* Problem 1 */}
-            <div className="p-8 rounded-3xl bg-white/90 border border-[#C8D7E3] space-y-3 shadow-xs">
-              <div className="w-12 h-12 rounded-2xl bg-[#DDE7F0] text-[#000000] flex items-center justify-center font-bold">
+            <div className="p-8 rounded-3xl neuro-surface-card space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#E1ECF7] text-[#0B1B32] flex items-center justify-center font-bold border border-[#C8D9EA]">
                 <AlertCircle size={22} />
               </div>
-              <h3 className="text-xl font-serif font-bold text-[#000000]">
+              <h3 className="text-xl font-serif font-bold text-[#0B1B32]">
                 Profit is a guess.
               </h3>
-              <p className="text-sm text-[#555555] leading-relaxed">
-                Money in the drawer looks like earnings until the milk supplier or landlord arrives. Without real item margins, you never know what is yours to keep.
+              <p className="text-sm text-[#334155] leading-relaxed">
+                Cash on hand looks like earnings until suppliers, staff, or the landlord arrive. Without true cost and margin visibility, owners never know what is safely theirs to keep.
               </p>
             </div>
 
             {/* Problem 2 */}
-            <div className="p-8 rounded-3xl bg-white/90 border border-[#C8D7E3] space-y-3 shadow-xs">
-              <div className="w-12 h-12 rounded-2xl bg-[#FAF6EE] text-[#996515] flex items-center justify-center font-bold">
+            <div className="p-8 rounded-3xl neuro-surface-card space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#FDF5E2] text-[#996515] flex items-center justify-center font-bold border border-[#E6CF8B]">
                 <Users size={22} />
               </div>
-              <h3 className="text-xl font-serif font-bold text-[#000000]">
+              <h3 className="text-xl font-serif font-bold text-[#0B1B32]">
                 Debts get forgotten.
               </h3>
-              <p className="text-sm text-[#555555] leading-relaxed">
-                Scraps of paper tear and notebooks get misplaced. Trusted regular customers take bread on credit, and by Saturday nobody remembers the exact amount.
+              <p className="text-sm text-[#334155] leading-relaxed">
+                Scraps of paper tear and notebooks get misplaced. Regular clients take goods or services on credit, and by week&apos;s end nobody agrees on the exact balance.
               </p>
             </div>
 
             {/* Problem 3 */}
-            <div className="p-8 rounded-3xl bg-white/90 border border-[#C8D7E3] space-y-3 shadow-xs">
-              <div className="w-12 h-12 rounded-2xl bg-[#DDE7F0] text-[#000000] flex items-center justify-center font-bold">
+            <div className="p-8 rounded-3xl neuro-surface-card space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#E1ECF7] text-[#0B1B32] flex items-center justify-center font-bold border border-[#C8D9EA]">
                 <DollarSign size={22} />
               </div>
-              <h3 className="text-xl font-serif font-bold text-[#000000]">
+              <h3 className="text-xl font-serif font-bold text-[#0B1B32]">
                 Cash leaks.
               </h3>
-              <p className="text-sm text-[#555555] leading-relaxed">
-                Fifty shillings for chai, two hundred for transport, coins handed to the family. Small unrecorded outflows quietly drain the shop&apos;s working float.
+              <p className="text-sm text-[#334155] leading-relaxed">
+                Small transport fares, fuel top-ups, casual payouts, and personal withdrawals quietly drain an SME&apos;s working capital when every channel isn&apos;t tracked together.
               </p>
             </div>
 
@@ -775,56 +839,56 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 4. SOLUTION SECTION (1, 2, 3 STEPS)                                       */}
       {/* ========================================================================= */}
-      <section id="how-it-works-section" className="py-20 bg-[#DDE7F0]/40 border-t border-[#C8D7E3]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="how-it-works-section" className="py-20 sm:py-28 bg-[#EDF4FB] border-t border-[#C8D9EA]">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
           
           <div className="text-center max-w-3xl mx-auto space-y-3 mb-16">
-            <div className="text-xs font-bold uppercase tracking-widest text-[#B8860B]">
+            <div className="text-xs font-bold uppercase tracking-widest text-[#996515]">
               How it works
             </div>
-            <h2 className="text-3xl sm:text-4xl font-serif font-black text-[#000000] tracking-tight">
-              We do the counting. You do the selling.
+            <h2 className="text-3xl sm:text-4xl font-serif font-black text-[#0B1B32] tracking-tight">
+              We do the counting. You grow the business.
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
             {/* Step 1 */}
-            <div className="p-8 rounded-3xl bg-white border border-[#e4e4e7] space-y-4 shadow-sm hover:border-[#000000] transition">
-              <div className="w-12 h-12 rounded-2xl bg-[#000000] text-white flex items-center justify-center font-serif text-xl font-bold shadow-sm">
+            <div className="p-8 rounded-3xl neuro-surface-card space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#0B1B32] text-[#F5D061] ring-2 ring-[#D4AF37]/40 flex items-center justify-center font-serif text-xl font-bold shadow-sm">
                 1
               </div>
-              <h3 className="text-xl font-serif font-bold text-[#000000]">
+              <h3 className="text-xl font-serif font-bold text-[#0B1B32]">
                 Start your day
               </h3>
-              <p className="text-sm text-[#555555] leading-relaxed">
-                Confirm your morning till cash and M-Pesa float in seconds. Lock your opening baseline so every single shilling earned belongs strictly to today.
+              <p className="text-sm text-[#334155] leading-relaxed">
+                Lock your Cash, Mobile Money (Till, Paybill, Pochi, or Send Money), and optional Bank starting balances in seconds so every shilling earned today is clear.
               </p>
             </div>
 
             {/* Step 2 */}
-            <div className="p-8 rounded-3xl bg-white border border-[#e4e4e7] space-y-4 shadow-sm hover:border-[#000000] transition">
-              <div className="w-12 h-12 rounded-2xl bg-[#000000] text-white flex items-center justify-center font-serif text-xl font-bold shadow-sm">
+            <div className="p-8 rounded-3xl neuro-surface-card space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#0B1B32] text-[#F5D061] ring-2 ring-[#D4AF37]/40 flex items-center justify-center font-serif text-xl font-bold shadow-sm">
                 2
               </div>
-              <h3 className="text-xl font-serif font-bold text-[#000000]">
-                Run your shop
+              <h3 className="text-xl font-serif font-bold text-[#0B1B32]">
+                Run your business
               </h3>
-              <p className="text-sm text-[#555555] leading-relaxed">
-                VCR records each sale as it happens hands-free. Speak naturally across the counter: items, quantities, and customer debts are logged without touching a screen.
+              <p className="text-sm text-[#334155] leading-relaxed">
+                Capture sales, supplier drops, operating costs, and customer credit hands-free across any channel&mdash;without pausing your team or slowing down service.
               </p>
             </div>
 
             {/* Step 3 */}
-            <div className="p-8 rounded-3xl bg-white border border-[#e4e4e7] space-y-4 shadow-sm hover:border-[#000000] transition">
-              <div className="w-12 h-12 rounded-2xl bg-[#000000] text-white flex items-center justify-center font-serif text-xl font-bold shadow-sm">
+            <div className="p-8 rounded-3xl neuro-surface-card space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#0B1B32] text-[#F5D061] ring-2 ring-[#D4AF37]/40 flex items-center justify-center font-serif text-xl font-bold shadow-sm">
                 3
               </div>
-              <h3 className="text-xl font-serif font-bold text-[#000000]">
+              <h3 className="text-xl font-serif font-bold text-[#0B1B32]">
                 Know your numbers
               </h3>
-              <p className="text-sm text-[#555555] leading-relaxed">
-                See your evening summary: real profit, debts owed, and unexplained cash. Close your shop knowing exactly what you made and what to reorder.
+              <p className="text-sm text-[#334155] leading-relaxed">
+                Review your live summary: true operating profit, receivables owed, supplier balances, and cash flow across every business branch or account.
               </p>
             </div>
 
@@ -832,8 +896,8 @@ export default function YuBiFloLandingPage({
 
           {/* Trust line reminder */}
           <div className="mt-12 text-center">
-            <span className="inline-flex items-center gap-2 text-sm text-[#000000] font-medium bg-[#f4f4f5] px-4 py-2 rounded-full border border-[#e4e4e7]">
-              <Shield size={16} />
+            <span className="inline-flex items-center gap-2 text-sm text-[#0B1B32] font-medium bg-white/90 px-4 py-2 rounded-full border border-[#C8D9EA] shadow-2xs">
+              <Shield size={16} className="text-[#C8962E]" />
               <span>We keep the numbers, not the conversations.</span>
             </span>
           </div>
@@ -844,8 +908,8 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 5. VCR LIVE FEED TICKER (TURNS HEARD SALE INTO TRANSACTIONS)               */}
       {/* ========================================================================= */}
-      <section className="py-20 bg-transparent border-t border-[#C8D7E3]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-20 sm:py-28 bg-transparent border-t border-[#C8D9EA]">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
           
           <div className="bg-white/95 rounded-3xl border border-[#C8D7E3] p-6 sm:p-10 shadow-lg space-y-6">
             
@@ -921,12 +985,20 @@ export default function YuBiFloLandingPage({
             {/* Simulator CTA */}
             <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#666666]">
               <span>Audio is discarded immediately after numbers are extracted.</span>
-              <button
-                onClick={() => setIsVoiceRecordingModalOpen(true)}
-                className="text-[#000000] font-bold hover:underline flex items-center gap-1"
-              >
-                <span>Try the Voice Simulator with custom spoken sentences &rarr;</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-4">
+                <button
+                  onClick={() => setIsVoiceRecordingModalOpen(true)}
+                  className="text-[#000000] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Try Voice Simulator here &rarr;</span>
+                </button>
+                <button
+                  onClick={() => launchSolutionDemo("vcr_voice", "duka")}
+                  className="px-3.5 py-1.5 rounded-full bg-[#0B1B32] text-[#F5D061] font-bold hover:bg-[#102848] transition flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Experience Live Voice Ledger (No Sign-Up) &rarr;</span>
+                </button>
+              </div>
             </div>
 
           </div>
@@ -962,8 +1034,8 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 6. APPS & "SEE YOUR KIND OF BUSINESS" TABS (DUKA / HARDWARE / WHOLESALE)  */}
       {/* ========================================================================= */}
-      <section id="apps-section" className="py-20 bg-[#DDE7F0]/40 border-t border-[#C8D7E3]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="apps-section" className="py-20 sm:py-28 bg-[#EDF4FB] border-t border-[#C8D9EA]">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
           
           <div className="text-center max-w-3xl mx-auto space-y-3 mb-12">
             <div className="text-xs font-bold uppercase tracking-widest text-[#B8860B]">
@@ -1070,13 +1142,10 @@ export default function YuBiFloLandingPage({
                   </p>
                 </div>
                 <button
-                  onClick={() => {
-                    if (onLaunchDukaDemo) onLaunchDukaDemo();
-                    else handleLaunchWorkspace();
-                  }}
+                  onClick={() => launchSolutionDemo("bloom_dashboard", "duka")}
                   className="px-5 py-2 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs shadow-xs cursor-pointer"
                 >
-                  Launch Duka Workspace
+                  Experience Duka Live (No Sign-Up)
                 </button>
               </div>
 
@@ -1118,7 +1187,7 @@ export default function YuBiFloLandingPage({
                       Open Eatery &amp; Roadside Kiosk Shell
                     </h3>
                     <span className="text-[10px] font-mono uppercase tracking-wider bg-emerald-500/15 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded-full font-bold">
-                      CLEAN NON-PERSONALIZED SHELL
+                      TRY LIVE WITHOUT SIGN-UP
                     </span>
                   </div>
                   <p className="text-xs text-[#666666] mt-0.5">
@@ -1126,13 +1195,10 @@ export default function YuBiFloLandingPage({
                   </p>
                 </div>
                 <button
-                  onClick={() => {
-                    if (onOpenAuth) onOpenAuth("signup");
-                    else handleStartOnboarding("A");
-                  }}
-                  className="px-5 py-2 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs shadow-xs cursor-pointer shrink-0"
+                  onClick={() => launchSolutionDemo("bloom_dashboard", "eatery")}
+                  className="px-5 py-2 rounded-full bg-[#0B1B32] hover:bg-[#102848] text-[#F5D061] border border-[#D4AF37]/60 font-bold text-xs shadow-xs cursor-pointer shrink-0"
                 >
-                  Launch Open Eatery Shell
+                  Experience Open Eatery Live (No Sign-Up)
                 </button>
               </div>
 
@@ -1266,18 +1332,18 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 7. PROJECTS SECTION                                                       */}
       {/* ========================================================================= */}
-      <section id="projects-section" className="py-20 bg-transparent border-t border-[#C8D7E3]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="projects-section" className="py-20 sm:py-28 bg-transparent border-t border-[#C8D9EA]">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
           
           <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
             <div className="text-xs font-bold uppercase tracking-widest text-[#B8860B]">
               Field Evidence
             </div>
             <h2 className="text-3xl sm:text-4xl font-serif font-black text-[#000000] tracking-tight">
-              See it working in real shops
+              See it working in real SMEs
             </h2>
             <p className="text-base text-[#555555]">
-              Real Kenyan counters replacing lost notebooks with effortless voice intelligence.
+              Real Kenyan businesses&mdash;from roadside eateries and mini shops to growing counters&mdash;replacing notebooks and guesswork with effortless clarity.
             </p>
           </div>
 
@@ -1330,10 +1396,10 @@ export default function YuBiFloLandingPage({
             <div className="pt-2 flex items-center justify-between border-t border-[#e5e7eb]">
               <span className="text-xs text-[#666666]">Client data isolated and protected.</span>
               <button
-                onClick={handleLaunchWorkspace}
-                className="text-xs font-bold text-[#000000] hover:underline flex items-center gap-1"
+                onClick={() => launchSolutionDemo("bloom_dashboard", "duka")}
+                className="text-xs font-bold text-[#000000] hover:underline flex items-center gap-1 cursor-pointer"
               >
-                <span>Launch live template in workspace</span>
+                <span>Experience live template in workspace (No Sign-Up)</span>
                 <ArrowRight size={13} />
               </button>
             </div>
@@ -1342,33 +1408,317 @@ export default function YuBiFloLandingPage({
         </div>
       </section>
 
+      {/* ========================================================================= */}
+      {/* 8. PRICING SECTION (6 MONTHS FREE + BASIC, PREMIUM, PLATINUM, ENTERPRISE) */}
+      {/* ========================================================================= */}
+      <section id="pricing-section" className="py-20 sm:py-28 bg-[#E4EEF8] border-t border-[#C8D9EA]">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 space-y-12">
+          
+          {/* Section Header + 6-Month Free Habit-Lock Anchor */}
+          <div className="text-center max-w-3xl mx-auto space-y-4">
+            <div className="text-xs font-bold uppercase tracking-widest text-[#996515]">
+              Transparent SME Pricing
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-serif font-black text-[#0B1B32] tracking-tight [text-wrap:balance]">
+              Start free for 6 full months. Upgrade only when your numbers prove it.
+            </h2>
+            <p className="text-sm sm:text-base text-[#334155] leading-relaxed">
+              Every plan keeps <strong className="text-[#0B1B32] font-semibold">Cashflow &amp; Mobile Money channels 100% unlocked</strong> (Cash, M-Pesa Till, Paybill, Pochi, Send Money &amp; Bank)&mdash;because cashflow is the lifeblood of your business.
+            </p>
 
+            {/* Monthly / Annual Billing Toggle */}
+            <div className="pt-2 flex flex-col items-center gap-2">
+              <div className="inline-flex items-center p-1 bg-white/90 border border-[#C8D9EA] rounded-full shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle("monthly")}
+                  className={`px-5 py-2 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                    billingCycle === "monthly"
+                      ? "bg-[#0B1B32] text-white shadow-xs"
+                      : "text-[#475569] hover:text-[#0B1B32]"
+                  }`}
+                >
+                  Monthly Billing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle("annual")}
+                  className={`px-5 py-2 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+                    billingCycle === "annual"
+                      ? "bg-[#0B1B32] text-[#F5D061] shadow-xs"
+                      : "text-[#475569] hover:text-[#0B1B32]"
+                  }`}
+                >
+                  <span>Annual Billing</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#FDF5E2] text-[#996515] border border-[#E6CF8B]">
+                    2 Months Free (~17% Off)
+                  </span>
+                </button>
+              </div>
+              <span className="text-[11px] text-[#475569]">
+                First <strong className="text-[#0B1B32]">180 days cost KSh 0</strong> &middot; Historical data stays yours forever even after trial
+              </span>
+            </div>
+          </div>
+
+          {/* 4-Column Pricing Tiers: Basic, Premium, Platinum, Enterprise */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+            
+            {/* TIER 1: BASIC */}
+            <div className="p-7 rounded-3xl neuro-surface-card flex flex-col justify-between space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-lg font-serif font-black text-[#0B1B32]">Basic</h3>
+                  <span className="text-[10px] font-mono font-bold text-[#1E3A5F] bg-[#E8F1FA] px-2.5 py-0.5 rounded-full border border-[#C8D9EA]">
+                    Solo Owner
+                  </span>
+                </div>
+
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xs font-semibold text-[#475569]">KSh</span>
+                    <span className="text-3xl font-serif font-black text-[#0B1B32] tabular-nums">
+                      {billingCycle === "annual" ? "1,056" : "1,267"}
+                    </span>
+                    <span className="text-xs text-[#475569]">/month</span>
+                  </div>
+                  <div className="text-[11px] font-mono text-[#996515] font-semibold mt-1 tabular-nums">
+                    {billingCycle === "annual"
+                      ? "Billed KSh 12,670/yr · Save KSh 2,534"
+                      : "After 6 free months · ~KSh 42/day"}
+                  </div>
+                </div>
+
+                <p className="text-xs text-[#475569] leading-relaxed">
+                  Built for one kiosk, eatery, retail duka, or solo shop keeping daily inflows and stock clean.
+                </p>
+
+                <ul className="space-y-2.5 text-xs text-[#334155] pt-2 border-t border-[#E2ECF5]">
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#C8962E] shrink-0 mt-0.5" />
+                    <span><strong className="text-[#0B1B32]">Full Cash + Mobile Money + Bank</strong> channels unlocked</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#C8962E] shrink-0 mt-0.5" />
+                    <span>1 Business workspace (Eatery, Duka, or SME shell)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#C8962E] shrink-0 mt-0.5" />
+                    <span>Dawn Lock float check &amp; Customer Deni ledger</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#C8962E] shrink-0 mt-0.5" />
+                    <span>Purchases, Supplier auto-merge &amp; profit insights</span>
+                  </li>
+                </ul>
+              </div>
+
+              <button
+                onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
+                className="w-full py-3 rounded-full bg-white hover:bg-[#F5F9FD] border-2 border-[#0B1B32] text-[#0B1B32] font-bold text-xs transition cursor-pointer"
+              >
+                Start 6 Months Free
+              </button>
+            </div>
+
+            {/* TIER 2: PREMIUM (MOST POPULAR / VISUAL ANCHOR) */}
+            <div className="p-7 rounded-3xl bg-gradient-to-br from-[#0B1B32] via-[#102848] to-[#081324] text-white border-2 border-[#D4AF37] shadow-[0_20px_50px_-14px_rgba(11,27,50,0.38)] flex flex-col justify-between space-y-6 relative hover:-translate-y-1 transition-transform duration-200">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-lg font-serif font-black text-white">Premium</h3>
+                  <span className="text-[10px] font-mono font-bold text-[#0B1B32] bg-gradient-to-r from-[#F5D061] to-[#E5B842] px-2.5 py-0.5 rounded-full">
+                    Most Popular
+                  </span>
+                </div>
+
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xs font-semibold text-slate-300">KSh</span>
+                    <span className="text-3xl font-serif font-black text-[#F5D061] tabular-nums">
+                      {billingCycle === "annual" ? "2,723" : "3,267"}
+                    </span>
+                    <span className="text-xs text-slate-300">/month</span>
+                  </div>
+                  <div className="text-[11px] font-mono text-[#F5D061]/90 font-semibold mt-1 tabular-nums">
+                    {billingCycle === "annual"
+                      ? "Billed KSh 32,670/yr · Save KSh 6,534"
+                      : "After 6 free months · ~KSh 109/day"}
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  For growing SMEs running fast counters, supplier deliveries, and up to 3 business branches.
+                </p>
+
+                <ul className="space-y-2.5 text-xs text-slate-100 pt-2 border-t border-white/15">
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#F5D061] shrink-0 mt-0.5" />
+                    <span>Everything in Basic + <strong className="text-white">Full Payment Channels</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#F5D061] shrink-0 mt-0.5" />
+                    <span>Unlimited Receipt OCR &amp; VCR Voice capture</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#F5D061] shrink-0 mt-0.5" />
+                    <span>Full 3-Fold Double-Entry Supplier &amp; Customer Ledgers</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#F5D061] shrink-0 mt-0.5" />
+                    <span>Up to 3 businesses under one Gmail + staff seats</span>
+                  </li>
+                </ul>
+              </div>
+
+              <button
+                onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
+                className="w-full py-3 rounded-full bg-gradient-to-r from-[#F5D061] to-[#E5B842] hover:from-[#FFE082] hover:to-[#F5D061] text-[#0B1B32] font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span>Start 6 Months Free</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
+
+            {/* TIER 3: PLATINUM */}
+            <div className="p-7 rounded-3xl neuro-surface-card flex flex-col justify-between space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-lg font-serif font-black text-[#0B1B32]">Platinum</h3>
+                  <span className="text-[10px] font-mono font-bold text-[#996515] bg-[#FDF5E2] px-2.5 py-0.5 rounded-full border border-[#E6CF8B]">
+                    Multi-Branch
+                  </span>
+                </div>
+
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xs font-semibold text-[#475569]">KSh</span>
+                    <span className="text-3xl font-serif font-black text-[#0B1B32] tabular-nums">
+                      {billingCycle === "annual" ? "6,473" : "7,767"}
+                    </span>
+                    <span className="text-xs text-[#475569]">/month</span>
+                  </div>
+                  <div className="text-[11px] font-mono text-[#996515] font-semibold mt-1 tabular-nums">
+                    {billingCycle === "annual"
+                      ? "Billed KSh 77,670/yr · Save KSh 15,534"
+                      : "After 6 free months · Unlimited Accounts"}
+                  </div>
+                </div>
+
+                <p className="text-xs text-[#475569] leading-relaxed">
+                  Built for multi-shop operators, retail managers, and client-account bookkeepers.
+                </p>
+
+                <ul className="space-y-2.5 text-xs text-[#334155] pt-2 border-t border-[#E2ECF5]">
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#C8962E] shrink-0 mt-0.5" />
+                    <span>Everything in Premium + <strong className="text-[#0B1B32]">Full Payment Channels</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#C8962E] shrink-0 mt-0.5" />
+                    <span>Unlimited businesses &amp; client workspaces under 1 Gmail</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#C8962E] shrink-0 mt-0.5" />
+                    <span>Proprietor-vs-Manager isolation &amp; encrypted vaults</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#C8962E] shrink-0 mt-0.5" />
+                    <span>Cross-branch analytics &amp; priority WhatsApp support</span>
+                  </li>
+                </ul>
+              </div>
+
+              <button
+                onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
+                className="w-full py-3 rounded-full neuro-cta-gold text-white font-bold text-xs cursor-pointer"
+              >
+                Start 6 Months Free
+              </button>
+            </div>
+
+            {/* TIER 4: ENTERPRISE */}
+            <div className="p-7 rounded-3xl neuro-surface-card flex flex-col justify-between space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-lg font-serif font-black text-[#0B1B32]">Enterprise</h3>
+                  <span className="text-[10px] font-mono font-bold text-[#1E3A5F] bg-[#E8F1FA] px-2.5 py-0.5 rounded-full border border-[#C8D9EA]">
+                    Chains &amp; Fleet
+                  </span>
+                </div>
+
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-serif font-black text-[#0B1B32]">
+                      Custom
+                    </span>
+                  </div>
+                  <div className="text-[11px] font-mono text-[#475569] font-semibold mt-1">
+                    Tailored rollout &amp; volume terms
+                  </div>
+                </div>
+
+                <p className="text-xs text-[#475569] leading-relaxed">
+                  For wholesale chains, distributors, hardware networks, and cooperative SME groups.
+                </p>
+
+                <ul className="space-y-2.5 text-xs text-[#334155] pt-2 border-t border-[#E2ECF5]">
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#C8962E] shrink-0 mt-0.5" />
+                    <span>Unrestricted Cash, Mobile Money &amp; Bank rails</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#C8962E] shrink-0 mt-0.5" />
+                    <span>Custom industry workflows &amp; branch templates</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#C8962E] shrink-0 mt-0.5" />
+                    <span>Dedicated onboarding &amp; domain/cloud migration</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check size={14} className="text-[#C8962E] shrink-0 mt-0.5" />
+                    <span>SLA uptime guarantee &amp; executive reporting</span>
+                  </li>
+                </ul>
+              </div>
+
+              <button
+                onClick={() => setWaitlistModalApp("Enterprise Custom Rollout")}
+                className="w-full py-3 rounded-full bg-[#EEF4FB] hover:bg-[#E1ECF7] border border-[#9BB6D3] hover:border-[#D4AF37] text-[#0B1B32] font-bold text-xs transition cursor-pointer"
+              >
+                Request Custom Plan
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
 
       {/* ========================================================================= */}
-      {/* 9. FAQ SECTION (ANSWERS: WHAT VCR RECORDS, WHAT IS DELETED, WHO CAN SEE)  */}
+      {/* 9. FAQ SECTION (ANSWERS: WHAT VCR CAPTURES, WHAT IS DELETED, WHO CAN SEE) */}
       {/* ========================================================================= */}
-      <section className="py-20 bg-transparent border-t border-[#C8D7E3]">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      <section className="py-20 sm:py-28 bg-[#EDF4FB] border-t border-[#C8D9EA]">
+        <div className="max-w-4xl mx-auto px-5 sm:px-8 lg:px-10 space-y-10">
           
           <div className="text-center space-y-2">
             <h2 className="text-3xl font-serif font-black text-[#000000] tracking-tight">
               Frequently Asked Questions
             </h2>
-            <p className="text-sm text-[#666666]">
-              Clear answers about privacy, your recordings, and your numbers.
+            <p className="text-xs sm:text-sm text-[#666666]">
+              Clear answers about privacy, voice capture, and your numbers.
             </p>
           </div>
 
           <div className="space-y-4">
             
-            {/* FAQ 1: What VCR records */}
+            {/* FAQ 1: What VCR captures */}
             <div className="p-6 rounded-2xl bg-[#fafafa] border border-[#e4e4e7] space-y-2">
               <h3 className="text-base font-serif font-bold text-[#000000] flex items-center gap-2">
                 <HelpCircle size={17} className="text-[#000000]" />
-                What does VCR record?
+                What does VCR capture?
               </h3>
               <p className="text-xs sm:text-sm text-[#444444] leading-relaxed">
-                VCR only extracts the financial numbers of the sale: the item name (like Milk or Broadways Bread), the quantity, the price paid, and whether it was paid in cash, M-Pesa, or taken on credit (Deni). It converts speech into numbers for your ledger.
+                VCR only extracts the financial numbers of the transaction: the item or service name, the quantity, the amount paid, and whether it was settled in cash, mobile money, or customer credit (Deni). It turns everyday business speech into clear numbers.
               </p>
             </div>
 
@@ -1379,7 +1729,7 @@ export default function YuBiFloLandingPage({
                 What is deleted?
               </h3>
               <p className="text-xs sm:text-sm text-[#444444] leading-relaxed">
-                All voice audio is immediately deleted once the transaction numbers are written to your ledger. We keep the numbers, not the conversations. Your counter talks, personal chats, and neighborhood gossip are never saved, stored, or sent to any server.
+                All voice audio is immediately deleted once the transaction numbers are written to your ledger. We keep the numbers, not the conversations. Your counter talks, personal chats, and customer conversations are never saved, stored, or sent to any server.
               </p>
             </div>
 
@@ -1390,7 +1740,7 @@ export default function YuBiFloLandingPage({
                 Who can see my data?
               </h3>
               <p className="text-xs sm:text-sm text-[#444444] leading-relaxed">
-                Only you. Each store operates inside its own isolated, password-gated vault protected by your passcode. Your customer debts, margins, and sales numbers are your private property and are never shared or made public.
+                Only you. Each business operates inside its own isolated, password-gated vault protected by your passcode. Your customer credit, margins, and sales numbers are your private property and are never shared or made public.
               </p>
             </div>
 
@@ -1419,10 +1769,10 @@ export default function YuBiFloLandingPage({
             <div className="space-y-2 text-xs">
               <div className="font-bold text-white uppercase tracking-wider text-[11px]">Business Apps</div>
               <ul className="space-y-1.5 text-slate-400">
-                <li><button onClick={() => { if (onLaunchDukaDemo) onLaunchDukaDemo(); else handleLaunchWorkspace(); }} className="hover:text-white transition cursor-pointer">Duka &amp; Retail (Available now)</button></li>
-                <li><button onClick={() => { if (onOpenAuth) onOpenAuth("signup"); else handleStartOnboarding("A"); }} className="hover:text-white transition cursor-pointer">Open Eatery &amp; Roadside Kiosk (Available now)</button></li>
-                <li><button onClick={() => setWaitlistModalApp("Hardware & Construction")} className="hover:text-white transition">Hardware (Coming next)</button></li>
-                <li><button onClick={() => setWaitlistModalApp("Wholesale & Distribution")} className="hover:text-white transition">Wholesale (Coming soon)</button></li>
+                <li><button onClick={() => launchSolutionDemo("bloom_dashboard", "duka")} className="hover:text-white transition cursor-pointer">Duka &amp; Retail (Try Live)</button></li>
+                <li><button onClick={() => launchSolutionDemo("bloom_dashboard", "eatery")} className="hover:text-white transition cursor-pointer">Open Eatery &amp; Roadside Kiosk (Try Live)</button></li>
+                <li><button onClick={() => setWaitlistModalApp("Hardware & Construction")} className="hover:text-white transition cursor-pointer">Hardware (Coming next)</button></li>
+                <li><button onClick={() => setWaitlistModalApp("Wholesale & Distribution")} className="hover:text-white transition cursor-pointer">Wholesale (Coming soon)</button></li>
               </ul>
             </div>
 
@@ -1430,10 +1780,10 @@ export default function YuBiFloLandingPage({
             <div className="space-y-2 text-xs">
               <div className="font-bold text-white uppercase tracking-wider text-[11px]">Features</div>
               <ul className="space-y-1.5 text-slate-400">
-                <li><button onClick={() => setIsVoiceRecordingModalOpen(true)} className="hover:text-white transition">Voice Simulator</button></li>
-                <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition">Dawn Till Float Lock</button></li>
-                <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition">Customer Credit &amp; Deni</button></li>
-                <li><button onClick={handleLaunchWorkspace} className="hover:text-white transition">Live Profit &amp; Sales Audit</button></li>
+                <li><button onClick={() => setIsVoiceRecordingModalOpen(true)} className="hover:text-white transition cursor-pointer">Voice Simulator</button></li>
+                <li><button onClick={() => launchSolutionDemo("daily_cash", "duka")} className="hover:text-white transition cursor-pointer">Dawn Till Float Lock</button></li>
+                <li><button onClick={() => launchSolutionDemo("credit_deni", "duka")} className="hover:text-white transition cursor-pointer">Customer Credit &amp; Deni</button></li>
+                <li><button onClick={() => document.getElementById("pricing-section")?.scrollIntoView({ behavior: "smooth" })} className="hover:text-[#F5D061] transition cursor-pointer">6-Month Free &amp; Pricing</button></li>
               </ul>
             </div>
 
@@ -1517,14 +1867,14 @@ export default function YuBiFloLandingPage({
                 <CheckCircle2 size={18} />
                 <div>
                   <div className="font-bold">You&apos;re on the priority waitlist!</div>
-                  <div className="text-[11px] text-[#262626] font-normal mt-0.5">We have registered your shop request for {waitlistModalApp}.</div>
+                  <div className="text-[11px] text-[#262626] font-normal mt-0.5">We have registered your business request for {waitlistModalApp}.</div>
                 </div>
               </div>
             ) : (
               <form onSubmit={handleWaitlistSubmit} className="space-y-3">
                 <div>
                   <label className="text-[11px] font-bold text-[#444444] block mb-1">
-                    Your Name / Shopkeeper Name
+                    Your Name / Business Owner Name
                   </label>
                   <input
                     type="text"
@@ -1698,7 +2048,7 @@ export default function YuBiFloLandingPage({
                 }}
                 className="flex-1 py-3 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-bold text-xs transition cursor-pointer shadow-sm text-center"
               >
-                Launch VCR in Store &rarr;
+                Launch VCR in Workspace &rarr;
               </button>
               <button
                 onClick={() => setIsVoiceRecordingModalOpen(false)}
@@ -1746,10 +2096,10 @@ export default function YuBiFloLandingPage({
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onLaunchDukaDemo ? onLaunchDukaDemo() : handleLaunchWorkspace()}
-            className="px-3 py-2 rounded-full border border-slate-700 hover:border-slate-500 text-slate-200 text-xs font-semibold"
+            onClick={() => launchSolutionDemo("bloom_dashboard", "duka")}
+            className="px-3 py-2 rounded-full border border-slate-700 hover:border-slate-500 text-slate-200 text-xs font-semibold cursor-pointer"
           >
-            Meet the Demo
+            Try Live
           </button>
           <button
             onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}

@@ -147,8 +147,8 @@ export function YuBiFloLogo({
   };
 
   const currentPx = pixelSizes[size];
-  const textColor = variant === "light" ? "text-white" : "text-slate-900";
-  const taglineColor = variant === "light" ? "text-cyan-300/90" : "text-blue-600";
+  const textColor = variant === "light" ? "text-white" : "text-[#0B1B32]";
+  const taglineColor = variant === "light" ? "text-[#F5D061]/90" : "text-[#996515]";
 
   return (
     <div
@@ -165,7 +165,15 @@ export function YuBiFloLogo({
         <div className="flex flex-col leading-none">
           <div className={`font-serif font-black tracking-tight ${textColor} ${textSizes[size]} flex items-center gap-0.5`}>
             <span>YuBi</span>
-            <span className="text-blue-600 font-extrabold">FLo</span>
+            <span
+              className={`font-extrabold ${
+                variant === "light"
+                  ? "text-[#F5D061]"
+                  : "bg-gradient-to-r from-[#D4AF37] via-[#B8860B] to-[#996515] bg-clip-text text-transparent"
+              }`}
+            >
+              FLo
+            </span>
           </div>
           {showTagline && (
             <span

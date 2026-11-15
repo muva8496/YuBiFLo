@@ -105,15 +105,15 @@ export default function LoopingDashboardDemo({
   const expenseSegments = [
     { id: 1, label: "Payroll & Labor", pct: 27, amount: "KSh 42,600", color: "#F59E0B", hasAlert: false },
     { id: 2, label: "Stock & Restock", pct: 23, amount: isRestockAuthorized ? "KSh 37,500" : "KSh 36,400", color: "#EA580C", hasAlert: false },
-    { id: 3, label: "Shop Rent & Permits", pct: 16, amount: "KSh 25,200", color: "#8B5CF6", hasAlert: false },
+    { id: 3, label: "Business Rent & Permits", pct: 16, amount: "KSh 25,200", color: "#8B5CF6", hasAlert: false },
     { id: 4, label: "Cash on hand", pct: 14, amount: isRestockAuthorized ? "KSh 23,200" : "KSh 22,100", color: "#38BDF8", hasAlert: false },
     { id: 5, label: "Supplier Payable", pct: 12, amount: "KSh 18,900", color: "#3B82F6", hasAlert: true },
     { id: 6, label: "Other / Packaging", pct: 8, amount: "KSh 12,600", color: "#94A3B8", isHatched: true, hasAlert: false }
   ];
 
   // SVG Donut Path calculations (flattened & compact for crisp fit)
-  const size = 100;
-  const strokeWidth = 16;
+  const size = 86;
+  const strokeWidth = 14;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   let cumulativeOffset = 0;
@@ -146,10 +146,10 @@ export default function LoopingDashboardDemo({
   ];
 
   return (
-    <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-xl overflow-hidden font-sans text-slate-900 relative">
+    <div className="w-full bg-white rounded-2xl border border-[#B5CBE2] shadow-[0_24px_55px_-16px_rgba(11,27,50,0.22),0_0_0_1px_rgba(212,175,55,0.20)] overflow-hidden font-sans text-slate-900 relative">
       
       {/* 1. BROWSER WINDOW TOP BAR */}
-      <div className="h-10 bg-[#F8FAFC] border-b border-slate-200 px-3 flex items-center justify-between text-xs select-none">
+      <div className="h-10 bg-[#EEF4FB] border-b border-[#CBD9E8] px-3 flex items-center justify-between text-xs select-none">
         <div className="flex items-center gap-2">
           {/* Traffic light dots */}
           <div className="flex items-center gap-1.5">
@@ -216,8 +216,8 @@ export default function LoopingDashboardDemo({
       {/* 3. MAIN WORKSPACE BODY: LEFT MODULES SIDEBAR + DASHBOARD CANVAS */}
       <div className="flex bg-[#F8FAFC]">
 
-        {/* LEFT MODULES SIDEBAR */}
-        <aside className="w-32 sm:w-36 bg-white border-r border-slate-200 p-1.5 flex flex-col justify-between shrink-0 select-none">
+        {/* LEFT MODULES SIDEBAR (visible on xl+ or wide viewports so side-by-side hero never overflows) */}
+        <aside className="hidden lg:flex w-32 xl:w-36 bg-white border-r border-slate-200 p-1.5 flex-col justify-between shrink-0 select-none">
           <div className="space-y-1">
             
             {/* Header: MODULES */}
@@ -285,7 +285,7 @@ export default function LoopingDashboardDemo({
               </div>
               <div className="truncate">
                 <div className="text-[9px] font-bold text-slate-800 truncate">{businessName}</div>
-                <div className="text-[7px] text-emerald-600 font-mono truncate font-medium">Active Shop</div>
+                <div className="text-[7px] text-emerald-600 font-mono truncate font-medium">Active SME</div>
               </div>
             </div>
           </div>
@@ -315,7 +315,7 @@ export default function LoopingDashboardDemo({
           </div>
 
           <div className="flex items-center gap-1.5 text-[10px] text-slate-600 font-medium">
-            <span className="text-slate-400">Store:</span>
+            <span className="text-slate-400">Workspace:</span>
             <span className="font-semibold text-slate-800">{businessName}</span>
           </div>
         </div>
@@ -452,20 +452,20 @@ export default function LoopingDashboardDemo({
         </div>
 
         {/* 2-COLUMN GRID: EXPENSES BREAKDOWN + CASHFLOW (FLATTENED) */}
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-2">
           
           {/* ------------------------------------------------------------------- */}
           {/* CARD 1: EXPENSES BREAKDOWN                                          */}
           {/* ------------------------------------------------------------------- */}
-          <div className="bg-white rounded-xl border border-slate-200/90 p-2.5 shadow-2xs flex flex-col justify-between space-y-1.5">
+          <div className="bg-white rounded-xl border border-slate-200/90 p-2.5 shadow-2xs flex flex-col justify-between space-y-1.5 min-w-0">
             
             {/* Header row */}
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-semibold text-slate-900">
+            <div className="flex items-center justify-between gap-1">
+              <h4 className="text-xs font-semibold text-slate-900 truncate">
                 Expenses breakdown
               </h4>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button 
                   onClick={onLaunchWorkspace}
                   className="px-2 py-0.2 rounded-full border border-blue-600 text-blue-600 hover:bg-blue-50 text-[9.5px] font-semibold transition cursor-pointer"
@@ -483,7 +483,7 @@ export default function LoopingDashboardDemo({
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
               
               {/* Legend list */}
-              <div className="sm:col-span-7 space-y-0.5">
+              <div className="sm:col-span-7 space-y-0.5 min-w-0">
                 {expenseSegments.map((seg) => (
                   <div 
                     key={seg.id}
