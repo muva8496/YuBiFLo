@@ -30,6 +30,38 @@ export default function LoopingDashboardDemo({
   const [activeDemoModule, setActiveDemoModule] = useState<string>("dashboard");
   const [toastNote, setToastNote] = useState<string | null>(null);
 
+  // Proportional responsive frame so the exact laptop dashboard layout stays crisp side-by-side on mobile
+  const outerRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const [frameScale, setFrameScale] = useState<number>(1);
+  const [scaledHeight, setScaledHeight] = useState<number | null>(null);
+  const MOBILE_BASE_WIDTH = 440;
+
+  useEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+
+    const recalc = () => {
+      const availWidth = outer.clientWidth;
+      if (availWidth > 0 && availWidth < MOBILE_BASE_WIDTH) {
+        const nextScale = availWidth / MOBILE_BASE_WIDTH;
+        const naturalHeight = inner.scrollHeight || inner.offsetHeight;
+        setFrameScale(nextScale);
+        setScaledHeight(naturalHeight > 0 ? Math.ceil(naturalHeight * nextScale) : null);
+      } else {
+        setFrameScale(1);
+        setScaledHeight(null);
+      }
+    };
+
+    recalc();
+    const ro = new ResizeObserver(recalc);
+    ro.observe(outer);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [isRestockAuthorized, toastNote]);
+
   // Dynamic greeting based on current local hour
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -145,11 +177,30 @@ export default function LoopingDashboardDemo({
     { id: "analytics", name: "Analytics", icon: <BarChart2 size={13} /> }
   ];
 
+  const isScaled = frameScale < 0.999;
+
   return (
-    <div className="w-full bg-white rounded-2xl border border-[#B5CBE2] shadow-[0_24px_55px_-16px_rgba(11,27,50,0.22),0_0_0_1px_rgba(212,175,55,0.20)] overflow-hidden font-sans text-slate-900 relative">
+    <div
+      ref={outerRef}
+      className={isScaled ? "w-full relative overflow-hidden rounded-2xl" : "w-full relative"}
+      style={isScaled && scaledHeight ? { height: `${scaledHeight}px` } : undefined}
+    >
+      <div
+        ref={innerRef}
+        style={
+          isScaled
+            ? {
+                width: `${MOBILE_BASE_WIDTH}px`,
+                transform: `scale(${frameScale})`,
+                transformOrigin: "top left"
+              }
+            : undefined
+        }
+        className="w-full bg-white rounded-2xl border border-[#B5CBE2] shadow-[0_24px_55px_-16px_rgba(11,27,50,0.22),0_0_0_1px_rgba(212,175,55,0.20)] overflow-hidden font-sans text-slate-900 relative"
+      >
       
       {/* 1. BROWSER WINDOW TOP BAR */}
-      <div className="h-10 bg-[#EEF4FB] border-b border-[#CBD9E8] px-3 flex items-center justify-between text-xs select-none">
+      <div className="h-9 sm:h-10 bg-[#EEF4FB] border-b border-[#CBD9E8] px-3 flex items-center justify-between text-xs select-none">
         <div className="flex items-center gap-2">
           {/* Traffic light dots */}
           <div className="flex items-center gap-1.5">
@@ -368,8 +419,8 @@ export default function LoopingDashboardDemo({
           </button>
         </div>
 
-        {/* ROW OF 4 PASTEL ROUNDED ACTION PILLS (FLATTENED) */}
-        <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-1.5">
+        {/* ROW OF 4 PASTEL ROUNDED ACTION PILLS (ALWAYS 4-ACROSS LIKE LAPTOP) */}
+        <div className="relative z-10 grid grid-cols-4 gap-1.5">
           
           {/* PILL 1: MINT GREEN (CREATE ESTIMATE / QUICK SALE) */}
           <button
@@ -451,8 +502,8 @@ export default function LoopingDashboardDemo({
           </button>
         </div>
 
-        {/* 2-COLUMN GRID: EXPENSES BREAKDOWN + CASHFLOW (FLATTENED) */}
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-2">
+        {/* 2-COLUMN GRID: EXPENSES BREAKDOWN + CASHFLOW (ALWAYS SIDE-BY-SIDE LIKE LAPTOP) */}
+        <div className="relative z-10 grid grid-cols-2 gap-2">
           
           {/* ------------------------------------------------------------------- */}
           {/* CARD 1: EXPENSES BREAKDOWN                                          */}
@@ -461,7 +512,7 @@ export default function LoopingDashboardDemo({
             
             {/* Header row */}
             <div className="flex items-center justify-between gap-1">
-              <h4 className="text-xs font-semibold text-slate-900 truncate">
+              <h4 className="text-[11px] sm:text-xs font-semibold text-slate-900 truncate">
                 Expenses breakdown
               </h4>
 
@@ -480,10 +531,10 @@ export default function LoopingDashboardDemo({
             </div>
 
             {/* Split layout: Legend on Left, Donut on Right */}
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+            <div className="grid grid-cols-12 gap-1.5 items-center">
               
               {/* Legend list */}
-              <div className="sm:col-span-7 space-y-0.5 min-w-0">
+              <div className="col-span-7 space-y-0.5 min-w-0">
                 {expenseSegments.map((seg) => (
                   <div 
                     key={seg.id}
@@ -513,7 +564,7 @@ export default function LoopingDashboardDemo({
               </div>
 
               {/* Donut Chart SVG (Compact) */}
-              <div className="sm:col-span-5 flex items-center justify-center">
+              <div className="col-span-5 flex items-center justify-center">
                 <div className="relative" style={{ width: size, height: size }}>
                   <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
                     <defs>
@@ -697,8 +748,8 @@ export default function LoopingDashboardDemo({
         {/* 5. FOOTER LINK IN DASHBOARD */}
         <div className="relative z-10 pt-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[10px] text-slate-500 border-t border-slate-100">
           <div className="flex items-center gap-1.5">
-            <ShieldCheck size={12} className="text-emerald-600" />
-            <span>Private enterprise ledger • 100% encrypted &amp; private</span>
+            <ShieldCheck size={12} className="text-emerald-600 shrink-0" />
+            <span>Using numbers to aid MSMEs achieve scale &amp; growth</span>
           </div>
 
           <button
@@ -714,6 +765,7 @@ export default function LoopingDashboardDemo({
 
       </div>
 
+      </div>
     </div>
   );
 }

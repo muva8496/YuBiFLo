@@ -589,17 +589,17 @@ export default function YuBiFloLandingPage({
       </header>
 
       {/* ========================================================================= */}
-      {/* 2. HERO SECTION (SIDE-BY-SIDE WORDING + LIVE DASHBOARD)                   */}
+      {/* 2. HERO SECTION (ALWAYS SIDE-BY-SIDE: WORDING LEFT + DASHBOARD RIGHT)    */}
       {/* ========================================================================= */}
-      <section className="pt-8 sm:pt-14 lg:pt-16 pb-14 sm:pb-20 lg:pb-24 yubiflo-hero-aura border-b border-[#C8D9EA]">
-        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-14 items-center">
+      <section className="pt-5 sm:pt-14 lg:pt-16 pb-10 sm:pb-20 lg:pb-24 yubiflo-hero-aura border-b border-[#C8D9EA]">
+        <div className="max-w-7xl mx-auto px-3 sm:px-8 lg:px-10">
+          <div className="grid grid-cols-12 gap-2.5 sm:gap-6 md:gap-8 lg:gap-14 items-center">
             
             {/* HERO LEFT: COPY */}
-            <div className="md:col-span-5 space-y-6">
+            <div className="col-span-5 space-y-2.5 sm:space-y-5 lg:space-y-6 min-w-0">
 
               {/* Hero Headline */}
-              <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] xl:text-5xl font-serif font-black text-[#0B1B32] tracking-tight leading-[1.12] [text-wrap:balance]">
+              <h1 className="text-[17px] min-[390px]:text-[19px] sm:text-3xl lg:text-[2.75rem] xl:text-5xl font-serif font-black text-[#0B1B32] tracking-tight leading-[1.12] [text-wrap:balance]">
                 Your business,{" "}
                 <span className="italic bg-gradient-to-r from-[#1A56DB] via-[#D4AF37] to-[#996515] bg-clip-text text-transparent neuro-gold-underline">
                   finally in numbers
@@ -608,54 +608,62 @@ export default function YuBiFloLandingPage({
               </h1>
 
               {/* Body Text: Whole-SME Problem -> Agitate -> Solution */}
-              <p className="text-sm sm:text-base text-[#334155] leading-relaxed max-w-[54ch]">
+              <p className="text-[10.5px] min-[390px]:text-[11px] sm:text-sm lg:text-base text-[#334155] leading-[1.38] sm:leading-relaxed max-w-[54ch]">
                 Across eateries, retail shops, hardware stores, salons, wholesale depots, and service businesses&mdash;cash, mobile money, supplier bills, staff pay, and rent all move fast through one blur. Stopping to write books slows down customers, yet guessing leaves real money leaking unseen. <strong className="text-[#0B1B32] font-semibold">YuBiFLo gives SMEs instant clarity</strong> across every shilling, channel, and cost&mdash;without holding up work.
               </p>
 
               {/* Action Buttons */}
-              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5">
+              <div className="pt-1 sm:pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-3.5">
                 <button
                   onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
-                  className="px-6 py-3 rounded-full neuro-cta-gold text-white font-bold text-sm cursor-pointer text-center flex items-center justify-center gap-2 group"
+                  className="px-3 sm:px-6 py-2 sm:py-3 rounded-full neuro-cta-gold text-white font-bold text-[11px] sm:text-sm cursor-pointer text-center flex items-center justify-center gap-1.5 sm:gap-2 group whitespace-nowrap min-h-[36px] sm:min-h-[44px]"
                   title="Sign up and start using the app for your business"
                 >
                   <span>Meet Your Biz</span>
-                  <ArrowRight size={16} className="text-[#F5D061] group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight size={14} className="text-[#F5D061] group-hover:translate-x-1 transition-transform shrink-0" />
                 </button>
 
                 <button
                   onClick={() => launchSolutionDemo("bloom_dashboard", "duka")}
-                  className="px-6 py-3 rounded-full bg-white/95 hover:bg-white border border-[#9BB6D3] hover:border-[#D4AF37] text-[#0B1B32] font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  className="px-3 sm:px-6 py-2 sm:py-3 rounded-full bg-white/95 hover:bg-white border border-[#9BB6D3] hover:border-[#D4AF37] text-[#0B1B32] font-bold text-[11px] sm:text-sm transition flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer shadow-xs whitespace-nowrap min-h-[36px] sm:min-h-[44px]"
                   title="Experience every solution live without signing in"
                 >
-                  <Sparkles size={16} className="text-[#C8962E]" />
-                  <span>Try Live — No Sign-Up</span>
+                  <Sparkles size={14} className="text-[#C8962E] shrink-0" />
+                  <span className="sm:hidden">Try Live</span>
+                  <span className="hidden sm:inline">Try Live — No Sign-Up</span>
                 </button>
               </div>
 
-              {/* Subtle Neuro-Ease Trust Cue */}
-              <div className="pt-1 flex items-center flex-wrap gap-2 text-xs text-[#475569]">
-                <Shield size={13} className="text-[#C8962E] shrink-0" />
-                <span className="font-medium">&ldquo;We keep the numbers, not the conversations.&rdquo;</span>
-                <span aria-hidden="true" className="text-[#94A3B8]">&middot;</span>
-                <span className="text-[#1E3A5F] font-semibold">Experience everything before signing up</span>
+              {/* Subtle Neuro-Ease Trust Cue & Mission Claim */}
+              <div className="pt-0.5 sm:pt-1 space-y-1">
+                <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 text-[9.5px] sm:text-xs text-[#475569]">
+                  <Shield size={12} className="text-[#C8962E] shrink-0" />
+                  <span className="font-medium">&ldquo;We keep the numbers, not the conversations.&rdquo;</span>
+                  <span aria-hidden="true" className="hidden sm:inline text-[#94A3B8]">&middot;</span>
+                  <span className="hidden sm:inline text-[#1E3A5F] font-semibold">Experience everything before signing up</span>
+                </div>
+                <p className="text-[10px] sm:text-xs font-semibold text-[#996515]">
+                  Our aim: using clear numbers to aid MSMEs achieve scale and growth.
+                </p>
               </div>
 
             </div>
 
-            {/* HERO RIGHT: LIVE WORKSPACE DASHBOARD (SIDE-BY-SIDE ON SAME PAGE) */}
-            <div className="md:col-span-7 min-w-0">
+            {/* HERO RIGHT: LIVE WORKSPACE DASHBOARD (ALWAYS SIDE-BY-SIDE ON MOBILE & LAPTOP) */}
+            <div className="col-span-7 min-w-0 space-y-1.5">
               <LoopingDashboardDemo 
                 userName="Musa"
                 businessName="Horizon SME Enterprises"
-                onLaunchWorkspace={() => {
-                  if (onLaunchDukaDemo) {
-                    onLaunchDukaDemo();
-                  } else {
-                    handleLaunchWorkspace();
-                  }
-                }} 
+                onLaunchWorkspace={() => launchSolutionDemo("bloom_dashboard", "duka")} 
               />
+              <button
+                type="button"
+                onClick={() => launchSolutionDemo("bloom_dashboard", "duka")}
+                className="md:hidden w-full text-center text-[10px] font-semibold text-[#1E3A5F] hover:text-[#0B1B32] flex items-center justify-center gap-1 pt-0.5 cursor-pointer"
+              >
+                <span>Tap to expand full live dashboard</span>
+                <ArrowRight size={11} className="text-[#C8962E]" />
+              </button>
             </div>
 
           </div>
@@ -1750,7 +1758,46 @@ export default function YuBiFloLandingPage({
       </section>
 
       {/* ========================================================================= */}
-      {/* 10. FOOTER                                                                */}
+      {/* 10. BOLD MISSION CLAIM (USING NUMBERS TO AID MSME SCALE & GROWTH)         */}
+      {/* ========================================================================= */}
+      <section className="py-16 sm:py-24 bg-[#E4EEF8] border-t border-[#C8D9EA]">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 lg:px-10">
+          <div className="rounded-3xl bg-gradient-to-br from-[#081426] via-[#0E223D] to-[#0B1B32] text-white border-2 border-[#D4AF37]/65 shadow-[0_28px_65px_-16px_rgba(11,27,50,0.45)] p-8 sm:p-12 lg:p-16 text-center space-y-6 relative overflow-hidden">
+            <div className="text-xs font-bold uppercase tracking-widest text-[#F5D061]">
+              Our Bold Commitment
+            </div>
+
+            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-serif font-black text-white tracking-tight leading-[1.14] [text-wrap:balance] max-w-4xl mx-auto">
+              Our aim is to use numbers to aid{" "}
+              <span className="italic text-[#F5D061]">MSMEs achieve scale and growth</span>.
+            </h2>
+
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl mx-auto">
+              Every shilling captured across cash, mobile money, supplies, wages, and credit becomes working capital protected, sharper margins, and verifiable financial proof so neighborhood businesses grow into lasting enterprises.
+            </p>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5">
+              <button
+                onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
+                className="px-7 py-3.5 rounded-full bg-gradient-to-r from-[#F5D061] to-[#E5B842] hover:from-[#FFE082] hover:to-[#F5D061] text-[#0B1B32] font-bold text-xs sm:text-sm shadow-lg transition flex items-center gap-2 cursor-pointer whitespace-nowrap"
+              >
+                <span>Start 6 Months Free</span>
+                <ArrowRight size={15} />
+              </button>
+              <button
+                onClick={() => launchSolutionDemo("bloom_dashboard", "duka")}
+                className="px-7 py-3.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/25 hover:border-[#F5D061] text-white font-bold text-xs sm:text-sm transition flex items-center gap-2 cursor-pointer whitespace-nowrap"
+              >
+                <Sparkles size={15} className="text-[#F5D061]" />
+                <span>Experience Live — No Sign-Up</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 11. FOOTER                                                                */}
       {/* ========================================================================= */}
       <footer className="bg-[#09090b] text-slate-300 py-16 border-t border-[#000000]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
@@ -1760,7 +1807,10 @@ export default function YuBiFloLandingPage({
             {/* Logo and signature */}
             <div className="space-y-3">
               <YuBiFloLogo size="md" variant="light" />
-              <p className="text-xs text-slate-400 leading-relaxed mt-2">
+              <p className="text-xs text-slate-300 font-medium leading-relaxed mt-2">
+                Our aim is to use numbers to aid MSMEs achieve scale and growth.
+              </p>
+              <p className="text-[11px] text-slate-500">
                 No notebooks. No typing. Just know your numbers.
               </p>
             </div>

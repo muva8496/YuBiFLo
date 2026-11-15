@@ -1205,6 +1205,19 @@ export default function SaasDashboardTab({
 
       </div>
 
+      {/* ===================================================================== */}
+      {/* CLOSING COMMITMENT FOOTER (PC & MOBILE WORKSPACE)                     */}
+      {/* ===================================================================== */}
+      <div className="pt-4 border-t border-[#C8D9EA] flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-[#334155]">
+        <p className="font-serif font-bold text-[#0B1B32] text-center sm:text-left">
+          Our aim is to use numbers to aid{" "}
+          <span className="text-[#996515]">MSMEs achieve scale and growth</span>.
+        </p>
+        <span className="text-[11px] font-mono text-[#526D8A]">
+          YuBiFLo &middot; Clear numbers for everyday businesses
+        </span>
+      </div>
+
     </div>
   );
 }
