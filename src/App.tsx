@@ -70,11 +70,7 @@ import {
 import type { VoiceTransactionPayload } from "./components/VoiceLedger";
 import { reconcileOrRegisterSupplier, reconcileOrRegisterCustomer } from "./utils/partyNameFuzzyMatcher";
 import { addDaysToIso, getLocalTodayIso, getOverdueDebtors } from "./utils/debtScheduleHelper";
-import {
-  archiveOldRecordsToDataWarehouse,
-  buildArchiveSummary,
-  restoreRecordFromDataWarehouse
-} from "./utils/dataWarehouseArchiver";
+import { archiveOldRecordsToDataWarehouse } from "./utils/dataWarehouseArchiver";
 
 // Immediate Critical Path Modules (Landing Page)
 import YuBiFloLandingPage from "./components/YuBiFloLandingPage";
@@ -90,7 +86,6 @@ const SupplyDrivenSalesTab = lazy(() => import("./components/tabs/SupplyDrivenSa
 const PurchasesTab = lazy(() => import("./components/tabs/PurchasesTab"));
 const SuppliersTab = lazy(() => import("./components/tabs/SuppliersTab"));
 const StockVaultSuppliersTab = lazy(() => import("./components/tabs/StockVaultSuppliersTab"));
-const ProprietorDataWarehouseTab = lazy(() => import("./components/tabs/ProprietorDataWarehouseTab"));
 const DawnLockTab = lazy(() => import("./components/tabs/DawnLockTab"));
 const UnifiedVoiceLedgerTab = lazy(() => import("./components/tabs/UnifiedVoiceLedgerTab"));
 const CustomersCreditTab = lazy(() => import("./components/tabs/CustomersCreditTab"));
@@ -382,9 +377,9 @@ export default function App() {
   // Sync browser document title based on workspace mode
   useEffect(() => {
     if (isDemoMode) {
-      document.title = "Demo · YuBiFLo";
+      document.title = "Demo · yubiflo.com";
     } else {
-      document.title = "YuBiFLo — Your Business Is A Flower";
+      document.title = "yubiflo.com — Your Business Is A Flower";
     }
   }, [isDemoMode]);
 
@@ -1942,7 +1937,7 @@ export default function App() {
         onSwitchAccount={handleSwitchAccount}
         onCreateAccount={handleCreateAccount}
         activeTab={activeTab}
-        onNavigateTab={setActiveTab}
+        onNavigateTab={(tabId) => setActiveTab(tabId === "data_warehouse" ? "stock_vault" : tabId)}
         isDemo={isDemoMode}
         demoPreset={demoPreset}
         onSwitchDemoPreset={(nextPreset) => {
@@ -2119,98 +2114,6 @@ export default function App() {
                 suppliers: [supplier, ...(prev.suppliers || [])],
                 last_updated: new Date().toISOString()
               }));
-            }}
-          />
-        )}
-
-        {/* TAB 5B: PROPRIETOR DATA WAREHOUSE & 14-DAY COLD ARCHIVE */}
-        {activeTab === "data_warehouse" && (
-          <ProprietorDataWarehouseTab
-            state={currentMasterState}
-            onUpdateRecord={(collectionKey, recordId, updatedRecord) => {
-              setMasterState((prev) => {
-                const list = ((prev as any)[collectionKey] as any[]) || [];
-                const updatedList = list.map((row) =>
-                  String(row?.id) === String(recordId) ? { ...row, ...updatedRecord } : row
-                );
-                return {
-                  ...prev,
-                  [collectionKey]: updatedList,
-                  last_updated: new Date().toISOString()
-                };
-              });
-            }}
-            onDeleteRecord={(collectionKey, recordId) => {
-              const archiveKeyMap: Record<
-                string,
-                "salesLedger" | "payouts" | "receiptsArchive" | "reconciliations"
-              > = {
-                archive_sales: "salesLedger",
-                archive_payouts: "payouts",
-                archive_receipts: "receiptsArchive",
-                archive_reconciliations: "reconciliations"
-              };
-              setMasterState((prev) => {
-                const subKey = archiveKeyMap[collectionKey];
-                if (subKey && prev.dataWarehouseArchive) {
-                  const nextSub = (prev.dataWarehouseArchive[subKey] || []).filter(
-                    (row: any) => String(row?.id) !== String(recordId)
-                  );
-                  const nextArchiveCore = {
-                    ...prev.dataWarehouseArchive,
-                    [subKey]: nextSub
-                  };
-                  return {
-                    ...prev,
-                    dataWarehouseArchive: {
-                      ...nextArchiveCore,
-                      summary: buildArchiveSummary(nextArchiveCore)
-                    },
-                    last_updated: new Date().toISOString()
-                  };
-                }
-                const list = ((prev as any)[collectionKey] as any[]) || [];
-                return {
-                  ...prev,
-                  [collectionKey]: list.filter((row) => String(row?.id) !== String(recordId)),
-                  last_updated: new Date().toISOString()
-                };
-              });
-            }}
-            onInsertRecord={(collectionKey, newRecord) => {
-              setMasterState((prev) => {
-                const list = ((prev as any)[collectionKey] as any[]) || [];
-                return {
-                  ...prev,
-                  [collectionKey]: [newRecord, ...list],
-                  last_updated: new Date().toISOString()
-                };
-              });
-            }}
-            onRestoreFullState={(newState) => {
-              if (isDemoMode) {
-                setDemoState(newState);
-              } else {
-                hasUserEditedRef.current = true;
-                setAlacioState(newState);
-                saveAlacioState(newState, effectiveOwnerEmail, activeAccountId, { immediate: true });
-              }
-            }}
-            onRunArchiveSweep={(days) => {
-              let moved = 0;
-              setMasterState((prev) => {
-                const res = archiveOldRecordsToDataWarehouse(prev, days, { force: true });
-                moved = res.archivedCount;
-                return {
-                  ...res.nextState,
-                  dataWarehouseRetentionDays: days,
-                  last_updated: new Date().toISOString()
-                };
-              });
-              return moved;
-            }}
-            onRestoreArchivedRecord={(collectionKey, recordId) => {
-              setMasterState((prev) => restoreRecordFromDataWarehouse(prev, collectionKey, recordId));
             }}
           />
         )}

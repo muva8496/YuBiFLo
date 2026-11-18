@@ -105,9 +105,9 @@ export default function SaasAppShell({
   // Sync browser tab title
   useEffect(() => {
     if (isDemo) {
-      document.title = "Demo · YuBiFlo Web Platform";
+      document.title = "Demo · yubiflo.com";
     } else {
-      document.title = "YuBiFlo Web Platform · Retail Intelligence";
+      document.title = "yubiflo.com · Retail Intelligence";
     }
   }, [isDemo]);
 
@@ -135,14 +135,7 @@ export default function SaasAppShell({
         { id: "owner_expenses", name: "Owner Expenses" }
       ]
     },
-    {
-      id: "stock_vault",
-      name: "Stock Vault",
-      icon: <Layers size={17} />,
-      children: [
-        { id: "data_warehouse", name: "Data Warehouse (14d+)" }
-      ]
-    },
+    { id: "stock_vault", name: "Stock Vault", icon: <Layers size={17} /> },
     { id: "dawn_lock", name: "Dawn Lock", icon: <Sun size={17} /> },
     { id: "voice_ledger", name: "Voice Ledger", icon: <Mic size={17} /> },
     {

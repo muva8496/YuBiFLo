@@ -4,7 +4,7 @@ import {
   Layers, ArrowUpRight, Search, Filter, AlertCircle, RefreshCw,
   Camera, Upload, FileText, Image as ImageIcon, Sparkles, Check,
   Trash2, Copy, ShieldCheck, ChevronDown, ChevronUp, Eye, Phone,
-  ArrowRight, Scan, Clock, Package, XCircle, CheckSquare, Square, History, X, Wallet, Building2
+  Scan, Clock, Package, XCircle, CheckSquare, Square, History, X, Wallet, Building2
 } from "lucide-react";
 import { 
   AlacioMasterState, 
@@ -4029,7 +4029,7 @@ export default function PurchasesTab({
                     Selling Prices &amp; Profit Margins Manager (Bei ya Kuuza na Faida)
                   </h2>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold uppercase">
-                    Web Platform Master
+                    yubiflo.com
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -4393,24 +4393,10 @@ export default function PurchasesTab({
               Recent Inbound Cargo Deliveries ({supplierPurchases.length})
             </h3>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-              Active Last {state.dataWarehouseRetentionDays ?? 14} Days
+              Last {state.dataWarehouseRetentionDays ?? 14} Days
             </span>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {onNavigateTab && (
-              <button
-                type="button"
-                onClick={() => onNavigateTab("data_warehouse")}
-                className="text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer flex items-center gap-1"
-              >
-                <span>
-                  Data Warehouse (
-                  {(state.dataWarehouseArchive?.payouts || []).filter((p) => p.type === "SUPPLIER_PAYOUT").length}{" "}
-                  archived)
-                </span>
-                <ArrowRight size={12} />
-              </button>
-            )}
             <span className="text-xs font-mono text-slate-500">
               Total Logged: {currency} {supplierPurchases.reduce((acc, p) => acc + p.amount, 0).toLocaleString()}
             </span>
