@@ -70,6 +70,11 @@ import {
 import type { VoiceTransactionPayload } from "./components/VoiceLedger";
 import { reconcileOrRegisterSupplier, reconcileOrRegisterCustomer } from "./utils/partyNameFuzzyMatcher";
 import { addDaysToIso, getLocalTodayIso, getOverdueDebtors } from "./utils/debtScheduleHelper";
+import {
+  archiveOldRecordsToDataWarehouse,
+  buildArchiveSummary,
+  restoreRecordFromDataWarehouse
+} from "./utils/dataWarehouseArchiver";
 
 // Immediate Critical Path Modules (Landing Page)
 import YuBiFloLandingPage from "./components/YuBiFloLandingPage";
@@ -85,6 +90,7 @@ const SupplyDrivenSalesTab = lazy(() => import("./components/tabs/SupplyDrivenSa
 const PurchasesTab = lazy(() => import("./components/tabs/PurchasesTab"));
 const SuppliersTab = lazy(() => import("./components/tabs/SuppliersTab"));
 const StockVaultSuppliersTab = lazy(() => import("./components/tabs/StockVaultSuppliersTab"));
+const ProprietorDataWarehouseTab = lazy(() => import("./components/tabs/ProprietorDataWarehouseTab"));
 const DawnLockTab = lazy(() => import("./components/tabs/DawnLockTab"));
 const UnifiedVoiceLedgerTab = lazy(() => import("./components/tabs/UnifiedVoiceLedgerTab"));
 const CustomersCreditTab = lazy(() => import("./components/tabs/CustomersCreditTab"));
@@ -825,21 +831,63 @@ export default function App() {
 
   const handleApproveVoiceDraft = (draft: VoiceDraftRecord) => {
     setMasterState((prev) => {
+      const todayIso = getLocalTodayIso();
       if (draft.intent_type === "SUPPLIER_DELIVERY") {
+        const orderCost = Number(draft.payload?.total_cost ?? draft.payload?.delivery_cost ?? draft.total_amount) || 0;
+        const itemSummary = Array.isArray(draft.payload?.items)
+          ? draft.payload.items.map((i: any) => `${i.quantity}x ${i.item_name}`).join(", ")
+          : draft.payload?.sku_name || "Bulk Cargo";
         const newPayout: PayoutOrDrawing = {
           id: `payout_${Date.now()}`,
-          date: new Date().toISOString().slice(0, 10),
+          date: todayIso,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          amount: draft.payload.delivery_cost || 0,
+          amount: orderCost,
           type: "SUPPLIER_PAYOUT",
-          notes: `Delivery by ${draft.payload.supplier_name}: ${draft.payload.sku_name || "Bulk Cargo"}`
+          payment_channel: draft.payload?.payment_mode === "MPESA" ? "MPESA" : "CASH",
+          notes: `Voice Restock · ${draft.payload?.supplier_name || "Wholesale Supplier"}: ${itemSummary}`
         };
+        const { updatedSuppliers } = reconcileOrRegisterSupplier(
+          draft.payload?.supplier_name || "Wholesale Supplier",
+          prev.suppliers || [],
+          { orderCost, deliveryDate: todayIso }
+        );
         return {
           ...prev,
+          suppliers: updatedSuppliers,
           payouts: [newPayout, ...(prev.payouts || [])],
           last_updated: new Date().toISOString()
         };
       }
+
+      if (draft.intent_type === "CREDIT_RECORD") {
+        const owed = Number(draft.payload?.amount_owed ?? draft.total_amount) || 0;
+        const creditItems: DebtLineItem[] = (draft.payload?.items || []).map((it: any, idx: number) => ({
+          id: `vd_debt_${Date.now()}_${idx}`,
+          item_name: it.item_name || it.name || "Counter Item",
+          qty: Number(it.quantity) || 1,
+          unit_type: it.unit || "pcs",
+          unit_price: owed,
+          line_total: owed,
+          date_taken: todayIso
+        }));
+        const reconciled = reconcileOrRegisterCustomer(
+          draft.payload?.customer_name || "Debtor Customer",
+          prev.customers || [],
+          {
+            debtDelta: owed,
+            date: todayIso,
+            dueDate: addDaysToIso(todayIso, 7),
+            itemsTaken: creditItems,
+            notes: `Voice Ledger: ${draft.raw_transcript}`
+          }
+        );
+        return {
+          ...prev,
+          customers: reconciled.updatedCustomers,
+          last_updated: new Date().toISOString()
+        };
+      }
+
       return prev;
     });
   };
@@ -1090,6 +1138,26 @@ export default function App() {
     }));
   };
 
+  const handleRegisterSupplierFromCargo = (payload: {
+    name: string;
+    phone?: string;
+    national_id?: string;
+    category?: string;
+  }) => {
+    setMasterState((prev) => {
+      const { updatedSuppliers } = reconcileOrRegisterSupplier(payload.name, prev.suppliers || [], {
+        phone: payload.phone,
+        national_id: payload.national_id,
+        category: payload.category
+      });
+      return {
+        ...prev,
+        suppliers: updatedSuppliers,
+        last_updated: new Date().toISOString()
+      };
+    });
+  };
+
   const handleEditSupplier = (supplierId: string, updatedData: Partial<SupplierProfile>) => {
     setMasterState((prev) => ({
       ...prev,
@@ -1168,6 +1236,7 @@ export default function App() {
     supplier: string;
     supplierPhone?: string;
     supplierNationalId?: string;
+    supplierCategory?: string;
     items: string;
     itemLines?: PurchaseItemLine[];
     amount: number;
@@ -1191,11 +1260,23 @@ export default function App() {
         {
           phone: purchase.supplierPhone,
           national_id: purchase.supplierNationalId,
+          category: purchase.supplierCategory,
           orderCost: cleanPurchaseAmt,
           deliveryDate: normalizedDate,
           suppliedItems: purchasedGoodNames
         }
       );
+
+      const registeredSupp = updatedSuppliers.find(
+        (s) => s.name.toLowerCase().trim() === canonicalSupplier.toLowerCase().trim()
+      );
+      const cleanId = (purchase.supplierNationalId || registeredSupp?.national_id || "").trim();
+      const cleanPhone = (purchase.supplierPhone || registeredSupp?.phone || "").trim();
+      const contactParts = [
+        cleanId && cleanId !== "ID-PENDING" && cleanId !== "N/A" ? `ID: ${cleanId}` : null,
+        cleanPhone && cleanPhone !== "0722 000 111" && cleanPhone !== "N/A" ? `Phone: ${cleanPhone}` : null
+      ].filter(Boolean);
+      const contactBracket = contactParts.length > 0 ? ` [${contactParts.join(", ")}]` : "";
 
       const newPayout: PayoutOrDrawing = {
         id: `payout_cargo_${effectiveReceiptId}`,
@@ -1204,7 +1285,7 @@ export default function App() {
         amount: cleanPurchaseAmt,
         type: "SUPPLIER_PAYOUT",
         payment_channel: purchase.payment_channel,
-        notes: `${canonicalSupplier} [ID: ${purchase.supplierNationalId || "N/A"}, Phone: ${purchase.supplierPhone || "N/A"}]: ${purchase.items} [${purchase.payment_channel}]`
+        notes: `${canonicalSupplier}${contactBracket}: ${purchase.items} [${purchase.payment_channel}]`
       };
 
       if (purchase.itemLines && purchase.itemLines.length > 0) {
@@ -1404,7 +1485,11 @@ export default function App() {
         last_updated: new Date().toISOString()
       };
 
-      return reconcileChronologicalReceiptsAndSales(nextState);
+      const reconciled = reconcileChronologicalReceiptsAndSales(nextState);
+      if (!reconciled.is_demo_template) {
+        return archiveOldRecordsToDataWarehouse(reconciled).nextState;
+      }
+      return reconciled;
     });
   };
 
@@ -1978,6 +2063,7 @@ export default function App() {
             }
             onNavigateTab={setActiveTab}
             onLogPurchase={handleLogMultiItemPurchase}
+            onRegisterSupplier={handleRegisterSupplierFromCargo}
             onAuthorizeRestockSale={handleAuthorizeRestockSale}
             onDismissRestockCard={handleDismissRestockCard}
             onSaveReceiptToDatabase={handleSaveReceiptToDatabase}
@@ -2037,6 +2123,98 @@ export default function App() {
           />
         )}
 
+        {/* TAB 5B: PROPRIETOR DATA WAREHOUSE & 14-DAY COLD ARCHIVE */}
+        {activeTab === "data_warehouse" && (
+          <ProprietorDataWarehouseTab
+            state={currentMasterState}
+            onUpdateRecord={(collectionKey, recordId, updatedRecord) => {
+              setMasterState((prev) => {
+                const list = ((prev as any)[collectionKey] as any[]) || [];
+                const updatedList = list.map((row) =>
+                  String(row?.id) === String(recordId) ? { ...row, ...updatedRecord } : row
+                );
+                return {
+                  ...prev,
+                  [collectionKey]: updatedList,
+                  last_updated: new Date().toISOString()
+                };
+              });
+            }}
+            onDeleteRecord={(collectionKey, recordId) => {
+              const archiveKeyMap: Record<
+                string,
+                "salesLedger" | "payouts" | "receiptsArchive" | "reconciliations"
+              > = {
+                archive_sales: "salesLedger",
+                archive_payouts: "payouts",
+                archive_receipts: "receiptsArchive",
+                archive_reconciliations: "reconciliations"
+              };
+              setMasterState((prev) => {
+                const subKey = archiveKeyMap[collectionKey];
+                if (subKey && prev.dataWarehouseArchive) {
+                  const nextSub = (prev.dataWarehouseArchive[subKey] || []).filter(
+                    (row: any) => String(row?.id) !== String(recordId)
+                  );
+                  const nextArchiveCore = {
+                    ...prev.dataWarehouseArchive,
+                    [subKey]: nextSub
+                  };
+                  return {
+                    ...prev,
+                    dataWarehouseArchive: {
+                      ...nextArchiveCore,
+                      summary: buildArchiveSummary(nextArchiveCore)
+                    },
+                    last_updated: new Date().toISOString()
+                  };
+                }
+                const list = ((prev as any)[collectionKey] as any[]) || [];
+                return {
+                  ...prev,
+                  [collectionKey]: list.filter((row) => String(row?.id) !== String(recordId)),
+                  last_updated: new Date().toISOString()
+                };
+              });
+            }}
+            onInsertRecord={(collectionKey, newRecord) => {
+              setMasterState((prev) => {
+                const list = ((prev as any)[collectionKey] as any[]) || [];
+                return {
+                  ...prev,
+                  [collectionKey]: [newRecord, ...list],
+                  last_updated: new Date().toISOString()
+                };
+              });
+            }}
+            onRestoreFullState={(newState) => {
+              if (isDemoMode) {
+                setDemoState(newState);
+              } else {
+                hasUserEditedRef.current = true;
+                setAlacioState(newState);
+                saveAlacioState(newState, effectiveOwnerEmail, activeAccountId, { immediate: true });
+              }
+            }}
+            onRunArchiveSweep={(days) => {
+              let moved = 0;
+              setMasterState((prev) => {
+                const res = archiveOldRecordsToDataWarehouse(prev, days, { force: true });
+                moved = res.archivedCount;
+                return {
+                  ...res.nextState,
+                  dataWarehouseRetentionDays: days,
+                  last_updated: new Date().toISOString()
+                };
+              });
+              return moved;
+            }}
+            onRestoreArchivedRecord={(collectionKey, recordId) => {
+              setMasterState((prev) => restoreRecordFromDataWarehouse(prev, collectionKey, recordId));
+            }}
+          />
+        )}
+
         {/* TAB 6: DAWN LOCK */}
         {activeTab === "dawn_lock" && (
           <DawnLockTab
@@ -2056,8 +2234,14 @@ export default function App() {
             lastLoggedMessage={lastVoiceLog}
             customerConsent={currentMasterState.vcr_customer_consent}
             onToggleConsent={(val) => {
-              const updater = isDemoMode ? setDemoState : setAlacioState;
-              updater((prev) => ({ ...prev, vcr_customer_consent: val }));
+              setMasterState((prev) => ({ ...prev, vcr_customer_consent: val }));
+            }}
+            onUpdateVoiceTraining={(profile) => {
+              setMasterState((prev) => ({
+                ...prev,
+                voiceTrainingProfile: profile,
+                last_updated: new Date().toISOString()
+              }));
             }}
             isDemo={isDemoMode}
           />

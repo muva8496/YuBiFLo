@@ -19,6 +19,7 @@ import { deduplicateSuppliers } from "../utils/supplierHelper";
 import { reconcileChronologicalReceiptsAndSales } from "../utils/chronologicalReceiptSalesEngine";
 import { getSupplyUnitMultiplier } from "./bulkConversionEngine";
 import { getLocalTodayIso, addDaysToIso } from "../utils/debtScheduleHelper";
+import { archiveOldRecordsToDataWarehouse } from "../utils/dataWarehouseArchiver";
 
 let firestoreModulesPromise: Promise<
   [typeof import("./firebase"), typeof import("firebase/firestore")]
@@ -1469,6 +1470,14 @@ export function computeStateRichnessScore(state: any): number {
   const wh = Array.isArray(state.warehouse) ? state.warehouse.length : 0;
   const batches = Array.isArray(state.supplierBatches) ? state.supplierBatches.length : 0;
   const recon = Array.isArray(state.reconciliations) ? state.reconciliations.length : 0;
+
+  // Include cold-archived records in Data Warehouse so archiving >14d records preserves total workspace richness
+  const arch = state.dataWarehouseArchive;
+  const archRec = Array.isArray(arch?.receiptsArchive) ? arch.receiptsArchive.length : 0;
+  const archPay = Array.isArray(arch?.payouts) ? arch.payouts.length : 0;
+  const archSal = Array.isArray(arch?.salesLedger) ? arch.salesLedger.length : 0;
+  const archRecon = Array.isArray(arch?.reconciliations) ? arch.reconciliations.length : 0;
+
   const cashMoved =
     Number(state.cash_register_balance ?? 8450) !== 8450 ||
     Number(state.mpesa_float_balance ?? 28300) !== 28300
@@ -1476,15 +1485,15 @@ export function computeStateRichnessScore(state: any): number {
       : 0;
 
   const score =
-    rec * 120 +
-    pay * 90 +
-    sal * 70 +
+    (rec + archRec) * 120 +
+    (pay + archPay) * 90 +
+    (sal + archSal) * 70 +
     inv * 25 +
     cus * 35 +
     sup * 35 +
     wh * 25 +
     batches * 50 +
-    recon * 40 +
+    (recon + archRecon) * 40 +
     cashMoved;
 
   if (score === 0 && state.is_skeleton) return 2;
@@ -1683,9 +1692,17 @@ function hydrateRawStateObject(parsed: any, activeEmail?: string, accountId?: st
     credit_limit: sanitizeNumericValue(c.credit_limit, 1000, 5_000_000)
   }));
 
+  const hasArchivedHistory = Boolean(
+    parsed.dataWarehouseArchive &&
+      ((parsed.dataWarehouseArchive.salesLedger?.length || 0) > 0 ||
+        (parsed.dataWarehouseArchive.payouts?.length || 0) > 0 ||
+        (parsed.dataWarehouseArchive.receiptsArchive?.length || 0) > 0 ||
+        (parsed.dataWarehouseArchive.reconciliations?.length || 0) > 0)
+  );
+
   const rawReceiptsArchive = Array.isArray(parsed.receiptsArchive)
     ? parsed.receiptsArchive
-    : isSkeleton
+    : isSkeleton || hasArchivedHistory
     ? []
     : INITIAL_RECEIPTS_ARCHIVE;
   const safeReceiptsArchive = rawReceiptsArchive.map((r: any) => sanitizeReceiptRecord(r));
@@ -1703,35 +1720,53 @@ function hydrateRawStateObject(parsed: any, activeEmail?: string, accountId?: st
         ? s.timestamp.match(/^\d{4}-\d{2}-\d{2}/)[0]
         : todayStr)
   }));
-  const safeSales = isSkeleton
-    ? Array.isArray(parsed.salesLedger)
+  const safeSales =
+    isSkeleton || hasArchivedHistory
+      ? Array.isArray(parsed.salesLedger)
+        ? normalizedSales
+        : []
+      : normalizedSales.length > 0
       ? normalizedSales
-      : []
-    : normalizedSales.length > 0
-    ? normalizedSales
-    : INITIAL_ALACIO_STATE.salesLedger;
+      : INITIAL_ALACIO_STATE.salesLedger;
 
-  const normalizedPayouts = (Array.isArray(parsed.payouts) ? parsed.payouts : []).map((p: any) =>
-    sanitizePayoutRecord(p, todayStr, safeReceiptsArchive)
-  );
+  const normalizedPayouts = (Array.isArray(parsed.payouts) ? parsed.payouts : []).map((p: any) => {
+    const clean = sanitizePayoutRecord(p, todayStr, safeReceiptsArchive);
+    const noteStr = String(clean.notes || "");
+    const isBrookside = noteStr.toLowerCase().includes("brookside");
+    if (!isBrookside && noteStr.includes("[ID: 22940184, Phone: 0722 849 101]")) {
+      return {
+        ...clean,
+        notes: noteStr.replace(/\s*\[ID:\s*22940184,\s*Phone:\s*0722 849 101\]/g, "")
+      };
+    }
+    return clean;
+  });
   const hasOnlyLegacyPermit = normalizedPayouts.length === 1 && normalizedPayouts[0].id === "pay_001";
-  const safePayouts = isSkeleton
-    ? Array.isArray(parsed.payouts)
+  const safePayouts =
+    isSkeleton || hasArchivedHistory
+      ? Array.isArray(parsed.payouts)
+        ? normalizedPayouts
+        : []
+      : normalizedPayouts.length > 0 && !hasOnlyLegacyPermit
       ? normalizedPayouts
-      : []
-    : normalizedPayouts.length > 0 && !hasOnlyLegacyPermit
-    ? normalizedPayouts
-    : INITIAL_ALACIO_STATE.payouts;
+      : INITIAL_ALACIO_STATE.payouts;
 
   const rawSupp = Array.isArray(parsed.suppliers)
     ? parsed.suppliers
     : isSkeleton
     ? []
     : INITIAL_SUPPLIERS;
-  const safeSuppliers = deduplicateSuppliers(rawSupp).map((s: any) => ({
-    ...s,
-    total_orders_cost: sanitizeNumericValue(s.total_orders_cost, 0, 20_000_000)
-  }));
+  const safeSuppliers = deduplicateSuppliers(rawSupp).map((s: any) => {
+    const isBrookside = String(s.name || "").toLowerCase().includes("brookside");
+    const hasLeakedBrooksideCreds =
+      !isBrookside && s.phone === "0722 849 101" && s.national_id === "22940184";
+    return {
+      ...s,
+      phone: hasLeakedBrooksideCreds ? "" : s.phone,
+      national_id: hasLeakedBrooksideCreds ? "" : s.national_id,
+      total_orders_cost: sanitizeNumericValue(s.total_orders_cost, 0, 20_000_000)
+    };
+  });
 
   const rawMb = Array.isArray(parsed.morning_bookends)
     ? parsed.morning_bookends
@@ -1835,7 +1870,11 @@ function hydrateRawStateObject(parsed: any, activeEmail?: string, accountId?: st
     kpis: calculateKpis(safeInventory, safeWarehouse)
   };
 
-  return reconcileChronologicalReceiptsAndSales(hydratedState);
+  const reconciled = reconcileChronologicalReceiptsAndSales(hydratedState);
+  if (!isDefaultSampleState(reconciled) && !reconciled.is_demo_template) {
+    return archiveOldRecordsToDataWarehouse(reconciled).nextState;
+  }
+  return reconciled;
 }
 
 /**

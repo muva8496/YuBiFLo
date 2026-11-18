@@ -135,7 +135,14 @@ export default function SaasAppShell({
         { id: "owner_expenses", name: "Owner Expenses" }
       ]
     },
-    { id: "stock_vault", name: "Stock Vault", icon: <Layers size={17} /> },
+    {
+      id: "stock_vault",
+      name: "Stock Vault",
+      icon: <Layers size={17} />,
+      children: [
+        { id: "data_warehouse", name: "Data Warehouse (14d+)" }
+      ]
+    },
     { id: "dawn_lock", name: "Dawn Lock", icon: <Sun size={17} /> },
     { id: "voice_ledger", name: "Voice Ledger", icon: <Mic size={17} /> },
     {

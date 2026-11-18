@@ -1,21 +1,49 @@
-import React, { useState, useRef } from "react";
-import { 
-  Mic, MicOff, Radio, Volume2, Sparkles, CheckCircle2, 
-  ArrowRight, ShieldCheck, Check, Play, RefreshCw, Layers, 
-  HelpCircle, Globe, BookOpen, AlertCircle, ShoppingBag, Truck, 
-  Hourglass, Users, Trash2, Edit3, DollarSign, Plus, Languages,
-  Headphones, ChevronDown, CheckSquare, Calendar
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Mic,
+  MicOff,
+  Radio,
+  Volume2,
+  Sparkles,
+  CheckCircle2,
+  ShieldCheck,
+  ShieldAlert,
+  Check,
+  Play,
+  RefreshCw,
+  Trash2,
+  Plus,
+  Languages,
+  Headphones,
+  Calendar,
+  Hourglass,
+  Globe,
+  Clock,
+  SlidersHorizontal,
+  Ban
 } from "lucide-react";
-import { AlacioMasterState, SalesLedgerItem, InventoryItem } from "../../types/alacio";
+import {
+  AlacioMasterState,
+  SalesLedgerItem,
+  VoiceTrainingProfile,
+  VoiceFilteredEvent,
+  VoiceCustomAlias
+} from "../../types/alacio";
 import { VoiceTransactionPayload } from "../VoiceLedger";
 import { VoiceDraftRecord } from "./PendingDraftsQueueTab";
-import { 
-  KenyanLanguage, 
-  KENYAN_DIALECT_DICTIONARIES, 
-  VORACIOUS_TRAINING_CORPUS, 
-  KenyanDialectEngine,
-  DialectBenchmarkSample 
+import {
+  KenyanLanguage,
+  KENYAN_DIALECT_DICTIONARIES,
+  VORACIOUS_TRAINING_CORPUS,
+  KenyanDialectEngine
 } from "../../services/kenyanDialectEngine";
+import {
+  VoiceShiftRecorderEngine,
+  AcousticTelemetry,
+  formatShiftDuration,
+  MAX_SHIFT_DURATION_SECONDS
+} from "../../services/voiceShiftRecorderEngine";
+import { GeminiApiService } from "../../services/api";
 
 interface UnifiedVoiceLedgerTabProps {
   state: AlacioMasterState;
@@ -25,10 +53,41 @@ interface UnifiedVoiceLedgerTabProps {
   lastLoggedMessage: string | null;
   customerConsent?: boolean;
   onToggleConsent?: (val: boolean) => void;
+  onUpdateVoiceTraining?: (profile: VoiceTrainingProfile) => void;
   isDemo?: boolean;
 }
 
 export type VoiceHubMode = "mic_vcr" | "ambient_muva" | "dialect_studio";
+
+const DEFAULT_TRAINING_PROFILE: VoiceTrainingProfile = {
+  maxShiftHours: 24,
+  strictBuyIntentFilter: true,
+  ignoreMediaAndTikTok: true,
+  sensitivity: "STRICT",
+  customAliases: [
+    {
+      id: "alias_default_1",
+      spokenPhrase: "boflo",
+      mappedItemName: "Broadways White Bread 400g",
+      intentHint: "SALE",
+      createdAt: "System Pretrained"
+    },
+    {
+      id: "alias_default_2",
+      spokenPhrase: "weka kwa kitabu",
+      mappedItemName: "Customer Deni",
+      intentHint: "CREDIT",
+      createdAt: "System Pretrained"
+    }
+  ],
+  ignoredPhrases: [
+    "like and subscribe",
+    "follow for part 2",
+    "mambo vipi",
+    "baridi sana leo"
+  ],
+  filteredNoiseLog: []
+};
 
 export default function UnifiedVoiceLedgerTab({
   state,
@@ -38,31 +97,87 @@ export default function UnifiedVoiceLedgerTab({
   lastLoggedMessage,
   customerConsent = true,
   onToggleConsent,
+  onUpdateVoiceTraining,
   isDemo = false
 }: UnifiedVoiceLedgerTabProps) {
-  const { currency, inventory, customers } = state;
+  const { currency, inventory } = state;
 
   // Active Hub Sub-Mode
   const [activeMode, setActiveMode] = useState<VoiceHubMode>("mic_vcr");
 
-  // Audio capture state
-  const [isRecording, setIsRecording] = useState(false);
+  // Training Profile (synced cleanly with AlacioMasterState)
+  const [trainingProfile, setTrainingProfile] = useState<VoiceTrainingProfile>(
+    () => state.voiceTrainingProfile || DEFAULT_TRAINING_PROFILE
+  );
+
+  useEffect(() => {
+    if (state.voiceTrainingProfile) {
+      setTrainingProfile(state.voiceTrainingProfile);
+    }
+  }, [state.voiceTrainingProfile]);
+
+  const persistTrainingProfile = (updater: (prev: VoiceTrainingProfile) => VoiceTrainingProfile) => {
+    setTrainingProfile((prev) => {
+      const next = updater(prev);
+      onUpdateVoiceTraining?.(next);
+      return next;
+    });
+  };
+
+  // Continuous 24-Hour Shift Recorder State
+  const [is24hShiftRunning, setIs24hShiftRunning] = useState(false);
+  const [activeShiftSource, setActiveShiftSource] = useState<"VCR" | "MUVA_24H">("VCR");
   const [transcript, setTranscript] = useState("");
+  const [interimTranscript, setInterimTranscript] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [parsedIntentResult, setParsedIntentResult] = useState<any>(null);
   const [successNote, setSuccessNote] = useState<string | null>(null);
+  const [filterAlert, setFilterAlert] = useState<string | null>(null);
   const [salesDate, setSalesDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
-
-  // Customer consent state
   const [localConsent, setLocalConsent] = useState(customerConsent);
 
-  // Ambient listener settings
-  const [isAmbientListening, setIsAmbientListening] = useState(false);
-  const [isAecActive, setIsAecActive] = useState(true);
-  const [isVadActive, setIsVadActive] = useState(true);
+  const [telemetry, setTelemetry] = useState<AcousticTelemetry>({
+    elapsedSeconds: 0,
+    remainingSeconds: MAX_SHIFT_DURATION_SECONDS,
+    shiftStartedAt: null,
+    rmsLevel: 0,
+    vocalClarityScore: 0,
+    musicSuppressionScore: 0,
+    gateStatus: "IDLE",
+    autoRenewals: 0,
+    capturedSegments: 0,
+    discardedMusicOrSilentSegments: 0,
+    wakeLockActive: false,
+    hardwareAecEnabled: true
+  });
 
-  // Dialect Studio state
+  const engineRef = useRef<VoiceShiftRecorderEngine | null>(null);
+  const latestStateRef = useRef({ inventory, trainingProfile, activeShiftSource });
+  latestStateRef.current = { inventory, trainingProfile, activeShiftSource };
+
+  useEffect(() => {
+    engineRef.current?.updateOptions({
+      enableHardwareAec: trainingProfile.ignoreMediaAndTikTok,
+      enableVocalBandpass: trainingProfile.ignoreMediaAndTikTok,
+      ignoreMusicAndMedia: trainingProfile.ignoreMediaAndTikTok,
+      maxShiftSeconds: (trainingProfile.maxShiftHours || 24) * 3600
+    });
+  }, [trainingProfile]);
+
+  useEffect(() => {
+    return () => {
+      engineRef.current?.stop("Component unmounted.");
+    };
+  }, []);
+
+  // Dialect & Training inputs
   const [selectedLanguage, setSelectedLanguage] = useState<KenyanLanguage>("KIKUYU");
+  const [newAliasPhrase, setNewAliasPhrase] = useState("");
+  const [newAliasTarget, setNewAliasTarget] = useState(
+    inventory[0]?.name || "Brookside Fresh Milk 500ml"
+  );
+  const [newIgnoredPhrase, setNewIgnoredPhrase] = useState("");
+  const [manualTrainSentence, setManualTrainSentence] = useState("");
 
   // Pending Drafts Queue
   const [drafts, setDrafts] = useState<VoiceDraftRecord[]>([
@@ -91,9 +206,7 @@ export default function UnifiedVoiceLedgerTab({
       raw_transcript: "Kamau amechukua sugar ya 40 na deni",
       payload: {
         customer_name: "Kamau",
-        items: [
-          { item_name: "Mumias Sugar", quantity: 1, unit: "quarter-kg" }
-        ],
+        items: [{ item_name: "Mumias Sugar", quantity: 1, unit: "quarter-kg", price: 40 }],
         amount_owed: 40,
         notes: "Verbal deni logged at counter during morning rush"
       },
@@ -122,163 +235,375 @@ export default function UnifiedVoiceLedgerTab({
     }
   ]);
 
-  // Draft filter
-  const [draftFilter, setDraftFilter] = useState<"ALL" | "SUPPLIER_DELIVERY" | "CREDIT_RECORD" | "ADVANCE_PAYMENT">("ALL");
+  const [draftFilter, setDraftFilter] = useState<
+    "ALL" | "SUPPLIER_DELIVERY" | "CREDIT_RECORD" | "ADVANCE_PAYMENT"
+  >("ALL");
 
-  // Speech Recognition Hook
-  const startListening = () => {
-    setParsedIntentResult(null);
-    setTranscript("");
+  const showSuccess = (msg: string) => {
+    setSuccessNote(msg);
+    setTimeout(() => setSuccessNote(null), 5000);
+  };
 
-    if (isDemo) {
-      // Duka Space Demo: Use Voice Simulator instead of real microphone, record no real audio
-      setIsRecording(true);
-      const demoPhrases = [
-        "nimeuza maziwa mawili na mkate moja cash 185",
-        "Customer amelipa unga Pembe mbili na mafuta Salit mpesa 540",
-        "Mama Brayo amechukua sukari kilo moja na maziwa weka kwa deni",
-        "Baba Junior amelipa deni ya jana KES 350 kwa till"
-      ];
-      const randomPhrase = demoPhrases[Math.floor(Math.random() * demoPhrases.length)];
-      setTimeout(() => {
-        setIsRecording(false);
-        setTranscript(randomPhrase);
-        parseSpeechText(randomPhrase);
-      }, 1000);
+  const logFilteredNoiseEvent = (
+    snippet: string,
+    category: VoiceFilteredEvent["category"],
+    reason: string,
+    sourceMode: "VCR" | "MUVA_24H"
+  ) => {
+    const cleanSnippet = snippet.trim() || "(Audio window suppressed)";
+    const ev: VoiceFilteredEvent = {
+      id: `flt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      snippet: cleanSnippet,
+      category,
+      reason,
+      sourceMode
+    };
+    persistTrainingProfile((prev) => ({
+      ...prev,
+      filteredNoiseLog: [ev, ...(prev.filteredNoiseLog || [])].slice(0, 40)
+    }));
+    setFilterAlert(`${reason} — Filtered out cleanly (not logged as a sale).`);
+    setTimeout(() => setFilterAlert(null), 5000);
+  };
+
+  /**
+   * Core Dual-Pipeline Commercial Evaluator (Audio Blob + Text Utterance):
+   * Sends to server-side Gemini Acoustic Filter (/api/gemini/voice-parse) with catalog + training context,
+   * and falls back deterministically to KenyanDialectEngine.evaluateCommercialUtterance if offline/demo.
+   */
+  const evaluateSpeechOrAudio = async (params: {
+    text?: string;
+    audioBase64?: string;
+    mimeType?: string;
+    autoQueueToDrafts?: boolean;
+    sourceMode?: "VCR" | "MUVA_24H";
+    bypassFilter?: boolean;
+  }) => {
+    const cleanText = (params.text || "").trim();
+    if (!cleanText && !params.audioBase64) return;
+
+    const { inventory: liveInv, trainingProfile: liveProfile, activeShiftSource: shiftSrc } =
+      latestStateRef.current;
+    const modeSource = params.sourceMode || shiftSrc;
+    const effectiveStrict = params.bypassFilter ? false : liveProfile.strictBuyIntentFilter;
+    const effectiveIgnoreMedia = params.bypassFilter ? false : liveProfile.ignoreMediaAndTikTok;
+
+    // Pre-screen fast local obvious music/TikTok/chatter before spending server bandwidth
+    if (cleanText && !params.audioBase64 && !params.bypassFilter) {
+      const preCheck = KenyanDialectEngine.evaluateCommercialUtterance(cleanText, liveInv, {
+        strictBuyIntentFilter: effectiveStrict,
+        ignoreMediaAndTikTok: effectiveIgnoreMedia,
+        customAliases: liveProfile.customAliases,
+        ignoredPhrases: liveProfile.ignoredPhrases
+      });
+      if (!preCheck.isCommercialTransaction && preCheck.rejectionCategory) {
+        logFilteredNoiseEvent(
+          cleanText,
+          preCheck.rejectionCategory,
+          preCheck.rejectionReason || "Non-buying audio/media blocked",
+          modeSource
+        );
+        return;
+      }
+    }
+
+    setIsProcessing(true);
+
+    const buildFromResult = (data: {
+      isCommercialTransaction: boolean;
+      classification: string;
+      rejectionReason?: string;
+      transcript: string;
+      intentType: string;
+      items: Array<{ itemName: string; quantity: number; unit: string; unitPrice?: number; subtotal?: number }>;
+      totalAmount: number;
+      amountPaid?: number;
+      changeGiven?: number;
+      paymentMethod: string;
+      counterparty: string;
+      isCollected?: boolean;
+    }) => {
+      if (!data.isCommercialTransaction || data.intentType === "NONE") {
+        const cat: VoiceFilteredEvent["category"] =
+          data.classification === "REJECTED_MEDIA"
+            ? "TIKTOK_OR_MEDIA"
+            : data.classification === "REJECTED_INQUIRY"
+            ? "PRICE_INQUIRY"
+            : "CASUAL_CHATTER";
+        logFilteredNoiseEvent(
+          data.transcript || cleanText || "(Ambient audio clip)",
+          cat,
+          data.rejectionReason || "Filtered background music / TikTok / non-buying speech",
+          modeSource
+        );
+        return;
+      }
+
+      const structured = {
+        intentType: data.intentType,
+        raw: data.transcript || cleanText,
+        supplierName:
+          data.intentType === "SUPPLIER_DELIVERY"
+            ? data.counterparty || "Wholesale Distributor"
+            : undefined,
+        customerName:
+          data.intentType !== "SUPPLIER_DELIVERY"
+            ? data.counterparty || "Walk-in Customer"
+            : undefined,
+        items: (data.items || []).map((i) => ({
+          itemName: i.itemName,
+          quantity: i.quantity || 1,
+          unit: i.unit || "pcs",
+          price: i.unitPrice || i.subtotal || 0
+        })),
+        totalAmount: Number(data.totalAmount) || 0,
+        amountPaid: Number(data.amountPaid ?? data.totalAmount) || 0,
+        changeGiven: Number(data.changeGiven) || 0,
+        paymentMethod: data.paymentMethod || "CASH",
+        counterparty: data.counterparty || "Walk-in Customer",
+        isCollected: data.isCollected ?? data.intentType !== "ADVANCE_PAYMENT"
+      };
+
+      // In 24-Hour Continuous Shift / Ambient Muva mode, auto-stage valid transactions into Pending Drafts
+      if (params.autoQueueToDrafts) {
+        const mappedIntent: VoiceDraftRecord["intent_type"] =
+          structured.intentType === "SUPPLIER_DELIVERY"
+            ? "SUPPLIER_DELIVERY"
+            : structured.intentType === "CREDIT_RECORD"
+            ? "CREDIT_RECORD"
+            : "ADVANCE_PAYMENT";
+
+        const queued: VoiceDraftRecord = {
+          id: `vd_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          merchant_id: state.user_email || "yubiflo_shop",
+          intent_type: mappedIntent,
+          raw_transcript: structured.raw,
+          payload: {
+            customer_name: structured.customerName || structured.counterparty,
+            supplier_name: structured.supplierName,
+            items: structured.items.map((it) => ({
+              item_name: it.itemName,
+              quantity: it.quantity,
+              unit: it.unit,
+              price: it.price
+            })),
+            amount_paid: structured.amountPaid,
+            change_given: structured.changeGiven,
+            amount_owed:
+              mappedIntent === "CREDIT_RECORD" ? structured.totalAmount : 0,
+            total_cost: structured.totalAmount,
+            payment_mode: structured.paymentMethod,
+            is_collected: structured.isCollected
+          },
+          total_amount: structured.totalAmount,
+          status: "PENDING",
+          created_at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        };
+
+        setDrafts((prev) => [queued, ...prev]);
+        setTranscript(structured.raw);
+        setParsedIntentResult(structured);
+        showSuccess(
+          `Captured valid ${mappedIntent.replace("_", " ")} (${currency} ${structured.totalAmount.toLocaleString()}) -> staged to queue.`
+        );
+      } else {
+        setParsedIntentResult(structured);
+        showSuccess("Speech verified! Matched against shop inventory & trained aliases.");
+      }
+    };
+
+    try {
+      if (!isDemo) {
+        const aiRes = await GeminiApiService.parseVoiceSegment({
+          transcript: cleanText || undefined,
+          audioBase64: params.audioBase64,
+          mimeType: params.mimeType,
+          inventoryItems: liveInv.slice(0, 60).map((it) => ({
+            name: it.name,
+            unit_type: it.unit_type,
+            unit_retail: it.unit_retail,
+            unit_cost: it.unit_cost
+          })),
+          customAliases: liveProfile.customAliases.map((a) => ({
+            spokenPhrase: a.spokenPhrase,
+            mappedItemName: a.mappedItemName,
+            intentHint: a.intentHint
+          })),
+          ignoredPhrases: liveProfile.ignoredPhrases,
+          strictBuyIntentFilter: effectiveStrict,
+          ignoreMediaAndTikTok: effectiveIgnoreMedia
+        });
+
+        if (aiRes.success && aiRes.data) {
+          buildFromResult({
+            isCommercialTransaction: aiRes.data.isCommercialTransaction,
+            classification: aiRes.data.classification,
+            rejectionReason: aiRes.data.rejectionReason,
+            transcript: aiRes.data.transcript || cleanText,
+            intentType: aiRes.data.intentType,
+            items: aiRes.data.items || [],
+            totalAmount: aiRes.data.totalAmount,
+            amountPaid: aiRes.data.amountPaid,
+            changeGiven: aiRes.data.changeGiven,
+            paymentMethod: aiRes.data.paymentMethod,
+            counterparty: aiRes.data.customerOrSupplier || "Walk-in Customer",
+            isCollected: aiRes.data.isCollected
+          });
+          setIsProcessing(false);
+          return;
+        }
+      }
+    } catch {
+      // Fallback smoothly below
+    }
+
+    if (cleanText) {
+      const fallback = KenyanDialectEngine.evaluateCommercialUtterance(cleanText, liveInv, {
+        strictBuyIntentFilter: effectiveStrict,
+        ignoreMediaAndTikTok: effectiveIgnoreMedia,
+        customAliases: liveProfile.customAliases,
+        ignoredPhrases: liveProfile.ignoredPhrases
+      });
+      buildFromResult({
+        isCommercialTransaction: fallback.isCommercialTransaction,
+        classification: fallback.classification,
+        rejectionReason: fallback.rejectionReason,
+        transcript: cleanText,
+        intentType: fallback.intentType,
+        items: fallback.items,
+        totalAmount: fallback.totalAmount,
+        amountPaid: fallback.amountPaid,
+        changeGiven: fallback.changeGiven,
+        paymentMethod: fallback.paymentMethod,
+        counterparty: fallback.counterparty,
+        isCollected: fallback.isCollected
+      });
+    }
+
+    setIsProcessing(false);
+  };
+
+  /**
+   * Starts/Stops the real 24-Hour Continuous Shift Recorder (Works across both VCR and Ambient Muva)
+   */
+  const start24HourShift = async (sourceMode: "VCR" | "MUVA_24H") => {
+    setActiveShiftSource(sourceMode);
+
+    if (is24hShiftRunning) {
+      engineRef.current?.stop("24-Hour Voice Ledger shift stopped.");
+      setIs24hShiftRunning(false);
       return;
     }
 
-    const win = window as any;
-    const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
+    setParsedIntentResult(null);
+    setInterimTranscript("");
 
-    if (SpeechRecognition) {
-      try {
-        const recognition = new SpeechRecognition();
-        recognition.lang = "en-KE";
-        recognition.continuous = false;
-        recognition.interimResults = true;
-
-        recognition.onstart = () => setIsRecording(true);
-
-        recognition.onresult = (event: any) => {
-          const current = event.resultIndex;
-          const text = event.results[current][0].transcript;
-          setTranscript(text);
-        };
-
-        recognition.onend = () => {
-          setIsRecording(false);
-          setTranscript((curr) => {
-            parseSpeechText(curr);
-            return curr;
-          });
-        };
-
-        recognition.onerror = () => {
-          setIsRecording(false);
-          parseSpeechText("nimeuza maziwa mawili na mkate moja cash 185");
-        };
-
-        recognition.start();
-      } catch (e) {
-        setIsRecording(false);
-        parseSpeechText("nimeuza maziwa mawili na mkate moja cash 185");
-      }
-    } else {
-      // Simulate live recording on browsers without webkitSpeechRecognition
-      setIsRecording(true);
+    if (isDemo) {
+      // Interactive sandbox: run simulated counter conversation without browser mic permission
+      setIs24hShiftRunning(true);
+      const demoSamples = [
+        "Nimeuza maziwa mawili na mkate moja cash 185",
+        "TikTok sound: Follow for part 2, like and subscribe! Amapiano remix",
+        "Mama Brayo amechukua sukari kilo moja na maziwa weka kwa deni",
+        "Sasa bro, leo baridi sana, mambo vipi?",
+        "Customer amelipa unga Jogoo mbili na mafuta Salit mpesa 540"
+      ];
+      const chosen = demoSamples[Math.floor(Math.random() * demoSamples.length)];
       setTimeout(() => {
-        setIsRecording(false);
-        const sample = "nimeuza maziwa mawili na mkate moja cash 185";
-        setTranscript(sample);
-        parseSpeechText(sample);
-      }, 1500);
+        setIs24hShiftRunning(false);
+        setTranscript(chosen);
+        void evaluateSpeechOrAudio({
+          text: chosen,
+          autoQueueToDrafts: sourceMode === "MUVA_24H",
+          sourceMode
+        });
+      }, 900);
+      return;
+    }
+
+    const shiftSeconds = (trainingProfile.maxShiftHours || 24) * 3600;
+    const engine = new VoiceShiftRecorderEngine(
+      {
+        onTelemetry: (t) => setTelemetry(t),
+        onInterimTranscript: (txt) => setInterimTranscript(txt),
+        onFinalUtterance: (txt) => {
+          setInterimTranscript("");
+          setTranscript(txt);
+          void evaluateSpeechOrAudio({
+            text: txt,
+            autoQueueToDrafts: true,
+            sourceMode: latestStateRef.current.activeShiftSource
+          });
+        },
+        onSpeechAudioSegment: (audioBase64, mimeType) => {
+          void evaluateSpeechOrAudio({
+            audioBase64,
+            mimeType,
+            autoQueueToDrafts: true,
+            sourceMode: latestStateRef.current.activeShiftSource
+          });
+        },
+        onStatusMessage: (msg) => showSuccess(msg),
+        onError: (errMsg) => {
+          setFilterAlert(errMsg);
+          setIs24hShiftRunning(false);
+        }
+      },
+      {
+        language: "en-KE",
+        enableHardwareAec: trainingProfile.ignoreMediaAndTikTok,
+        enableVocalBandpass: trainingProfile.ignoreMediaAndTikTok,
+        ignoreMusicAndMedia: trainingProfile.ignoreMediaAndTikTok,
+        maxShiftSeconds: shiftSeconds,
+        segmentDurationMs: 12000
+      }
+    );
+
+    engineRef.current = engine;
+    const ok = await engine.start();
+    if (ok) {
+      setIs24hShiftRunning(true);
     }
   };
 
-  const stopListening = () => {
-    setIsRecording(false);
-  };
-
-  // Parse speech transcript into structured intent
-  const parseSpeechText = (rawText: string) => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      const lower = rawText.toLowerCase();
-
-      // Check intent type
-      if (lower.includes("crate") || lower.includes("supplier") || lower.includes("leta") || lower.includes("bale")) {
-        const parsed = {
-          intentType: "SUPPLIER_DELIVERY" as const,
-          raw: rawText,
-          supplierName: "Brookside Dairy Delivery",
-          items: [{ itemName: "Brookside Fresh Milk 500ml", quantity: 2, unit: "crates", price: 1320 }],
-          totalAmount: 2640,
-          paymentMethod: "MPESA",
-          counterparty: "Brookside Driver"
-        };
-        setParsedIntentResult(parsed);
-      } else if (lower.includes("deni") || lower.includes("andika") || lower.includes("credit") || lower.includes("kesho")) {
-        const parsed = {
-          intentType: "CREDIT_RECORD" as const,
-          raw: rawText,
-          customerName: lower.includes("kamau") ? "Kamau" : "Grace Debtor",
-          items: [{ itemName: "Mumias Sugar", quantity: 1, unit: "quarter-kg", price: 40 }],
-          totalAmount: 40,
-          paymentMethod: "CREDIT",
-          counterparty: "Kamau"
-        };
-        setParsedIntentResult(parsed);
-      } else {
-        // Fast Cash Sale
-        const parsed = {
-          intentType: "FAST_CASH_SALE" as const,
-          raw: rawText,
-          items: [
-            { itemName: "Brookside Fresh Milk 500ml", quantity: 2, unit: "packets", price: 65 },
-            { itemName: "Broadways White Bread", quantity: 1, unit: "loaf", price: 55 }
-          ],
-          totalAmount: 185,
-          amountPaid: lower.includes("mia sita") ? 600 : 200,
-          changeGiven: lower.includes("mia nne") ? 415 : 15,
-          paymentMethod: "CASH",
-          counterparty: "Counter Customer"
-        };
-        setParsedIntentResult(parsed);
-      }
-
-      setIsProcessing(false);
-      setSuccessNote("Speech processed! Verified against shop inventory and pricing.");
-      setTimeout(() => setSuccessNote(null), 4000);
-    }, 350);
-  };
-
-  // 1-Click quick test presets
+  // 1-Click quick test phrases (valid sales & noise distractors)
   const handleTestPhrase = (phrase: string) => {
     setTranscript(phrase);
-    parseSpeechText(phrase);
+    void evaluateSpeechOrAudio({
+      text: phrase,
+      autoQueueToDrafts: false,
+      sourceMode: activeMode === "ambient_muva" ? "MUVA_24H" : "VCR"
+    });
   };
 
-  // Queue extracted intent as Pending Draft
+  // Stage extracted intent into Pending Drafts
   const handleQueueAsDraft = () => {
     if (!parsedIntentResult) return;
 
     const newDraft: VoiceDraftRecord = {
       id: `vd_${Date.now()}`,
-      merchant_id: "alacio_mini_shop",
-      intent_type: parsedIntentResult.intentType === "SUPPLIER_DELIVERY" 
-        ? "SUPPLIER_DELIVERY" 
-        : parsedIntentResult.intentType === "CREDIT_RECORD" 
-        ? "CREDIT_RECORD" 
-        : "ADVANCE_PAYMENT",
+      merchant_id: state.user_email || "yubiflo_shop",
+      intent_type:
+        parsedIntentResult.intentType === "SUPPLIER_DELIVERY"
+          ? "SUPPLIER_DELIVERY"
+          : parsedIntentResult.intentType === "CREDIT_RECORD"
+          ? "CREDIT_RECORD"
+          : "ADVANCE_PAYMENT",
       raw_transcript: parsedIntentResult.raw,
       payload: {
         customer_name: parsedIntentResult.customerName || parsedIntentResult.counterparty,
         supplier_name: parsedIntentResult.supplierName,
-        items: parsedIntentResult.items,
+        items: parsedIntentResult.items.map((it: any) => ({
+          item_name: it.itemName,
+          quantity: it.quantity,
+          unit: it.unit,
+          price: it.price
+        })),
         amount_paid: parsedIntentResult.amountPaid,
         change_given: parsedIntentResult.changeGiven,
         amount_owed: parsedIntentResult.totalAmount,
+        total_cost: parsedIntentResult.totalAmount,
         payment_mode: parsedIntentResult.paymentMethod
       },
       total_amount: parsedIntentResult.totalAmount,
@@ -289,174 +614,409 @@ export default function UnifiedVoiceLedgerTab({
     setDrafts((prev) => [newDraft, ...prev]);
     setParsedIntentResult(null);
     setTranscript("");
-    setSuccessNote("Transaction queued into Pending Voice Drafts for 1-tap review!");
-    setTimeout(() => setSuccessNote(null), 4000);
+    showSuccess("Transaction queued into Pending Voice Drafts for 1-tap review!");
   };
 
-  // Direct commit to ledger without staging
+  // Direct commit to active shop ledger
   const handleDirectCommit = () => {
     if (!parsedIntentResult) return;
 
     if (parsedIntentResult.intentType === "SUPPLIER_DELIVERY") {
-      const mockDraft: VoiceDraftRecord = {
+      onApproveDraft({
         id: `vd_${Date.now()}`,
-        merchant_id: "alacio_mini_shop",
+        merchant_id: state.user_email || "yubiflo_shop",
         intent_type: "SUPPLIER_DELIVERY",
         raw_transcript: parsedIntentResult.raw,
         payload: {
-          supplier_name: parsedIntentResult.supplierName,
-          items: parsedIntentResult.items.map((i: any) => ({ item_name: i.itemName, quantity: i.quantity, unit: i.unit })),
+          supplier_name: parsedIntentResult.supplierName || "Wholesale Supplier",
+          items: parsedIntentResult.items.map((i: any) => ({
+            item_name: i.itemName,
+            quantity: i.quantity,
+            unit: i.unit
+          })),
           payment_mode: parsedIntentResult.paymentMethod,
           total_cost: parsedIntentResult.totalAmount
         },
         total_amount: parsedIntentResult.totalAmount,
         status: "APPROVED",
         created_at: "Just now"
-      };
-      onApproveDraft(mockDraft);
+      });
     } else if (parsedIntentResult.intentType === "CREDIT_RECORD") {
-      const mockDraft: VoiceDraftRecord = {
-        id: `vd_${Date.now()}`,
-        merchant_id: "alacio_mini_shop",
-        intent_type: "CREDIT_RECORD",
-        raw_transcript: parsedIntentResult.raw,
-        payload: {
-          customer_name: parsedIntentResult.customerName,
-          amount_owed: parsedIntentResult.totalAmount,
-          items: parsedIntentResult.items
-        },
-        total_amount: parsedIntentResult.totalAmount,
-        status: "APPROVED",
-        created_at: "Just now"
-      };
-      onApproveDraft(mockDraft);
+      onCommitTransaction({
+        intent: "CREDIT",
+        customer: parsedIntentResult.customerName || parsedIntentResult.counterparty || "Debtor Customer",
+        items: parsedIntentResult.items.map((i: any) => ({
+          name: i.itemName,
+          qty: i.quantity || 1,
+          unit: i.unit || "pcs",
+          subtotal: (i.price || parsedIntentResult.totalAmount) * (i.quantity || 1)
+        })),
+        cashPaid: 0,
+        mpesaPaid: 0,
+        debtAmount: parsedIntentResult.totalAmount,
+        total: parsedIntentResult.totalAmount
+      });
     } else {
-      // Fast cash sale
       const firstItem = parsedIntentResult.items[0];
       const salesItem: SalesLedgerItem = {
         id: `vs_${Date.now()}`,
-        timestamp: "Just now",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         date: salesDate,
-        customer_name: "Walk-in Customer",
-        items_summary: parsedIntentResult.items.map((i: any) => `${i.quantity}x ${i.itemName}`).join(", "),
+        customer_name: parsedIntentResult.customerName || "Walk-in Customer",
+        items_summary: parsedIntentResult.items
+          .map((i: any) => `${i.quantity}x ${i.itemName}`)
+          .join(", "),
         total_amount: parsedIntentResult.totalAmount,
-        cash_paid: parsedIntentResult.totalAmount,
-        mpesa_paid: 0,
+        cash_paid: parsedIntentResult.paymentMethod === "MPESA" ? 0 : parsedIntentResult.totalAmount,
+        mpesa_paid: parsedIntentResult.paymentMethod === "MPESA" ? parsedIntentResult.totalAmount : 0,
         debt_amount: 0,
-        payment_method: "CASH"
+        payment_method: parsedIntentResult.paymentMethod === "MPESA" ? "MPESA" : "CASH"
       };
-      onCommitParsedSale(salesItem, firstItem?.itemName || "Fresh Milk 500ml", firstItem?.quantity || 1, true);
+      onCommitParsedSale(
+        salesItem,
+        firstItem?.itemName || "Fresh Milk 500ml",
+        firstItem?.quantity || 1,
+        parsedIntentResult.isCollected ?? true
+      );
     }
 
     setParsedIntentResult(null);
     setTranscript("");
-    setSuccessNote(`Committed ${currency} ${parsedIntentResult.totalAmount} directly into active shop ledgers!`);
-    setTimeout(() => setSuccessNote(null), 5000);
+    showSuccess(
+      `Committed ${currency} ${parsedIntentResult.totalAmount.toLocaleString()} directly into active shop ledgers!`
+    );
   };
 
-  // Approve a draft from the queue
+  // Approve queued draft
   const handleApproveQueueItem = (draft: VoiceDraftRecord) => {
-    onApproveDraft(draft);
-    setDrafts((prev) => prev.map((d) => d.id === draft.id ? { ...d, status: "APPROVED" } : d));
-    setSuccessNote(`Draft "${draft.raw_transcript}" approved & calibrated into inventory/ledgers!`);
-    setTimeout(() => setSuccessNote(null), 4000);
+    if (draft.intent_type === "CREDIT_RECORD") {
+      onCommitTransaction({
+        intent: "CREDIT",
+        customer: draft.payload.customer_name || "Debtor Customer",
+        items: (draft.payload.items || []).map((it: any) => ({
+          name: it.item_name || it.name,
+          qty: it.quantity || 1,
+          unit: it.unit || "pcs",
+          subtotal: draft.total_amount
+        })),
+        cashPaid: 0,
+        mpesaPaid: 0,
+        debtAmount: draft.payload.amount_owed ?? draft.total_amount,
+        total: draft.total_amount
+      });
+    } else if (draft.intent_type === "ADVANCE_PAYMENT") {
+      const firstItem = draft.payload.items?.[0];
+      const netTotal = draft.payload.net_retained ?? draft.total_amount;
+      onCommitParsedSale(
+        {
+          id: `vs_draft_${Date.now()}`,
+          date: salesDate,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          customer_name: draft.payload.customer_name || "Cash Customer",
+          items_summary: (draft.payload.items || [])
+            .map((i: any) => `${i.quantity}x ${i.item_name}`)
+            .join(", "),
+          total_amount: netTotal,
+          cash_paid: draft.payload.payment_mode === "MPESA" ? 0 : netTotal,
+          mpesa_paid: draft.payload.payment_mode === "MPESA" ? netTotal : 0,
+          debt_amount: 0,
+          payment_method: draft.payload.payment_mode === "MPESA" ? "MPESA" : "CASH"
+        },
+        firstItem?.item_name || "Counter Item",
+        firstItem?.quantity || 1,
+        draft.payload.is_collected ?? true
+      );
+    } else {
+      onApproveDraft(draft);
+    }
+
+    setDrafts((prev) => prev.map((d) => (d.id === draft.id ? { ...d, status: "APPROVED" } : d)));
+    showSuccess(`Draft "${draft.raw_transcript}" approved & calibrated into inventory/ledgers!`);
   };
 
-  // Dismiss a draft
-  const handleDismissQueueItem = (draftId: string) => {
-    setDrafts((prev) => prev.map((d) => d.id === draftId ? { ...d, status: "DISMISSED" } : d));
+  // Teach filter to ignore a false-positive draft
+  const handleTeachIgnoreFromDraft = (draft: VoiceDraftRecord) => {
+    const cleanPhrase = draft.raw_transcript.trim();
+    persistTrainingProfile((prev) => ({
+      ...prev,
+      ignoredPhrases: Array.from(new Set([...(prev.ignoredPhrases || []), cleanPhrase]))
+    }));
+    setDrafts((prev) => prev.map((d) => (d.id === draft.id ? { ...d, status: "DISMISSED" } : d)));
+    showSuccess(`Trained filter: "${cleanPhrase}" will be ignored automatically next time.`);
   };
 
-  // Dialect corpus samples
+  // Teach filter that a blocked noise item was actually a valid sale
+  const handlePromoteBlockedEvent = (ev: VoiceFilteredEvent) => {
+    persistTrainingProfile((prev) => ({
+      ...prev,
+      filteredNoiseLog: (prev.filteredNoiseLog || []).map((item) =>
+        item.id === ev.id ? { ...item, promotedToSale: true } : item
+      )
+    }));
+    setTranscript(ev.snippet);
+    void evaluateSpeechOrAudio({
+      text: ev.snippet,
+      bypassFilter: true,
+      autoQueueToDrafts: false,
+      sourceMode: ev.sourceMode
+    });
+  };
+
+  const handleAddAlias = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAliasPhrase.trim() || !newAliasTarget.trim()) return;
+    const item: VoiceCustomAlias = {
+      id: `alias_${Date.now()}`,
+      spokenPhrase: newAliasPhrase.trim(),
+      mappedItemName: newAliasTarget.trim(),
+      intentHint: "SALE",
+      createdAt: new Date().toLocaleDateString()
+    };
+    persistTrainingProfile((prev) => ({
+      ...prev,
+      customAliases: [item, ...(prev.customAliases || [])]
+    }));
+    setNewAliasPhrase("");
+    showSuccess(`Trained alias: "${item.spokenPhrase}" -> ${item.mappedItemName}`);
+  };
+
+  const handleAddIgnoredPhrase = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newIgnoredPhrase.trim()) return;
+    const phrase = newIgnoredPhrase.trim();
+    persistTrainingProfile((prev) => ({
+      ...prev,
+      ignoredPhrases: Array.from(new Set([phrase, ...(prev.ignoredPhrases || [])]))
+    }));
+    setNewIgnoredPhrase("");
+    showSuccess(`Added "${phrase}" to background noise / TikTok ignore list.`);
+  };
+
   const activeDialectSamples = VORACIOUS_TRAINING_CORPUS.filter(
     (s) => s.language === selectedLanguage
   );
   const activeDict = KENYAN_DIALECT_DICTIONARIES[selectedLanguage];
-
   const pendingCount = drafts.filter((d) => d.status === "PENDING").length;
-
-  const filteredDrafts = drafts.filter((d) => {
-    if (draftFilter === "ALL") return true;
-    return d.intent_type === draftFilter;
-  });
+  const filteredNoiseLog = trainingProfile.filteredNoiseLog || [];
+  const filteredDrafts = drafts.filter((d) =>
+    draftFilter === "ALL" ? true : d.intent_type === draftFilter
+  );
 
   return (
     <div className="space-y-6 max-w-6xl">
-      
-      {/* 1. HEADER: UNIFIED VOICE HUB & MODE SELECTOR */}
-      <div className="border-b border-slate-800 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* 1. HEADER: UNIFIED 24H VOICE HUB & MODE SELECTOR */}
+      <div className="border-b border-slate-800 pb-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2 font-serif">
-              <Mic className="text-emerald-400" size={24} /> Voice Ledger &amp; Audio Studio
+              <Mic className="text-emerald-400" size={24} /> 24-Hour Voice Ledger &amp; Noise Filter
             </h2>
-            <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-bold">
-              Unified Voice Hub
+            <span className="text-xs font-mono text-emerald-400">
+              24h Non-Stop Shift · Music &amp; TikTok Suppression
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Tap-to-speak counter recording (VCR), passive background listening (Muva), 5 Nairobi dialect models, and 1-tap staged approval queue.
+            Continuous 24-hour counter recording without 5-minute timeouts. Filters out TikTok videos, radio music, and casual chatter so only real purchases reach your ledger.
           </p>
         </div>
 
-        {/* MODE SELECTOR PILLS */}
-        <div className="flex items-center gap-1.5 bg-[#09090b] p-1 rounded-2xl border border-slate-800 self-start md:self-auto">
+        {/* MODE SELECTOR */}
+        <div className="flex items-center gap-1.5 bg-[#09090b] p-1 rounded-2xl border border-slate-800 self-start lg:self-auto shrink-0">
           <button
+            type="button"
             onClick={() => setActiveMode("mic_vcr")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
               activeMode === "mic_vcr"
                 ? "bg-emerald-500 text-slate-950 shadow"
                 : "text-slate-400 hover:text-white"
             }`}
           >
             <Mic size={13} />
-            <span>Live Counter VCR</span>
+            <span>Live Counter VCR (24h)</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveMode("ambient_muva")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
               activeMode === "ambient_muva"
                 ? "bg-emerald-500 text-slate-950 shadow"
                 : "text-slate-400 hover:text-white"
             }`}
           >
             <Headphones size={13} />
-            <span>Ambient (Muva)</span>
+            <span>Ambient 24h (Muva)</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveMode("dialect_studio")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
               activeMode === "dialect_studio"
                 ? "bg-emerald-500 text-slate-950 shadow"
                 : "text-slate-400 hover:text-white"
             }`}
           >
             <Languages size={13} />
-            <span>5 Dialects</span>
+            <span>Train &amp; 5 Dialects</span>
           </button>
         </div>
       </div>
 
+      {lastLoggedMessage && (
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs flex items-center gap-2 font-mono">
+          <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+          <span>{lastLoggedMessage}</span>
+        </div>
+      )}
+
       {successNote && (
-        <div className="p-3.5 bg-emerald-500/10 border-2 border-emerald-500/40 text-emerald-300 rounded-2xl text-xs flex items-center gap-2 animate-in fade-in font-mono shadow-lg">
+        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 rounded-2xl text-xs flex items-center gap-2 font-mono">
           <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
           <span>{successNote}</span>
         </div>
       )}
 
-      {/* 2. THE AUDIO CAPTURE CONSOLE (DYNAMIC BASED ON MODE) */}
-      <div className="bg-[#121214] border-2 border-emerald-950 rounded-3xl p-5 sm:p-6 shadow-xl space-y-5">
-        
-        {/* TOP STATUS BAR: PRIVACY & CONSENT */}
+      {filterAlert && (
+        <div className="p-3.5 bg-amber-950/40 border border-amber-500/40 text-amber-200 rounded-2xl text-xs flex items-center gap-2 font-mono">
+          <Ban size={16} className="text-amber-400 shrink-0" />
+          <span>{filterAlert}</span>
+        </div>
+      )}
+
+      {/* 2. SHARED 24-HOUR SHIFT WATCHDOG & ACOUSTIC GATE BAR */}
+      <div className="bg-[#0e1217] border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-wrap text-xs font-mono tabular-nums">
+            <span className="flex items-center gap-1.5 font-bold text-white">
+              <Clock size={14} className="text-emerald-400" />
+              24h Shift Window:
+              <strong className={is24hShiftRunning ? "text-emerald-400" : "text-slate-300"}>
+                {formatShiftDuration(telemetry.elapsedSeconds)} / 24:00:00
+              </strong>
+            </span>
+            <span className="text-slate-600">·</span>
+            <span className="text-slate-400">
+              Auto-Heal Renewals: <strong className="text-cyan-300">{telemetry.autoRenewals}</strong>
+            </span>
+            <span className="text-slate-600">·</span>
+            <span className="text-slate-400">
+              Speech Clips: <strong className="text-emerald-300">{telemetry.capturedSegments}</strong>
+            </span>
+            <span className="text-slate-600">·</span>
+            <span className="text-slate-400">
+              Blocked Noise/Media:{" "}
+              <strong className="text-amber-300">
+                {telemetry.discardedMusicOrSilentSegments + filteredNoiseLog.length}
+              </strong>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 text-[11px] font-mono">
+            <label className="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input
+                type="checkbox"
+                checked={trainingProfile.ignoreMediaAndTikTok}
+                onChange={(e) =>
+                  persistTrainingProfile((prev) => ({
+                    ...prev,
+                    ignoreMediaAndTikTok: e.target.checked
+                  }))
+                }
+                className="rounded accent-emerald-500 cursor-pointer"
+              />
+              <span>Filter Music &amp; TikTok</span>
+            </label>
+
+            <label className="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input
+                type="checkbox"
+                checked={trainingProfile.strictBuyIntentFilter}
+                onChange={(e) =>
+                  persistTrainingProfile((prev) => ({
+                    ...prev,
+                    strictBuyIntentFilter: e.target.checked
+                  }))
+                }
+                className="rounded accent-emerald-500 cursor-pointer"
+              />
+              <span>Only Real Purchases</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Live Acoustic Gate & Vocal Clarity Meter */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px] font-mono tabular-nums pt-1 border-t border-slate-800/80">
+          <div className="flex items-center justify-between px-3 py-2 bg-[#07090c] rounded-xl border border-slate-800/80">
+            <span className="text-slate-500">Gate State</span>
+            <strong
+              className={
+                telemetry.gateStatus === "SPEECH_ACTIVE"
+                  ? "text-emerald-400"
+                  : telemetry.gateStatus === "MUSIC_OR_MEDIA_SUPPRESSED"
+                  ? "text-amber-400"
+                  : "text-slate-300"
+              }
+            >
+              {telemetry.gateStatus === "SPEECH_ACTIVE"
+                ? "Speech Active"
+                : telemetry.gateStatus === "MUSIC_OR_MEDIA_SUPPRESSED"
+                ? "Music Blocked"
+                : is24hShiftRunning
+                ? "Standby Gate"
+                : "Stopped"}
+            </strong>
+          </div>
+
+          <div className="px-3 py-2 bg-[#07090c] rounded-xl border border-slate-800/80 space-y-1">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Vocal Clarity</span>
+              <span className="text-emerald-400 font-bold">{telemetry.vocalClarityScore}%</span>
+            </div>
+            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-emerald-400 transition-all duration-150"
+                style={{ width: `${telemetry.vocalClarityScore}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="px-3 py-2 bg-[#07090c] rounded-xl border border-slate-800/80 space-y-1">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Music / Bass Reject</span>
+              <span className="text-amber-300 font-bold">{telemetry.musicSuppressionScore}%</span>
+            </div>
+            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-amber-400 transition-all duration-150"
+                style={{ width: `${telemetry.musicSuppressionScore}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between px-3 py-2 bg-[#07090c] rounded-xl border border-slate-800/80">
+            <span className="text-slate-500">Wake Lock &amp; AEC</span>
+            <strong className="text-cyan-300">
+              {telemetry.hardwareAecEnabled ? "AEC On" : "AEC Off"} ·{" "}
+              {telemetry.wakeLockActive ? "Awake" : "Std"}
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. AUDIO CAPTURE CONSOLE */}
+      <div className="bg-[#121214] border border-emerald-950 rounded-3xl p-5 sm:p-6 shadow-xl space-y-5">
+        {/* CONSENT TOP BAR */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3 text-xs font-mono">
           <div className="flex items-center gap-2">
-            <span className="text-emerald-400 font-bold flex items-center gap-1.5">
-              <ShieldCheck size={15} /> Consented Audio Capture Active
+            <ShieldCheck size={15} className="text-emerald-400" />
+            <span className="text-emerald-400 font-bold">
+              Consented 24h Counter Capture
             </span>
-            <span className="text-slate-500">&bull;</span>
-            <span className="text-slate-400">Nairobi Eastlands Acoustic Model</span>
+            <span className="text-slate-500">·</span>
+            <span className="text-slate-400">
+              Silent &amp; music-only windows discarded in RAM immediately
+            </span>
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer select-none text-slate-300">
@@ -465,7 +1025,7 @@ export default function UnifiedVoiceLedgerTab({
               checked={localConsent}
               onChange={(e) => {
                 setLocalConsent(e.target.checked);
-                if (onToggleConsent) onToggleConsent(e.target.checked);
+                onToggleConsent?.(e.target.checked);
               }}
               className="rounded accent-emerald-500 cursor-pointer"
             />
@@ -473,228 +1033,410 @@ export default function UnifiedVoiceLedgerTab({
           </label>
         </div>
 
-        {/* MODE A: LIVE COUNTER MIC (VCR) */}
+        {/* MODE A: LIVE COUNTER MIC (VCR 24H) */}
         {activeMode === "mic_vcr" && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-center gap-6 p-4 bg-[#09090b] border border-slate-800 rounded-2xl">
-              {/* BIG PULSING MIC BUTTON */}
+            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 bg-[#09090b] border border-slate-800 rounded-2xl">
               <button
-                onClick={isRecording ? stopListening : startListening}
-                className={`w-20 h-20 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer shadow-2xl shrink-0 ${
-                  isRecording 
-                    ? "bg-red-500 text-white animate-pulse ring-8 ring-red-500/20" 
-                    : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20"
+                type="button"
+                onClick={() => void start24HourShift("VCR")}
+                className={`px-5 py-4 rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer shadow-xl shrink-0 min-w-[126px] ${
+                  is24hShiftRunning
+                    ? "bg-red-500 hover:bg-red-400 text-white"
+                    : "bg-emerald-500 hover:bg-emerald-400 text-slate-950"
                 }`}
               >
-                {isRecording ? <MicOff size={30} /> : <Mic size={30} />}
-                <span className="text-[9px] font-mono font-bold mt-1 uppercase">
-                  {isRecording ? "Simulating" : (isDemo ? "Simulate" : "Speak")}
+                {is24hShiftRunning ? <MicOff size={26} /> : <Mic size={26} />}
+                <span className="text-[10px] font-mono font-bold mt-1.5 uppercase whitespace-nowrap">
+                  {is24hShiftRunning
+                    ? "Stop 24h Shift"
+                    : isDemo
+                    ? "Simulate Capture"
+                    : "Start 24h Shift"}
                 </span>
               </button>
 
-              <div className="flex-1 space-y-2 text-center sm:text-left w-full">
-                <div className="flex items-center justify-between">
+              <div className="flex-1 space-y-2 w-full">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-xs font-mono uppercase text-slate-400 font-bold">
-                    {isDemo 
-                      ? (isRecording ? "🔴 Voice Simulator: Emulating counter conversation..." : "Voice Simulator (Demo Sandbox — No real audio recorded):")
-                      : (isRecording ? "🔴 Listening to Counter Dialogue..." : "Tap mic or test a sample phrase:")}
+                    {isDemo
+                      ? is24hShiftRunning
+                        ? "Voice Simulator: Running counter dialogue test..."
+                        : "Voice Simulator & 24h Filter Test:"
+                      : is24hShiftRunning
+                      ? `24h Continuous Shift Active (${formatShiftDuration(telemetry.elapsedSeconds)} elapsed)`
+                      : "Start 24-hour shift or type/test a counter phrase:"}
                   </span>
-                  {transcript && (
-                    <span className="text-[10px] font-mono text-emerald-400">
-                      Captured via VCR
+                  {isProcessing && (
+                    <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
+                      <RefreshCw size={12} className="animate-spin" /> Filtering &amp; Parsing...
                     </span>
                   )}
                 </div>
 
                 <div className="min-h-[50px] p-3 bg-[#0c0c0e] border border-emerald-950 rounded-xl text-xs text-white font-mono flex items-center">
-                  {transcript ? (
-                    <span>"{transcript}"</span>
+                  {interimTranscript ? (
+                    <span className="text-emerald-300 italic">{interimTranscript}...</span>
+                  ) : transcript ? (
+                    <span>&ldquo;{transcript}&rdquo;</span>
                   ) : (
                     <span className="text-slate-500 italic">
-                      "Nimeuza maziwa mawili na mkate moja cash mia moja na themanini na tano..."
+                      &ldquo;Nimeuza maziwa mawili na mkate moja cash 185...&rdquo; (TikTok/music audio is auto-filtered)
                     </span>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* QUICK-TEST CHIPS FOR 3 CORE KENYAN RETAIL SCENARIOS */}
+            {/* QUICK-TEST CHIPS INCLUDING TIKTOK/MUSIC REJECTION TESTS */}
             <div className="space-y-1.5">
               <span className="text-[10px] font-mono uppercase text-slate-500 font-bold flex items-center gap-1">
-                <Sparkles size={11} className="text-amber-400" /> Quick-Test Real Kenyan Counter Scenarios:
+                <Sparkles size={11} className="text-amber-400" /> Test Valid Counter Sales vs. Music &amp; TikTok Filtering:
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
                 <button
-                  onClick={() => handleTestPhrase("Nimeuza maziwa mawili na mkate moja cash mia moja na themanini na tano")}
-                  className="p-2.5 bg-[#121214] hover:bg-[#18181b] border border-slate-800 hover:border-zinc-600 rounded-xl text-left transition cursor-pointer text-slate-300"
+                  type="button"
+                  onClick={() =>
+                    handleTestPhrase("Nimeuza maziwa mawili na mkate moja cash mia moja na themanini na tano")
+                  }
+                  className="p-2.5 bg-[#121214] hover:bg-[#18181b] border border-slate-800 hover:border-emerald-500/40 rounded-xl text-left transition cursor-pointer text-slate-300"
                 >
-                  <span className="text-white font-bold block text-[11px]">💰 Fast Cash Sale</span>
-                  <span className="text-[10px] text-slate-400 truncate block">"2 maziwa + 1 mkate cash 185"</span>
+                  <span className="text-emerald-400 font-bold block text-[11px]">Valid Sale (Cash)</span>
+                  <span className="text-[10px] text-slate-400 truncate block">
+                    &ldquo;2 maziwa + 1 mkate cash 185&rdquo;
+                  </span>
                 </button>
 
                 <button
-                  onClick={() => handleTestPhrase("Leta maziwa crate mbili ya Brookside na mikate ishirini M-Pesa")}
-                  className="p-2.5 bg-[#121214] hover:bg-[#18181b] border border-slate-800 hover:border-cyan-500/40 rounded-xl text-left transition cursor-pointer text-slate-300"
-                >
-                  <span className="text-cyan-400 font-bold block text-[11px]">🚚 Wholesale Restock</span>
-                  <span className="text-[10px] text-slate-400 truncate block">"Crate 2 maziwa + 20 mkate"</span>
-                </button>
-
-                <button
-                  onClick={() => handleTestPhrase("Kamau amechukua sukari robo deni nitaandika kwa kitabu")}
+                  type="button"
+                  onClick={() =>
+                    handleTestPhrase("Kamau amechukua sukari robo deni nitaandika kwa kitabu")
+                  }
                   className="p-2.5 bg-[#121214] hover:bg-[#18181b] border border-slate-800 hover:border-amber-500/40 rounded-xl text-left transition cursor-pointer text-slate-300"
                 >
-                  <span className="text-amber-400 font-bold block text-[11px]">📒 Customer Deni Book</span>
-                  <span className="text-[10px] text-slate-400 truncate block">"Kamau sukari robo deni"</span>
+                  <span className="text-amber-400 font-bold block text-[11px]">Valid Debtor Sale</span>
+                  <span className="text-[10px] text-slate-400 truncate block">
+                    &ldquo;Kamau sukari robo deni&rdquo;
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleTestPhrase(
+                      "TikTok trending sound! Follow for part 2, like and subscribe, Amapiano dj remix yeah yeah"
+                    )
+                  }
+                  className="p-2.5 bg-[#121214] hover:bg-[#18181b] border border-amber-500/30 hover:border-amber-400 rounded-xl text-left transition cursor-pointer text-slate-300"
+                >
+                  <span className="text-amber-300 font-bold block text-[11px]">
+                    Filter Test: TikTok / Music
+                  </span>
+                  <span className="text-[10px] text-slate-400 truncate block">
+                    Should block — NOT a purchase
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleTestPhrase("Sasa bro, leo baridi sana, mambo vipi morio?")
+                  }
+                  className="p-2.5 bg-[#121214] hover:bg-[#18181b] border border-rose-500/30 hover:border-rose-400 rounded-xl text-left transition cursor-pointer text-slate-300"
+                >
+                  <span className="text-rose-300 font-bold block text-[11px]">
+                    Filter Test: Casual Chatter
+                  </span>
+                  <span className="text-[10px] text-slate-400 truncate block">
+                    Should ignore non-buying greeting
+                  </span>
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* MODE B: AMBIENT HANDS-FREE (MUVA) */}
+        {/* MODE B: AMBIENT 24H HANDS-FREE (MUVA) */}
         {activeMode === "ambient_muva" && (
           <div className="space-y-4">
             <div className="p-4 bg-[#09090b] border border-slate-800 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className={`w-3 h-3 rounded-full ${isAmbientListening ? "bg-emerald-400 animate-ping" : "bg-slate-600"}`} />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Radio
+                    size={16}
+                    className={is24hShiftRunning ? "text-emerald-400" : "text-slate-500"}
+                  />
                   <span className="text-sm font-bold text-white font-serif">
-                    Muva Hands-Free Ambient Listening
+                    Muva 24-Hour Hands-Free Ambient Shift
                   </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
-                    AEC &bull; VAD Active
+                  <span className="text-[11px] font-mono text-emerald-400">
+                    AEC · Vocal Bandpass · 24h Auto-Heal
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 max-w-lg">
-                  Listens in the background while you serve customers. Automatically ignores background noise (matatu hooting, music) and only captures transaction intent.
+                <p className="text-xs text-slate-400 max-w-2xl">
+                  Designed for full 24-hour counter shifts while you listen to music, play TikTok videos, or talk with neighbors. Only genuine customer purchases, debtor requests, or supplier drops are staged below.
                 </p>
               </div>
 
               <button
-                onClick={() => {
-                  setIsAmbientListening(!isAmbientListening);
-                  setSuccessNote(!isAmbientListening ? "Muva ambient listening activated." : "Ambient listening paused.");
-                  setTimeout(() => setSuccessNote(null), 3000);
-                }}
-                className={`px-5 py-2.5 rounded-xl font-mono text-xs font-bold transition cursor-pointer shadow-lg ${
-                  isAmbientListening
+                type="button"
+                onClick={() => void start24HourShift("MUVA_24H")}
+                className={`px-5 py-2.5 rounded-xl font-mono text-xs font-bold transition cursor-pointer shadow-lg shrink-0 whitespace-nowrap ${
+                  is24hShiftRunning
                     ? "bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30"
                     : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20"
                 }`}
               >
-                {isAmbientListening ? "Pause Ambient Listening" : "Activate Ambient Listening"}
+                {is24hShiftRunning ? "Stop 24h Ambient Shift" : "Start 24h Ambient Shift"}
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-              <div className="p-2.5 bg-[#0c0c0e] border border-slate-800 rounded-xl">
-                <span className="text-slate-500 text-[10px] block">Acoustic Echo Cancellation</span>
-                <span className="text-emerald-400 font-bold">AEC: 48kHz Filter</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono tabular-nums">
+              <div className="p-3 bg-[#0c0c0e] border border-slate-800 rounded-xl">
+                <span className="text-slate-500 text-[10px] block">Max Uninterrupted Duration</span>
+                <span className="text-emerald-400 font-bold">24 Hours (No 5m Cap)</span>
               </div>
-              <div className="p-2.5 bg-[#0c0c0e] border border-slate-800 rounded-xl">
-                <span className="text-slate-500 text-[10px] block">Voice Activity Detection</span>
-                <span className="text-emerald-400 font-bold">VAD: Sensitivity High</span>
+              <div className="p-3 bg-[#0c0c0e] border border-slate-800 rounded-xl">
+                <span className="text-slate-500 text-[10px] block">Echo &amp; TikTok Canceller</span>
+                <span className="text-emerald-400 font-bold">
+                  {trainingProfile.ignoreMediaAndTikTok ? "AEC + 110Hz HPF Active" : "Bypassed"}
+                </span>
               </div>
-              <div className="p-2.5 bg-[#0c0c0e] border border-slate-800 rounded-xl">
-                <span className="text-slate-500 text-[10px] block">Nairobi Background Noise</span>
-                <span className="text-slate-300 font-bold">-24dB Subtracted</span>
+              <div className="p-3 bg-[#0c0c0e] border border-slate-800 rounded-xl">
+                <span className="text-slate-500 text-[10px] block">Audio Memory Management</span>
+                <span className="text-slate-200 font-bold">12s Rolling Segments</span>
               </div>
-              <div className="p-2.5 bg-[#0c0c0e] border border-slate-800 rounded-xl">
-                <span className="text-slate-500 text-[10px] block">Shopkeeper Queue</span>
-                <span className="text-amber-400 font-bold">{pendingCount} Staged Drafts</span>
+              <div className="p-3 bg-[#0c0c0e] border border-slate-800 rounded-xl">
+                <span className="text-slate-500 text-[10px] block">Filtered Non-Buyers</span>
+                <span className="text-amber-400 font-bold">
+                  {filteredNoiseLog.length} Logged Blocks
+                </span>
               </div>
             </div>
           </div>
         )}
 
-        {/* MODE C: 5 NAIROBI DIALECT STUDIO */}
+        {/* MODE C: TRAIN RECORDER & 5 DIALECT STUDIO */}
         {activeMode === "dialect_studio" && (
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <span className="text-xs font-mono uppercase text-slate-400 font-bold flex items-center gap-1.5">
-                <Globe size={14} className="text-emerald-400" /> Select Tuning Dialect:
-              </span>
+          <div className="space-y-5">
+            {/* SHOPKEEPER TRAINING LAB */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Train Custom Shop Nicknames / Aliases */}
+              <form
+                onSubmit={handleAddAlias}
+                className="p-4 bg-[#09090b] border border-slate-800 rounded-2xl space-y-3"
+              >
+                <div className="flex items-center gap-2 text-xs font-bold text-white font-mono">
+                  <SlidersHorizontal size={14} className="text-emerald-400" />
+                  <span>Train Custom Shop Words &amp; Item Nicknames</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Teach the recorder local customer slang or abbreviations so every spoken order maps to your exact shelf stock item.
+                </p>
 
-              {/* 5 LANGUAGE TABS */}
-              <div className="flex flex-wrap gap-1.5">
-                {(["KIKUYU", "KAMBA", "SWAHILI", "ENGLISH", "SHENG"] as KenyanLanguage[]).map((lang) => (
-                  <button
-                    key={lang}
-                    onClick={() => setSelectedLanguage(lang)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition cursor-pointer ${
-                      selectedLanguage === lang
-                        ? "bg-emerald-500 text-slate-950 shadow"
-                        : "bg-[#09090b] text-slate-400 hover:text-white border border-slate-800"
-                    }`}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={newAliasPhrase}
+                    onChange={(e) => setNewAliasPhrase(e.target.value)}
+                    placeholder="Spoken slang (e.g. boflo, njugu)"
+                    className="bg-[#121216] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500"
+                  />
+                  <select
+                    value={newAliasTarget}
+                    onChange={(e) => setNewAliasTarget(e.target.value)}
+                    className="bg-[#121216] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
                   >
-                    {KENYAN_DIALECT_DICTIONARIES[lang].name}
-                  </button>
-                ))}
-              </div>
-            </div>
+                    {inventory.map((it) => (
+                      <option key={it.id} value={it.name}>
+                        {it.name} ({currency} {it.unit_retail})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            {/* DIALECT VOCABULARY ACCENTS CHIPS */}
-            <div className="p-3 bg-[#09090b] border border-slate-800 rounded-xl space-y-1.5 text-xs font-mono">
-              <span className="text-[10px] text-amber-400 font-bold uppercase block">
-                {activeDict.name} Vocabulary &amp; Commercial Terms:
-              </span>
-              <div className="flex flex-wrap gap-1.5 text-[11px]">
-                {activeDict.terms.money.slice(0, 5).map((term) => (
-                  <span key={term} className="px-2 py-0.5 rounded bg-slate-800 text-slate-200">
-                    <strong className="text-emerald-400">{term}</strong> (cash/money)
-                  </span>
-                ))}
-                {activeDict.terms.debt_credit.slice(0, 3).map((term) => (
-                  <span key={term} className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                    {term} (credit)
-                  </span>
-                ))}
-              </div>
-            </div>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus size={14} /> Save Trained Item Alias
+                </button>
 
-            {/* BENCHMARK AUDIO EXAMPLES */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">
-                Benchmark Training Corpus ({activeDialectSamples.length} Phrases):
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {activeDialectSamples.map((sample) => (
-                  <button
-                    key={sample.id}
-                    onClick={() => handleTestPhrase(sample.spokenPhrase)}
-                    className="p-2.5 bg-[#09090b] hover:bg-[#0d1a13] border border-slate-800 hover:border-emerald-500/40 rounded-xl text-left transition cursor-pointer text-xs group"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-300 font-mono font-bold group-hover:text-emerald-300">
-                        "{sample.spokenPhrase}"
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {trainingProfile.customAliases.map((al) => (
+                    <div
+                      key={al.id}
+                      className="flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded-lg bg-[#12161c] border border-slate-800 text-slate-200"
+                    >
+                      <span>
+                        &ldquo;{al.spokenPhrase}&rdquo; &rarr; <strong className="text-emerald-400">{al.mappedItemName}</strong>
                       </span>
-                      <Play size={12} className="text-emerald-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          persistTrainingProfile((prev) => ({
+                            ...prev,
+                            customAliases: prev.customAliases.filter((x) => x.id !== al.id)
+                          }))
+                        }
+                        className="text-slate-500 hover:text-red-400 cursor-pointer"
+                        title="Remove alias"
+                      >
+                        <Trash2 size={11} />
+                      </button>
                     </div>
-                    <span className="text-[10px] text-slate-500 block mt-1">
-                      Target: {sample.englishTranslation}
-                    </span>
+                  ))}
+                </div>
+              </form>
+
+              {/* Train Music / TikTok / Chatter Ignore Phrases */}
+              <form
+                onSubmit={handleAddIgnoredPhrase}
+                className="p-4 bg-[#09090b] border border-slate-800 rounded-2xl space-y-3"
+              >
+                <div className="flex items-center gap-2 text-xs font-bold text-white font-mono">
+                  <Ban size={14} className="text-amber-400" />
+                  <span>Train Phrases &amp; Media Sounds to Ignore</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Add TikTok catchphrases, radio jingles, song lyrics, or counter banter you never want logged as a shop transaction.
+                </p>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newIgnoredPhrase}
+                    onChange={(e) => setNewIgnoredPhrase(e.target.value)}
+                    placeholder="e.g. classic 105, amen, part 2, habari..."
+                    className="flex-1 bg-[#121216] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition cursor-pointer shrink-0"
+                  >
+                    Ignore Rule
                   </button>
-                ))}
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {trainingProfile.ignoredPhrases.map((ph) => (
+                    <div
+                      key={ph}
+                      className="flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded-lg bg-[#16130d] border border-amber-500/20 text-amber-200"
+                    >
+                      <span>&ldquo;{ph}&rdquo;</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          persistTrainingProfile((prev) => ({
+                            ...prev,
+                            ignoredPhrases: prev.ignoredPhrases.filter((x) => x !== ph)
+                          }))
+                        }
+                        className="text-amber-400/70 hover:text-red-400 cursor-pointer"
+                        title="Remove ignore rule"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </form>
+            </div>
+
+            {/* Interactive Training Sentence Sandbox */}
+            <div className="p-4 bg-[#09090b] border border-slate-800 rounded-2xl space-y-2">
+              <span className="text-[11px] font-mono uppercase text-slate-400 font-bold block">
+                Test Custom Sentence Against Trained Filter:
+              </span>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={manualTrainSentence}
+                  onChange={(e) => setManualTrainSentence(e.target.value)}
+                  placeholder="Type a sentence (real sale, Kikuyu/Sheng phrase, or TikTok/music quote) to verify classification..."
+                  className="flex-1 bg-[#121216] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!manualTrainSentence.trim()) return;
+                    handleTestPhrase(manualTrainSentence.trim());
+                  }}
+                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition cursor-pointer shrink-0"
+                >
+                  Test Filter
+                </button>
               </div>
+            </div>
+
+            {/* 5 KENYAN DIALECT BENCHMARKS */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-800">
+              <span className="text-xs font-mono uppercase text-slate-400 font-bold flex items-center gap-1.5">
+                <Globe size={14} className="text-emerald-400" /> 5 Kenyan Dialect Models:
+              </span>
+
+              <div className="flex flex-wrap gap-1.5">
+                {(["KIKUYU", "KAMBA", "SWAHILI", "ENGLISH", "SHENG"] as KenyanLanguage[]).map(
+                  (lang) => (
+                    <button
+                      key={lang}
+                      type="button"
+                      onClick={() => setSelectedLanguage(lang)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition cursor-pointer ${
+                        selectedLanguage === lang
+                          ? "bg-emerald-500 text-slate-950 shadow"
+                          : "bg-[#09090b] text-slate-400 hover:text-white border border-slate-800"
+                      }`}
+                    >
+                      {KENYAN_DIALECT_DICTIONARIES[lang].name}
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {activeDialectSamples.map((sample) => (
+                <button
+                  key={sample.id}
+                  type="button"
+                  onClick={() => handleTestPhrase(sample.spokenPhrase)}
+                  className="p-2.5 bg-[#09090b] hover:bg-[#0d1a13] border border-slate-800 hover:border-emerald-500/40 rounded-xl text-left transition cursor-pointer text-xs group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300 font-mono font-bold group-hover:text-emerald-300">
+                      &ldquo;{sample.spokenPhrase}&rdquo;
+                    </span>
+                    <Play
+                      size={12}
+                      className="text-emerald-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-500 block mt-1">
+                    {activeDict.name} &rarr; {sample.englishTranslation}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
         )}
 
-        {/* EXTRACTED LIVE RESULT PREVIEW CARD (IF AN AUDIO PHRASE WAS PROCESSED) */}
+        {/* EXTRACTED LIVE RESULT PREVIEW CARD */}
         {parsedIntentResult && (
-          <div className="p-4 bg-[#09090b] border-2 border-emerald-500/50 rounded-2xl space-y-3 animate-in fade-in">
+          <div className="p-4 bg-[#09090b] border border-emerald-500/50 rounded-2xl space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-mono uppercase text-emerald-300 font-bold">
                   {parsedIntentResult.intentType}
                 </span>
+                <span className="text-slate-600">·</span>
                 <span className="text-xs text-white font-mono font-bold">
-                  Extracted from: "{parsedIntentResult.raw}"
+                  &ldquo;{parsedIntentResult.raw}&rdquo;
                 </span>
               </div>
-              <strong className="text-emerald-400 font-mono text-base">
-                {currency} {parsedIntentResult.totalAmount.toLocaleString()}
+              <strong className="text-emerald-400 font-mono text-base tabular-nums">
+                {currency} {Number(parsedIntentResult.totalAmount || 0).toLocaleString()}
               </strong>
             </div>
 
@@ -702,7 +1444,9 @@ export default function UnifiedVoiceLedgerTab({
               <div>
                 <span className="text-slate-500 text-[10px] block uppercase">Product / Items</span>
                 <span className="text-white font-bold">
-                  {parsedIntentResult.items.map((i: any) => `${i.quantity} ${i.unit || ""} ${i.itemName}`).join(", ")}
+                  {parsedIntentResult.items
+                    .map((i: any) => `${i.quantity} ${i.unit || ""} ${i.itemName}`)
+                    .join(", ")}
                 </span>
               </div>
               <div>
@@ -715,11 +1459,12 @@ export default function UnifiedVoiceLedgerTab({
               </div>
               <div>
                 <span className="text-slate-500 text-[10px] block uppercase">Change Given</span>
-                <span className="text-slate-300 font-bold">{currency} {parsedIntentResult.changeGiven || 0}</span>
+                <span className="text-slate-300 font-bold tabular-nums">
+                  {currency} {parsedIntentResult.changeGiven || 0}
+                </span>
               </div>
             </div>
 
-            {/* TRANSACTION DATE (BACKDATING SUPPORT: TODAY / YESTERDAY / CUSTOM) */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-[#141824] rounded-xl border border-slate-800 text-xs font-mono">
               <span className="text-slate-300 text-[11px] flex items-center gap-1.5 font-bold">
                 <Calendar size={13} className="text-emerald-400" />
@@ -732,35 +1477,23 @@ export default function UnifiedVoiceLedgerTab({
                   className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
                     salesDate === new Date().toISOString().slice(0, 10)
                       ? "bg-emerald-500 text-slate-950 border-emerald-400"
-                      : "bg-[#1e2433] text-slate-300 border-slate-700 hover:border-slate-600"
+                      : "bg-[#1e2433] text-slate-300 border-slate-700"
                   }`}
                 >
                   Today
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSalesDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10))}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                    salesDate === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-                      ? "bg-emerald-500 text-slate-950 border-emerald-400"
-                      : "bg-[#1e2433] text-slate-300 border-slate-700 hover:border-slate-600"
-                  }`}
-                >
-                  Yesterday
                 </button>
                 <input
                   type="date"
                   value={salesDate}
                   onChange={(e) => setSalesDate(e.target.value)}
-                  className="bg-[#0b0e14] border border-slate-700 rounded px-2 py-0.5 text-[10px] text-white font-mono focus:outline-none focus:border-emerald-400"
-                  title="Select custom date"
+                  className="bg-[#0b0e14] border border-slate-700 rounded px-2 py-0.5 text-[10px] text-white font-mono"
                 />
               </div>
             </div>
 
-            {/* ACTION BUTTONS: STAGE TO DRAFTS OR DIRECT COMMIT */}
             <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2 border-t border-slate-800">
               <button
+                type="button"
                 onClick={handleQueueAsDraft}
                 className="w-full sm:w-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs font-mono transition cursor-pointer flex items-center justify-center gap-1.5"
               >
@@ -768,6 +1501,7 @@ export default function UnifiedVoiceLedgerTab({
                 <span>Stage to Pending Queue</span>
               </button>
               <button
+                type="button"
                 onClick={handleDirectCommit}
                 className="w-full sm:w-auto px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs font-mono transition cursor-pointer shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-1.5"
               >
@@ -777,71 +1511,52 @@ export default function UnifiedVoiceLedgerTab({
             </div>
           </div>
         )}
-
       </div>
 
-      {/* 3. INTEGRATED PENDING VOICE DRAFTS QUEUE ("COMBINE KABISA") */}
-      <div className="bg-[#121214] border-2 border-emerald-950 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
-        
-        {/* QUEUE HEADER & FILTER CHIPS */}
+      {/* 4. PENDING VOICE DRAFTS QUEUE */}
+      <div className="bg-[#121214] border border-emerald-950 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-white font-serif flex items-center gap-2">
-                <Radio className="text-amber-400" size={18} /> Pending Voice Drafts Queue
-              </h3>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
-                {pendingCount} Awaiting Review
+            <h3 className="text-lg font-bold text-white font-serif flex items-center gap-2">
+              <Radio className="text-amber-400" size={18} /> Pending Voice Drafts Queue ·{" "}
+              <span className="text-sm font-mono text-amber-300 tabular-nums">
+                {pendingCount} awaiting
               </span>
-            </div>
+            </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Natural counter voice dialogue staged here. 1-tap verification commits stock and cash without manual typing.
+              Only verified commercial intents land here. Teach the recorder by dismissing chatter or approving valid sales.
             </p>
           </div>
 
-          {/* FILTER BUTTONS */}
           <div className="flex items-center gap-1 text-xs font-mono self-start sm:self-auto">
-            <button
-              onClick={() => setDraftFilter("ALL")}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                draftFilter === "ALL" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              All ({drafts.length})
-            </button>
-            <button
-              onClick={() => setDraftFilter("SUPPLIER_DELIVERY")}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                draftFilter === "SUPPLIER_DELIVERY" ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Suppliers
-            </button>
-            <button
-              onClick={() => setDraftFilter("CREDIT_RECORD")}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                draftFilter === "CREDIT_RECORD" ? "bg-amber-500/20 text-amber-300 border border-amber-500/30" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Deni Book
-            </button>
-            <button
-              onClick={() => setDraftFilter("ADVANCE_PAYMENT")}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                draftFilter === "ADVANCE_PAYMENT" ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              Cash &amp; Change
-            </button>
+            {(
+              [
+                { id: "ALL", label: `All (${drafts.length})` },
+                { id: "SUPPLIER_DELIVERY", label: "Suppliers" },
+                { id: "CREDIT_RECORD", label: "Deni Book" },
+                { id: "ADVANCE_PAYMENT", label: "Cash & Change" }
+              ] as const
+            ).map((btn) => (
+              <button
+                key={btn.id}
+                type="button"
+                onClick={() => setDraftFilter(btn.id)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                  draftFilter === btn.id
+                    ? "bg-slate-700 text-white"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                {btn.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* DRAFTS LIST CARDS */}
         {filteredDrafts.length === 0 ? (
           <div className="text-center py-8 text-slate-500 font-mono text-xs space-y-1">
             <CheckCircle2 size={24} className="mx-auto text-emerald-500/60 mb-2" />
             <p>No voice drafts in this category.</p>
-            <p className="text-[11px] text-slate-600">Speak into the mic above to create new drafts.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -850,10 +1565,10 @@ export default function UnifiedVoiceLedgerTab({
               const isApproved = draft.status === "APPROVED";
 
               return (
-                <div 
+                <div
                   key={draft.id}
                   className={`p-4 rounded-2xl border transition space-y-3 ${
-                    isApproved 
+                    isApproved
                       ? "bg-zinc-900 border-zinc-700 opacity-75"
                       : draft.status === "DISMISSED"
                       ? "bg-[#0c0c0c] border-slate-900 opacity-40"
@@ -861,67 +1576,90 @@ export default function UnifiedVoiceLedgerTab({
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold border ${
-                        draft.intent_type === "SUPPLIER_DELIVERY"
-                          ? "bg-cyan-500/10 text-cyan-300 border-cyan-500/30"
+                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                      <span
+                        className={`font-mono font-bold ${
+                          draft.intent_type === "SUPPLIER_DELIVERY"
+                            ? "text-cyan-300"
+                            : draft.intent_type === "CREDIT_RECORD"
+                            ? "text-amber-300"
+                            : "text-emerald-300"
+                        }`}
+                      >
+                        {draft.intent_type === "SUPPLIER_DELIVERY"
+                          ? "Wholesale Restock"
                           : draft.intent_type === "CREDIT_RECORD"
-                          ? "bg-amber-500/10 text-amber-300 border-amber-500/30"
-                          : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
-                      }`}>
-                        {draft.intent_type === "SUPPLIER_DELIVERY" && "Wholesale Restock"}
-                        {draft.intent_type === "CREDIT_RECORD" && "Customer Deni"}
-                        {draft.intent_type === "ADVANCE_PAYMENT" && "Cash & Change"}
+                          ? "Customer Deni"
+                          : "Cash & Change"}
                       </span>
-                      <span className="text-xs font-serif font-bold text-white italic">
-                        "{draft.raw_transcript}"
+                      <span className="text-slate-600">·</span>
+                      <span className="font-serif font-bold text-white italic">
+                        &ldquo;{draft.raw_transcript}&rdquo;
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3 font-mono text-xs">
+                    <div className="flex items-center gap-3 font-mono text-xs tabular-nums">
                       <strong className="text-amber-400 text-sm">
                         {currency} {draft.total_amount.toLocaleString()}
                       </strong>
-                      <span className="text-[10px] text-slate-500">{draft.created_at}</span>
+                      <span className="text-[11px] text-slate-500">{draft.created_at}</span>
                     </div>
                   </div>
 
-                  {/* DETAILS GRID */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono text-slate-300">
                     <div>
-                      <span className="text-slate-500 text-[9px] uppercase block">Counterparty</span>
+                      <span className="text-slate-500 text-[10px] block uppercase">Counterparty</span>
                       <strong className="text-white">
                         {draft.payload.customer_name || draft.payload.supplier_name || "Walk-in"}
                       </strong>
                     </div>
-
                     <div>
-                      <span className="text-slate-500 text-[9px] uppercase block">Action Items</span>
+                      <span className="text-slate-500 text-[10px] block uppercase">Action Items</span>
                       <span className="text-emerald-400 font-bold">
-                        {draft.payload.items?.map((i: any) => `${i.quantity} ${i.unit || ""} ${i.item_name}`).join(", ") || "General sale"}
+                        {draft.payload.items
+                          ?.map((i: any) => `${i.quantity} ${i.unit || ""} ${i.item_name}`)
+                          .join(", ") || "General sale"}
                       </span>
                     </div>
-
                     <div>
-                      <span className="text-slate-500 text-[9px] uppercase block">Payment Channel</span>
+                      <span className="text-slate-500 text-[10px] block uppercase">Payment Channel</span>
                       <span className="text-cyan-400">{draft.payload.payment_mode || "CASH"}</span>
                     </div>
-
                     <div>
-                      <span className="text-slate-500 text-[9px] uppercase block">Status</span>
-                      <span className={`font-bold ${
-                        isApproved ? "text-emerald-400" : draft.status === "DISMISSED" ? "text-red-400" : "text-amber-400"
-                      }`}>
+                      <span className="text-slate-500 text-[10px] block uppercase">Status</span>
+                      <span
+                        className={`font-bold ${
+                          isApproved
+                            ? "text-emerald-400"
+                            : draft.status === "DISMISSED"
+                            ? "text-red-400"
+                            : "text-amber-400"
+                        }`}
+                      >
                         {draft.status}
                       </span>
                     </div>
                   </div>
 
-                  {/* APPROVE / DISMISS BUTTONS */}
                   {isPending && (
-                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-end gap-2">
+                    <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-end gap-2">
                       <button
-                        onClick={() => handleDismissQueueItem(draft.id)}
+                        type="button"
+                        onClick={() => handleTeachIgnoreFromDraft(draft)}
+                        className="px-3 py-1.5 text-amber-300 hover:bg-amber-500/10 rounded-xl text-xs font-mono transition cursor-pointer flex items-center gap-1"
+                        title="Teach recorder that phrases like this are music/chatter, not sales"
+                      >
+                        <Ban size={12} />
+                        <span>Teach: Ignore Similar Chatter</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDrafts((prev) =>
+                            prev.map((d) => (d.id === draft.id ? { ...d, status: "DISMISSED" } : d))
+                          )
+                        }
                         className="px-3 py-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl text-xs font-mono transition cursor-pointer flex items-center gap-1"
                       >
                         <Trash2 size={13} />
@@ -929,6 +1667,7 @@ export default function UnifiedVoiceLedgerTab({
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => handleApproveQueueItem(draft)}
                         className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs font-mono transition cursor-pointer shadow-lg shadow-emerald-500/20 flex items-center gap-1.5"
                       >
@@ -942,9 +1681,64 @@ export default function UnifiedVoiceLedgerTab({
             })}
           </div>
         )}
-
       </div>
 
+      {/* 5. FILTERED OUT MUSIC / TIKTOK / NON-BUYING AUDIT LOG */}
+      {filteredNoiseLog.length > 0 && (
+        <div className="bg-[#0e1014] border border-slate-800 rounded-3xl p-5 space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <div className="flex items-center gap-2">
+              <ShieldAlert size={16} className="text-amber-400" />
+              <h3 className="text-sm font-bold text-white font-serif">
+                Blocked Music, TikTok &amp; Non-Buyer Audio ({filteredNoiseLog.length})
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                persistTrainingProfile((prev) => ({ ...prev, filteredNoiseLog: [] }))
+              }
+              className="text-[11px] font-mono text-slate-400 hover:text-white cursor-pointer"
+            >
+              Clear Log
+            </button>
+          </div>
+
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+            {filteredNoiseLog.map((ev) => (
+              <div
+                key={ev.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-[#07090c] border border-slate-800/80 text-xs font-mono"
+              >
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span className="text-amber-300 font-bold">{ev.category}</span>
+                    <span className="text-slate-600">·</span>
+                    <span className="text-slate-400">{ev.timestamp}</span>
+                    <span className="text-slate-600">·</span>
+                    <span className="text-slate-400">{ev.reason}</span>
+                  </div>
+                  <div className="text-slate-300 italic">&ldquo;{ev.snippet}&rdquo;</div>
+                </div>
+
+                {!ev.promotedToSale ? (
+                  <button
+                    type="button"
+                    onClick={() => handlePromoteBlockedEvent(ev)}
+                    className="px-3 py-1 bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-emerald-300 rounded-lg text-[11px] font-bold transition cursor-pointer shrink-0"
+                  >
+                    Teach: Actually a Sale
+                  </button>
+                ) : (
+                  <span className="text-emerald-400 text-[11px] font-bold shrink-0">
+                    Promoted to Evaluation
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

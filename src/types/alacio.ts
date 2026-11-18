@@ -339,6 +339,53 @@ export interface SupplierBatchCard {
   notes?: string;
 }
 
+export interface DataWarehouseArchive {
+  last_archived_at: string;
+  retention_days: number;
+  cutoff_date: string;
+  salesLedger: SalesLedgerItem[];
+  payouts: PayoutOrDrawing[];
+  receiptsArchive: SavedReceiptRecord[];
+  restockCards: RestockReconciliationCard[];
+  reconciliations: ReconciliationAudit[];
+  morning_bookends: MorningBookendRecord[];
+  summary?: {
+    total_archived_sales_count: number;
+    total_archived_sales_amount: number;
+    total_archived_payouts_count: number;
+    total_archived_payouts_amount: number;
+    total_archived_receipts_count: number;
+  };
+}
+
+export interface VoiceCustomAlias {
+  id: string;
+  spokenPhrase: string;
+  mappedItemName: string;
+  intentHint?: "SALE" | "CREDIT" | "SUPPLIER_DELIVERY";
+  createdAt: string;
+}
+
+export interface VoiceFilteredEvent {
+  id: string;
+  timestamp: string;
+  snippet: string;
+  category: "MUSIC_OR_LYRICS" | "TIKTOK_OR_MEDIA" | "CASUAL_CHATTER" | "PRICE_INQUIRY" | "AMBIENT_NOISE";
+  reason: string;
+  sourceMode: "VCR" | "MUVA_24H";
+  promotedToSale?: boolean;
+}
+
+export interface VoiceTrainingProfile {
+  maxShiftHours: number;
+  strictBuyIntentFilter: boolean;
+  ignoreMediaAndTikTok: boolean;
+  sensitivity: "STRICT" | "BALANCED";
+  customAliases: VoiceCustomAlias[];
+  ignoredPhrases: string[];
+  filteredNoiseLog?: VoiceFilteredEvent[];
+}
+
 export interface AlacioMasterState {
   merchant_name?: string;
   proprietor_name?: string;
@@ -358,6 +405,8 @@ export interface AlacioMasterState {
   reconciliations: ReconciliationAudit[];
   restockCards?: RestockReconciliationCard[];
   supplierBatchCards?: SupplierBatchCard[];
+  dataWarehouseArchive?: DataWarehouseArchive;
+  dataWarehouseRetentionDays?: number;
   kpis: AlacioKpis;
   cash_register_balance: number;
   mpesa_float_balance: number;
@@ -367,6 +416,7 @@ export interface AlacioMasterState {
   tier: FreemiumTier;
   vcr_daily_count: number;
   vcr_customer_consent: boolean;
+  voiceTrainingProfile?: VoiceTrainingProfile;
   clean_trading_days: number; // e.g. 18 of 30 clean trading days logged before Tier 3 AI
   schema_version?: number;
   last_persisted_at?: string;

@@ -164,6 +164,8 @@ export function reconcileOrRegisterSupplier(
   meta?: {
     phone?: string;
     national_id?: string;
+    category?: string;
+    payment_preference?: "NATIONAL_ID_DEPOSIT" | "MPESA_TILL" | "CASH_DRAWER" | "BANK_TRANSFER";
     orderCost?: number;
     deliveryDate?: string;
     suppliedItems?: string[];
@@ -178,19 +180,30 @@ export function reconcileOrRegisterSupplier(
     return { canonicalName: inputName, updatedSuppliers: existingSuppliers, isNew: false };
   }
 
+  const sanitizeField = (val?: string) => {
+    const t = (val || "").trim();
+    if (!t || t === "0722 000 111" || t === "ID-PENDING" || t === "N/A") return "";
+    return t;
+  };
+
+  const incomingPhone = sanitizeField(meta?.phone);
+  const incomingId = sanitizeField(meta?.national_id);
   const match = findMatchingSupplier(cleanName, existingSuppliers);
 
   if (match) {
-    // Merge into canonical supplier
+    // Merge into canonical supplier without overwriting real existing phone/ID unless a valid new one is provided
     const updated = existingSuppliers.map((s) => {
       if (s.id === match.id) {
         const mergedItems = Array.from(new Set([...(s.supplied_items || []), ...(meta?.suppliedItems || [])]));
+        const existingPhone = sanitizeField(s.phone);
+        const existingId = sanitizeField(s.national_id);
         return {
           ...s,
           total_orders_cost: (Number(s.total_orders_cost) || 0) + (Number(meta?.orderCost) || 0),
           last_delivery_date: meta?.deliveryDate || s.last_delivery_date,
-          phone: meta?.phone && meta.phone !== "0722 000 111" ? meta.phone : s.phone,
-          national_id: meta?.national_id && meta.national_id !== "ID-PENDING" ? meta.national_id : s.national_id,
+          phone: incomingPhone || existingPhone,
+          national_id: incomingId || existingId,
+          category: meta?.category?.trim() || s.category,
           supplied_items: mergedItems
         };
       }
@@ -204,17 +217,17 @@ export function reconcileOrRegisterSupplier(
     };
   }
 
-  // Brand new supplier: auto-register!
+  // Brand new supplier: register into database with only their own real contact details (never assume another supplier's phone/ID)
   const newSupplier: SupplierProfile = {
     id: `supp_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     name: cleanName,
     company: cleanName,
-    phone: meta?.phone || "0722 000 111",
-    national_id: meta?.national_id || "ID-PENDING",
-    category: "Wholesale Distributor",
+    phone: incomingPhone,
+    national_id: incomingId,
+    category: meta?.category?.trim() || "Wholesale Distributor",
     total_orders_cost: Number(meta?.orderCost) || 0,
     last_delivery_date: meta?.deliveryDate || new Date().toISOString().slice(0, 10),
-    payment_preference: "NATIONAL_ID_DEPOSIT",
+    payment_preference: meta?.payment_preference || (incomingId ? "NATIONAL_ID_DEPOSIT" : "CASH_DRAWER"),
     supplied_items: meta?.suppliedItems || []
   };
 

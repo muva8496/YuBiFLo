@@ -16,15 +16,26 @@ import {
   SalesLedgerItem
 } from "../../types/alacio";
 
+import { getEligibleArchiveCounts, DEFAULT_RETENTION_DAYS } from "../../utils/dataWarehouseArchiver";
+
 interface ProprietorDataWarehouseTabProps {
   state: AlacioMasterState;
   onUpdateRecord: (collectionKey: string, recordId: string | number, updatedRecord: any) => void;
   onDeleteRecord: (collectionKey: string, recordId: string | number) => void;
   onInsertRecord: (collectionKey: string, newRecord: any) => void;
   onRestoreFullState: (newState: AlacioMasterState) => void;
+  onRunArchiveSweep?: (retentionDays: number) => number;
+  onRestoreArchivedRecord?: (
+    collectionKey: "salesLedger" | "payouts" | "receiptsArchive" | "reconciliations",
+    recordId: string | number
+  ) => void;
 }
 
 type CollectionType = 
+  | "archive_sales"
+  | "archive_payouts"
+  | "archive_receipts"
+  | "archive_reconciliations"
   | "warehouse" 
   | "customers" 
   | "suppliers" 
@@ -50,9 +61,14 @@ export default function ProprietorDataWarehouseTab({
   onUpdateRecord,
   onDeleteRecord,
   onInsertRecord,
-  onRestoreFullState
+  onRestoreFullState,
+  onRunArchiveSweep,
+  onRestoreArchivedRecord
 }: ProprietorDataWarehouseTabProps) {
-  const [activeTable, setActiveTable] = useState<CollectionType>("warehouse");
+  const [activeTable, setActiveTable] = useState<CollectionType>("archive_payouts");
+  const [retentionDaysInput, setRetentionDaysInput] = useState<number>(
+    state.dataWarehouseRetentionDays ?? DEFAULT_RETENTION_DAYS
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [toastMsg, setToastMsg] = useState<{ type: "success" | "info" | "warn"; text: string } | null>(null);
 
@@ -148,6 +164,42 @@ export default function ProprietorDataWarehouseTab({
       displayField: "customer_name"
     },
     {
+      key: "archive_payouts",
+      label: "Archived Cargo & Payouts",
+      icon: "🗄️",
+      count: state.dataWarehouseArchive?.payouts?.length || 0,
+      description: `Inbound cargo deliveries & payouts older than ${state.dataWarehouseRetentionDays ?? 14} days moved out of active screens.`,
+      idField: "id",
+      displayField: "notes"
+    },
+    {
+      key: "archive_sales",
+      label: "Archived Historical Sales",
+      icon: "📚",
+      count: state.dataWarehouseArchive?.salesLedger?.length || 0,
+      description: `Recorded sales older than ${state.dataWarehouseRetentionDays ?? 14} days stored in Data Warehouse cold history.`,
+      idField: "id",
+      displayField: "customer_name"
+    },
+    {
+      key: "archive_receipts",
+      label: "Archived Receipts",
+      icon: "🧾",
+      count: state.dataWarehouseArchive?.receiptsArchive?.length || 0,
+      description: `Scanned/logged delivery receipts older than ${state.dataWarehouseRetentionDays ?? 14} days moved from active queue.`,
+      idField: "id",
+      displayField: "supplierName"
+    },
+    {
+      key: "archive_reconciliations",
+      label: "Archived Audits",
+      icon: "🛡️",
+      count: state.dataWarehouseArchive?.reconciliations?.length || 0,
+      description: "Aged evening reverse audits safely stored in cold archive.",
+      idField: "id",
+      displayField: "date"
+    },
+    {
       key: "mpesaStatements",
       label: "M-Pesa Statements",
       icon: "📱",
@@ -158,8 +210,30 @@ export default function ProprietorDataWarehouseTab({
     }
   ];
 
+  const eligibleStats = useMemo(
+    () => getEligibleArchiveCounts(state, retentionDaysInput),
+    [state, retentionDaysInput]
+  );
+
+  const isArchiveView = activeTable.startsWith("archive_");
+  const archiveSubKeyMap: Record<
+    string,
+    "salesLedger" | "payouts" | "receiptsArchive" | "reconciliations"
+  > = {
+    archive_sales: "salesLedger",
+    archive_payouts: "payouts",
+    archive_receipts: "receiptsArchive",
+    archive_reconciliations: "reconciliations"
+  };
+
   const currentTableMeta = tables.find((t) => t.key === activeTable) || tables[0];
-  const currentCollection = (state[activeTable] as any[]) || [];
+  const currentCollection = useMemo(() => {
+    if (isArchiveView) {
+      const subKey = archiveSubKeyMap[activeTable];
+      return ((state.dataWarehouseArchive?.[subKey] as any[]) || []);
+    }
+    return ((state[activeTable] as any[]) || []);
+  }, [state, activeTable, isArchiveView]);
 
   const filteredCollection = useMemo(() => {
     if (!searchQuery.trim()) return currentCollection;
@@ -456,6 +530,70 @@ export default function ProprietorDataWarehouseTab({
         )}
       </div>
 
+      {/* 14-DAY DATA WAREHOUSE RETENTION & ARCHIVAL CONTROL */}
+      <div className="bg-[#0b141a] border border-cyan-500/30 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-lg">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold font-mono text-cyan-300 uppercase tracking-wide">
+              Automatic {state.dataWarehouseRetentionDays ?? 14}-Day Cold Archive Policy
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-200 border border-cyan-500/30">
+              Cutoff &le; {eligibleStats.cutoffDate}
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Sales, inbound cargo deliveries, payouts, and receipts older than your retention window automatically move out of active app screens into this Data Warehouse so daily ledgers stay fast and focused.
+          </p>
+          <div className="flex items-center gap-3 text-[11px] font-mono text-slate-300 flex-wrap pt-0.5">
+            <span>
+              In Cold Archive:{" "}
+              <strong className="text-emerald-300">
+                {(state.dataWarehouseArchive?.payouts?.length || 0) +
+                  (state.dataWarehouseArchive?.salesLedger?.length || 0) +
+                  (state.dataWarehouseArchive?.receiptsArchive?.length || 0)}{" "}
+                records
+              </strong>
+            </span>
+            <span>&bull;</span>
+            <span>
+              Eligible Now (&le; {eligibleStats.cutoffDate}):{" "}
+              <strong className="text-amber-300">{eligibleStats.totalCount} active records</strong>
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <select
+            value={retentionDaysInput}
+            onChange={(e) => setRetentionDaysInput(Number(e.target.value) || 14)}
+            className="bg-[#060c10] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono cursor-pointer"
+          >
+            <option value={14}>14 Days (Recommended)</option>
+            <option value={7}>7 Days (1 Week)</option>
+            <option value={30}>30 Days (1 Month)</option>
+          </select>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (onRunArchiveSweep) {
+                const moved = onRunArchiveSweep(retentionDaysInput);
+                showToast(
+                  moved > 0 ? "success" : "info",
+                  moved > 0
+                    ? `Moved ${moved} older record(s) (cutoff <= ${eligibleStats.cutoffDate}) into the Data Warehouse.`
+                    : `No active records older than ${retentionDaysInput} days (cutoff ${eligibleStats.cutoffDate}) left to archive.`
+                );
+              }
+            }}
+            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow"
+          >
+            <RefreshCw size={13} />
+            <span>Archive Older Records Now</span>
+          </button>
+        </div>
+      </div>
+
       {/* TABLE SELECTOR CHIPS */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
@@ -527,12 +665,14 @@ export default function ProprietorDataWarehouseTab({
             />
           </div>
 
-          <button
-            onClick={handleOpenInsert}
-            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shrink-0 shadow"
-          >
-            <Plus size={14} /> + Insert Record
-          </button>
+          {!isArchiveView && (
+            <button
+              onClick={handleOpenInsert}
+              className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shrink-0 shadow"
+            >
+              <Plus size={14} /> + Insert Record
+            </button>
+          )}
         </div>
       </div>
 
@@ -546,12 +686,18 @@ export default function ProprietorDataWarehouseTab({
             <p className="text-sm text-slate-400 font-mono">
               {searchQuery ? `No records found matching "${searchQuery}" in ${currentTableMeta.label}.` : `No records currently in ${currentTableMeta.label}.`}
             </p>
-            <button
-              onClick={handleOpenInsert}
-              className="px-4 py-2 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-mono font-bold cursor-pointer hover:bg-emerald-500/25 transition"
-            >
-              + Create First Record
-            </button>
+            {isArchiveView ? (
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Records older than {state.dataWarehouseRetentionDays ?? 14} days automatically move out of active app views into this archive, or click &ldquo;Archive Older Records Now&rdquo; above.
+              </p>
+            ) : (
+              <button
+                onClick={handleOpenInsert}
+                className="px-4 py-2 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-mono font-bold cursor-pointer hover:bg-emerald-500/25 transition"
+              >
+                + Create First Record
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
@@ -614,19 +760,38 @@ export default function ProprietorDataWarehouseTab({
 
                       {/* ACTIONS */}
                       <td className="py-3.5 px-4 text-right font-sans">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleOpenEdit(row)}
-                            className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1 cursor-pointer"
-                            title="Directly edit fields of this record"
-                          >
-                            <Edit3 size={12} /> Direct Edit
-                          </button>
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {isArchiveView && onRestoreArchivedRecord && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const subKey = archiveSubKeyMap[activeTable];
+                                if (subKey) {
+                                  onRestoreArchivedRecord(subKey, id);
+                                  showToast("info", `Restored record (${id}) back into active app view.`);
+                                }
+                              }}
+                              className="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1 cursor-pointer"
+                              title="Move this record back into the active app lists"
+                            >
+                              <RefreshCw size={12} /> Restore to App
+                            </button>
+                          )}
+
+                          {!isArchiveView && (
+                            <button
+                              onClick={() => handleOpenEdit(row)}
+                              className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1 cursor-pointer"
+                              title="Directly edit fields of this record"
+                            >
+                              <Edit3 size={12} /> Direct Edit
+                            </button>
+                          )}
 
                           <button
                             onClick={() => handleOpenDelete(row)}
                             className="px-2 py-1 bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1 cursor-pointer"
-                            title="Delete this wrong entry"
+                            title="Delete this entry permanently"
                           >
                             <Trash2 size={12} /> Delete
                           </button>

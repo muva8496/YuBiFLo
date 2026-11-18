@@ -965,6 +965,162 @@ Provide:
     }
   });
 
+  // Gemini Acoustic & Commercial Intent Filter for 24-Hour Voice Ledger
+  app.post("/api/gemini/voice-parse", async (req, res) => {
+    try {
+      const {
+        transcript = "",
+        audioBase64 = "",
+        mimeType = "audio/webm",
+        inventoryItems = [],
+        customAliases = [],
+        ignoredPhrases = [],
+        strictBuyIntentFilter = true,
+        ignoreMediaAndTikTok = true,
+      } = req.body || {};
+
+      if (!transcript && !audioBase64) {
+        return res.status(400).json({ success: false, error: "Provide audioBase64 or transcript." });
+      }
+
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({
+          success: false,
+          error: "GEMINI_API_KEY is not configured.",
+        });
+      }
+
+      const compactCatalog = (Array.isArray(inventoryItems) ? inventoryItems : [])
+        .slice(0, 60)
+        .map((it: any) => ({
+          name: it.name,
+          unit: it.unit_type || "pcs",
+          retailPrice: it.unit_retail || 0,
+          costPrice: it.unit_cost || 0,
+        }));
+
+      const systemPrompt = `You are YuBiFlo's Commercial Counter Speech & Audio Filter Engine for Kenyan/East African retail shops (dukas, kiosks, wholesalers, eateries) fluent in Swahili, Sheng, Kikuyu, Kamba, and Kenyan English.
+
+CRITICAL FILTERING TASK (MUSIC / TIKTOK / NON-BUYER REJECTION):
+Shopkeepers frequently play music, Afrobeats/Bongo/Gengetone songs, TikTok/Reels/YouTube videos, radio shows, gospel/sermons, football commentary, or chat casually with friends while working.
+${
+  ignoreMediaAndTikTok
+    ? `- REJECT ANY background music, song lyrics, singing, TikTok/Reels skits/soundtracks, YouTube narration, radio/TV announcers, or phone media audio -> classification = "REJECTED_MEDIA", isCommercialTransaction = false.`
+    : ""
+}
+${
+  strictBuyIntentFilter
+    ? `- REJECT casual greetings, gossip, weather talk, personal phone calls, OR mere price inquiries where nobody actually bought/took/delivered anything (e.g. "Mambo vipi?", "Unga ni pesa ngapi tu?") -> classification = "REJECTED_CHATTER" or "REJECTED_INQUIRY", isCommercialTransaction = false.`
+    : ""
+}
+- Ignore anything matching these trained ignored phrases: ${JSON.stringify(ignoredPhrases)}
+
+ONLY accept (isCommercialTransaction = true) when there is a REAL shop action:
+1. VALID_SALE: Customer buys item(s) and pays Cash or M-Pesa (or advance payment with change).
+2. VALID_CREDIT: Customer takes item(s) on credit ("deni", "thiiri", "kopa", "niandike", "nitalipa kesho").
+3. VALID_RESTOCK: Supplier/driver delivers stock ("leta crate", "shusha", "delivery", "wholesale").
+4. VALID_ADVANCE: Customer pays now and leaves goods on shelf to pick later ("nitachukua jioni").
+
+Match item names against the shop catalog below (applying custom aliases first) and use catalog prices whenever spoken prices are omitted:
+Custom Aliases: ${JSON.stringify(customAliases)}
+Shop Catalog: ${JSON.stringify(compactCatalog)}
+
+Return ONLY valid JSON matching the schema.`;
+
+      const parts: any[] = [];
+      if (audioBase64 && typeof audioBase64 === "string") {
+        const cleanB64 = audioBase64.replace(/^data:audio\/[a-zA-Z0-9.+-]+;base64,/, "");
+        parts.push({
+          inlineData: {
+            mimeType: mimeType || "audio/webm",
+            data: cleanB64,
+          },
+        });
+      }
+      parts.push({
+        text: transcript
+          ? `Analyze this counter speech utterance:\n"${transcript}"`
+          : "Listen carefully to this short counter audio window. Transcribe the primary speaker speech if audible, filter out any background music/TikTok/chatter, and extract a real commercial transaction ONLY if someone actually bought, took on credit (deni), or delivered stock.",
+      });
+
+      const voiceSchema = {
+        type: Type.OBJECT,
+        properties: {
+          isCommercialTransaction: { type: Type.BOOLEAN },
+          classification: {
+            type: Type.STRING,
+            description:
+              "VALID_SALE | VALID_CREDIT | VALID_RESTOCK | VALID_ADVANCE | REJECTED_MEDIA | REJECTED_CHATTER | REJECTED_INQUIRY",
+          },
+          rejectionReason: { type: Type.STRING },
+          detectedLanguage: {
+            type: Type.STRING,
+            description: "KIKUYU | KAMBA | SWAHILI | ENGLISH | SHENG",
+          },
+          transcript: { type: Type.STRING },
+          englishTranslation: { type: Type.STRING },
+          intentType: {
+            type: Type.STRING,
+            description: "CASH_SALE | CREDIT_RECORD | SUPPLIER_DELIVERY | ADVANCE_PAYMENT | NONE",
+          },
+          customerOrSupplier: { type: Type.STRING },
+          paymentMethod: { type: Type.STRING, description: "CASH | MPESA | CREDIT" },
+          items: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                itemName: { type: Type.STRING },
+                quantity: { type: Type.NUMBER },
+                unit: { type: Type.STRING },
+                unitPrice: { type: Type.NUMBER },
+                subtotal: { type: Type.NUMBER },
+              },
+              required: ["itemName", "quantity", "unit", "unitPrice", "subtotal"],
+            },
+          },
+          totalAmount: { type: Type.NUMBER },
+          amountPaid: { type: Type.NUMBER },
+          cashPaid: { type: Type.NUMBER },
+          mpesaPaid: { type: Type.NUMBER },
+          debtAmount: { type: Type.NUMBER },
+          changeGiven: { type: Type.NUMBER },
+          isCollected: { type: Type.BOOLEAN },
+          confidence: { type: Type.NUMBER },
+        },
+        required: [
+          "isCommercialTransaction",
+          "classification",
+          "transcript",
+          "intentType",
+          "items",
+          "totalAmount",
+          "paymentMethod",
+        ],
+      };
+
+      const response = await ai.models.generateContent({
+        model: "gemini-4-hydrogen",
+        contents: { parts },
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+          responseSchema: voiceSchema,
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        },
+      });
+
+      const parsed = JSON.parse(response.text || "{}");
+      return res.json({ success: true, data: parsed });
+    } catch (err: any) {
+      console.error("Error in /api/gemini/voice-parse:", err);
+      return res.status(500).json({
+        success: false,
+        error: err.message || "Failed to parse voice segment",
+      });
+    }
+  });
+
   // Vite middleware for development vs Static files for production
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

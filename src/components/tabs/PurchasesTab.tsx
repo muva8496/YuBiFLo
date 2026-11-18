@@ -64,6 +64,7 @@ interface PurchasesTabProps {
     supplier: string;
     supplierPhone?: string;
     supplierNationalId?: string;
+    supplierCategory?: string;
     items: string;
     itemLines?: PurchaseItemLine[];
     amount: number;
@@ -71,6 +72,12 @@ interface PurchasesTabProps {
     date: string;
     notes?: string;
     receiptImageUrl?: string;
+  }) => void;
+  onRegisterSupplier?: (supplier: {
+    name: string;
+    phone?: string;
+    national_id?: string;
+    category?: string;
   }) => void;
   onNavigateTab?: (tabId: string) => void;
   initialSupplier?: string;
@@ -87,6 +94,7 @@ interface PurchasesTabProps {
 export default function PurchasesTab({ 
   state, 
   onLogPurchase,
+  onRegisterSupplier,
   onNavigateTab,
   initialSupplier,
   initialView,
@@ -232,19 +240,30 @@ export default function PurchasesTab({
         ]
   );
 
-  // Selected supplier object lookup
-  const currentSupplier = suppliers.find(
-    (s) => s.name.toLowerCase().trim() === selectedSupplierName.toLowerCase().trim() || s.company.toLowerCase().trim() === selectedSupplierName.toLowerCase().trim()
-  ) || {
-    id: `supp_${Date.now()}`,
+  const [customSupplierPhone, setCustomSupplierPhone] = useState<string>("");
+  const [customSupplierNationalId, setCustomSupplierNationalId] = useState<string>("");
+  const [customSupplierCategory, setCustomSupplierCategory] = useState<string>(
+    isEateryShell ? "Foodstuff & Viungo" : "Wholesale Distributor"
+  );
+
+  // Selected supplier object lookup (never assume phone/ID from an unrelated supplier)
+  const matchedSupplier = suppliers.find(
+    (s) =>
+      s.name.toLowerCase().trim() === selectedSupplierName.toLowerCase().trim() ||
+      (s.company || "").toLowerCase().trim() === selectedSupplierName.toLowerCase().trim()
+  );
+  const isNewSupplierInput = Boolean(selectedSupplierName.trim()) && !matchedSupplier;
+
+  const currentSupplier = matchedSupplier || {
+    id: `supp_new_${Date.now()}`,
     name: selectedSupplierName,
     company: selectedSupplierName,
-    phone: "0722 849 101",
-    national_id: "22940184",
-    category: "Wholesale Distributor",
+    phone: customSupplierPhone.trim(),
+    national_id: customSupplierNationalId.trim(),
+    category: customSupplierCategory.trim() || "Wholesale Distributor",
     total_orders_cost: 0,
-    last_delivery_date: "Today",
-    payment_preference: "NATIONAL_ID_DEPOSIT" as const,
+    last_delivery_date: purchaseDate,
+    payment_preference: "CASH_DRAWER" as const,
     supplied_items: []
   };
 
@@ -1007,12 +1026,17 @@ export default function PurchasesTab({
 
       const wholeSummary = `Whole Filled Batch: ${safeWholeBatchQty} ${wholeBatchUnit} — ${cleanTitle}${contentsSuffix}`;
 
+      const effectivePhone = matchedSupplier ? (matchedSupplier.phone || "") : customSupplierPhone.trim();
+      const effectiveNationalId = matchedSupplier ? (matchedSupplier.national_id || "") : customSupplierNationalId.trim();
+      const effectiveCategory = matchedSupplier ? matchedSupplier.category : customSupplierCategory.trim();
+
       if (onLogPurchase) {
         onLogPurchase({
           receiptNumber: deliveryNoteNumber,
           supplier: supplierLabel,
-          supplierPhone: currentSupplier.phone,
-          supplierNationalId: currentSupplier.national_id,
+          supplierPhone: effectivePhone,
+          supplierNationalId: effectiveNationalId,
+          supplierCategory: effectiveCategory,
           items: wholeSummary,
           itemLines: [wholeBatchLine],
           amount: safeWholeBatchCost,
@@ -1033,6 +1057,8 @@ export default function PurchasesTab({
       setWholeBatchTotalCost(0);
       setWholeBatchExpectedSellingTotal(0);
       setWholeBatchContentsSummary("");
+      setCustomSupplierPhone("");
+      setCustomSupplierNationalId("");
       setDeliveryNoteNumber(`DN-${Math.floor(1000 + Math.random() * 9000)}`);
       setIsAddingPurchase(false);
       setAttachedReceiptUrl(null);
@@ -1051,12 +1077,17 @@ export default function PurchasesTab({
       .map((l) => `${l.quantity} ${l.unit} ${l.itemName}`)
       .join(", ");
 
+    const effectivePhone = matchedSupplier ? (matchedSupplier.phone || "") : customSupplierPhone.trim();
+    const effectiveNationalId = matchedSupplier ? (matchedSupplier.national_id || "") : customSupplierNationalId.trim();
+    const effectiveCategory = matchedSupplier ? matchedSupplier.category : customSupplierCategory.trim();
+
     if (onLogPurchase) {
       onLogPurchase({
         receiptNumber: deliveryNoteNumber,
         supplier: supplierLabel,
-        supplierPhone: currentSupplier.phone,
-        supplierNationalId: currentSupplier.national_id,
+        supplierPhone: effectivePhone,
+        supplierNationalId: effectiveNationalId,
+        supplierCategory: effectiveCategory,
         items: itemsSummary,
         itemLines: itemLines,
         amount: totalLotCost,
@@ -1070,6 +1101,8 @@ export default function PurchasesTab({
     setSuccessNote(
       `Saved purchase of ${itemLines.length} goods (${currency} ${totalLotCost.toLocaleString()}) from ${supplierLabel}!`
     );
+    setCustomSupplierPhone("");
+    setCustomSupplierNationalId("");
     setDeliveryNoteNumber(`DN-${Math.floor(1000 + Math.random() * 9000)}`);
     setIsAddingPurchase(false);
     setAttachedReceiptUrl(null);
@@ -2800,9 +2833,13 @@ export default function PurchasesTab({
                       if (e.target.value === "__NEW__") {
                         setSupplierSelectMode("type");
                         setSelectedSupplierName("");
+                        setCustomSupplierPhone("");
+                        setCustomSupplierNationalId("");
                         setTimeout(() => setIsSupplierDropdownOpen(true), 100);
                       } else if (e.target.value) {
                         setSelectedSupplierName(e.target.value);
+                        setCustomSupplierPhone("");
+                        setCustomSupplierNationalId("");
                       }
                     }}
                     className="w-full bg-white border border-slate-300 rounded-xl py-2 px-3 text-slate-900 font-semibold text-xs shadow-2xs focus:ring-2 focus:ring-blue-500 cursor-pointer"
@@ -2979,42 +3016,132 @@ export default function PurchasesTab({
                 />
               </div>
 
-              {/* COUNTERPARTY IDENTIFICATION CALLOUT: PHONE & NATIONAL ID */}
-              <div className="sm:col-span-3 bg-emerald-50/60 border border-emerald-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck size={16} className="text-emerald-600 shrink-0" />
-                  <div>
-                    <span className="font-bold text-emerald-950 block">
-                      Supplier Counterparty Rail: {currentSupplier.name}
-                    </span>
-                    <span className="text-[11px] text-emerald-800">
-                      National ID: <strong className="font-mono">{currentSupplier.national_id}</strong> &bull; Phone: <strong className="font-mono">{currentSupplier.phone}</strong>
-                    </span>
+              {/* COUNTERPARTY IDENTIFICATION CALLOUT: PHONE & NATIONAL ID (NEVER ASSUMES PREVIOUS SUPPLIER NUMBERS) */}
+              <div className={`sm:col-span-3 border rounded-xl p-3 space-y-3 text-xs ${
+                isNewSupplierInput
+                  ? "bg-blue-50/70 border-blue-200"
+                  : "bg-emerald-50/60 border-emerald-200"
+              }`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={16} className={isNewSupplierInput ? "text-blue-600 shrink-0" : "text-emerald-600 shrink-0"} />
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-slate-950">
+                          {isNewSupplierInput
+                            ? `New Supplier: ${selectedSupplierName.trim()}`
+                            : `Supplier Counterparty Rail: ${currentSupplier.name || "Select Supplier"}`}
+                        </span>
+                        {isNewSupplierInput && (
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white">
+                            Auto-Saves to Suppliers DB
+                          </span>
+                        )}
+                      </div>
+                      {!isNewSupplierInput && (
+                        <span className="text-[11px] text-emerald-800 block">
+                          National ID:{" "}
+                          <strong className="font-mono">
+                            {currentSupplier.national_id ? currentSupplier.national_id : "Not provided"}
+                          </strong>{" "}
+                          &bull; Phone:{" "}
+                          <strong className="font-mono">
+                            {currentSupplier.phone ? currentSupplier.phone : "Not provided"}
+                          </strong>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    {!isNewSupplierInput && currentSupplier.national_id && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopyId(currentSupplier.national_id)}
+                        className="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 font-semibold text-[11px] rounded-lg border border-emerald-300 transition flex items-center gap-1 cursor-pointer"
+                        title="Copy National ID for Agency Bank OTC deposit (Equity/KCB/Co-op)"
+                      >
+                        {copiedId === currentSupplier.national_id ? <Check size={12} /> : <Copy size={12} />}
+                        <span>Copy National ID</span>
+                      </button>
+                    )}
+
+                    <select
+                      value={paymentChannel}
+                      onChange={(e) => setPaymentChannel(e.target.value as any)}
+                      className="bg-white border border-slate-300 rounded-lg p-1.5 text-xs text-slate-800 font-medium"
+                    >
+                      <option value="CASH">Cash Portfolio Outflow</option>
+                      <option value="MPESA">Mobile Money (M-Pesa / Pochi / Send Money / Paybill)</option>
+                      <option value="NATIONAL_ID_DEPOSIT">Agency Bank OTC via National ID</option>
+                      <option value="SUPPLIER_CREDIT">Supplier Credit (Pay Later)</option>
+                    </select>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => handleCopyId(currentSupplier.national_id)}
-                    className="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 font-semibold text-[11px] rounded-lg border border-emerald-300 transition flex items-center gap-1 cursor-pointer"
-                    title="Copy National ID for Agency Bank OTC deposit (Equity/KCB/Co-op)"
-                  >
-                    {copiedId === currentSupplier.national_id ? <Check size={12} /> : <Copy size={12} />}
-                    <span>Copy National ID</span>
-                  </button>
-
-                  <select
-                    value={paymentChannel}
-                    onChange={(e) => setPaymentChannel(e.target.value as any)}
-                    className="bg-white border border-emerald-300 rounded-lg p-1 text-xs text-slate-800 font-medium"
-                  >
-                    <option value="CASH">Cash Portfolio Outflow</option>
-                    <option value="MPESA">Mobile Money (M-Pesa / Pochi / Send Money / Paybill)</option>
-                    <option value="NATIONAL_ID_DEPOSIT">Agency Bank OTC via National ID</option>
-                    <option value="SUPPLIER_CREDIT">Supplier Credit (Pay Later)</option>
-                  </select>
-                </div>
+                {isNewSupplierInput && (
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 pt-2.5 border-t border-blue-200/80">
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-slate-600 block mb-1">
+                        Supplier Phone (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={customSupplierPhone}
+                        onChange={(e) => setCustomSupplierPhone(e.target.value)}
+                        placeholder="Own phone e.g. 07XX..."
+                        className="w-full bg-white border border-blue-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-slate-600 block mb-1">
+                        National ID (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={customSupplierNationalId}
+                        onChange={(e) => setCustomSupplierNationalId(e.target.value)}
+                        placeholder="Leave blank if none"
+                        className="w-full bg-white border border-blue-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-slate-600 block mb-1">
+                        Category
+                      </label>
+                      <input
+                        type="text"
+                        value={customSupplierCategory}
+                        onChange={(e) => setCustomSupplierCategory(e.target.value)}
+                        placeholder="e.g. Bakery / Wholesale"
+                        className="w-full bg-white border border-blue-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const clean = selectedSupplierName.trim();
+                          if (!clean) return;
+                          if (onRegisterSupplier) {
+                            onRegisterSupplier({
+                              name: clean,
+                              phone: customSupplierPhone.trim(),
+                              national_id: customSupplierNationalId.trim(),
+                              category: customSupplierCategory.trim() || "Wholesale Distributor"
+                            });
+                          }
+                          setSuccessNote(`Saved new supplier "${clean}" directly to the Suppliers Database!`);
+                          setTimeout(() => setSuccessNote(null), 4000);
+                        }}
+                        className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Plus size={13} />
+                        <span>Save Supplier to DB</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -4260,18 +4387,34 @@ export default function PurchasesTab({
       {/* 4. RECENT PURCHASES & GOODS LOT HISTORY                                    */}
       {/* ========================================================================= */}
       <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-base font-serif font-bold text-slate-900">
               Recent Inbound Cargo Deliveries ({supplierPurchases.length})
             </h3>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-              Restock History
+              Active Last {state.dataWarehouseRetentionDays ?? 14} Days
             </span>
           </div>
-          <span className="text-xs font-mono text-slate-500">
-            Total Logged: {currency} {supplierPurchases.reduce((acc, p) => acc + p.amount, 0).toLocaleString()}
-          </span>
+          <div className="flex items-center gap-3 flex-wrap">
+            {onNavigateTab && (
+              <button
+                type="button"
+                onClick={() => onNavigateTab("data_warehouse")}
+                className="text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer flex items-center gap-1"
+              >
+                <span>
+                  Data Warehouse (
+                  {(state.dataWarehouseArchive?.payouts || []).filter((p) => p.type === "SUPPLIER_PAYOUT").length}{" "}
+                  archived)
+                </span>
+                <ArrowRight size={12} />
+              </button>
+            )}
+            <span className="text-xs font-mono text-slate-500">
+              Total Logged: {currency} {supplierPurchases.reduce((acc, p) => acc + p.amount, 0).toLocaleString()}
+            </span>
+          </div>
         </div>
 
         {supplierPurchases.length === 0 ? (

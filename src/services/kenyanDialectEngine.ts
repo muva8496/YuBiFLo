@@ -503,9 +503,586 @@ export const VORACIOUS_TRAINING_CORPUS: DialectBenchmarkSample[] = [
   }
 ];
 
+export interface CommercialVoiceEvaluation {
+  isCommercialTransaction: boolean;
+  classification:
+    | "VALID_SALE"
+    | "VALID_CREDIT"
+    | "VALID_RESTOCK"
+    | "VALID_ADVANCE"
+    | "REJECTED_MEDIA"
+    | "REJECTED_CHATTER"
+    | "REJECTED_INQUIRY";
+  rejectionCategory?: "MUSIC_OR_LYRICS" | "TIKTOK_OR_MEDIA" | "CASUAL_CHATTER" | "PRICE_INQUIRY";
+  rejectionReason?: string;
+  detectedLanguage: KenyanLanguage;
+  confidence: number;
+  intentType: "SUPPLIER_DELIVERY" | "CREDIT_RECORD" | "ADVANCE_PAYMENT" | "CASH_SALE" | "NONE";
+  items: Array<{
+    itemName: string;
+    quantity: number;
+    unit: string;
+    unitPrice: number;
+    subtotal: number;
+  }>;
+  totalAmount: number;
+  amountPaid: number;
+  cashPaid: number;
+  mpesaPaid: number;
+  debtAmount: number;
+  changeGiven: number;
+  paymentMethod: "CASH" | "MPESA" | "CREDIT";
+  counterparty: string;
+  isCollected: boolean;
+  englishTranslation: string;
+}
+
+const TIKTOK_OR_MEDIA_MARKERS = [
+  "tiktok",
+  "fyp",
+  "for you page",
+  "like and subscribe",
+  "follow me",
+  "follow for part",
+  "link in bio",
+  "comment below",
+  "share this video",
+  "subscribe to my channel",
+  "youtube",
+  "reels",
+  "trending sound",
+  "duet",
+  "breaking news",
+  "citizen tv",
+  "ntv",
+  "ktn",
+  "kiss 100",
+  "classic 105",
+  "radio jambo",
+  "ghetto radio",
+  "kameme fm",
+  "inooro",
+  "hallelujah",
+  "praise the lord",
+  "amen brother",
+  "goooal",
+  "arsenal",
+  "manchester",
+  "premier league",
+  "champions league"
+];
+
+const MUSIC_OR_LYRICS_MARKERS = [
+  "♪",
+  "♫",
+  "la la la",
+  "na na na",
+  "oh baby",
+  "yeah yeah",
+  "skrrt",
+  "amapiano",
+  "gengetone",
+  "arbantone",
+  "bongo flava",
+  "dj ",
+  "remix",
+  "chorus",
+  "verse one",
+  "drop the beat",
+  "turn up the music",
+  "wimbo",
+  "ngoma"
+];
+
+const CASUAL_GREETING_ONLY_MARKERS = [
+  "mambo vipi",
+  "habari yako",
+  "habari ya asubuhi",
+  "sasa bro",
+  "niaje morio",
+  "niaje",
+  "uko aje",
+  "uko poa",
+  "niko poa",
+  "wimwega",
+  "wĩmwega",
+  "uvoo waku",
+  "ũvoo waku",
+  "baridi sana leo",
+  "jua kali",
+  "hali ya anga",
+  "kwema",
+  "mzuri sana"
+];
+
 export class KenyanDialectEngine {
   /**
-   * Evaluates and parses any spoken text across Kikuyu, Kamba, Swahili, English, and Sheng.
+   * Evaluates spoken text across Kikuyu, Kamba, Swahili, English, and Sheng.
+   * Actively filters out music, lyrics, TikTok/YouTube audio, radio, and non-buying chatter.
+   */
+  public static evaluateCommercialUtterance(
+    rawText: string,
+    inventory: Array<{ name: string; unit_type?: string; unit_retail?: number; unit_cost?: number }> = [],
+    options?: {
+      strictBuyIntentFilter?: boolean;
+      ignoreMediaAndTikTok?: boolean;
+      customAliases?: Array<{ spokenPhrase: string; mappedItemName: string; intentHint?: string }>;
+      ignoredPhrases?: string[];
+    }
+  ): CommercialVoiceEvaluation {
+    const cleanText = (rawText || "").trim();
+    const textLower = cleanText.toLowerCase();
+    const strictFilter = options?.strictBuyIntentFilter ?? true;
+    const ignoreMedia = options?.ignoreMediaAndTikTok ?? true;
+
+    // 1. Language Detection via dialect marker scoring
+    let highestLang: KenyanLanguage = "SWAHILI";
+    let highestScore = 0;
+
+    (Object.keys(KENYAN_DIALECT_DICTIONARIES) as KenyanLanguage[]).forEach((langKey) => {
+      const dict = KENYAN_DIALECT_DICTIONARIES[langKey];
+      let score = 0;
+      dict.terms.money.forEach((w) => { if (textLower.includes(w)) score += 3; });
+      dict.terms.debt_credit.forEach((w) => { if (textLower.includes(w)) score += 4; });
+      dict.terms.milk.forEach((w) => { if (textLower.includes(w)) score += 3; });
+      dict.terms.bread.forEach((w) => { if (textLower.includes(w)) score += 3; });
+      dict.terms.sugar.forEach((w) => { if (textLower.includes(w)) score += 3; });
+      dict.terms.flour_unga.forEach((w) => { if (textLower.includes(w)) score += 3; });
+      dict.terms.crate.forEach((w) => { if (textLower.includes(w)) score += 3; });
+      dict.terms.tomorrow_later.forEach((w) => { if (textLower.includes(w)) score += 2; });
+      if (score > highestScore) {
+        highestScore = score;
+        highestLang = langKey;
+      }
+    });
+
+    // Strong transaction cues (only these override noisy words if spoken together)
+    const hasExplicitCommercialAction =
+      /\b(nimeuza|amelipa|amechukua|nipe|niwekee|niandike|niandikie|niope|nengye|rehe|ete|leta|shusha|deni|thiiri|thiirĩ|thĩnĩ|kopa|mpesa|m-pesa|till|cash|chenji|tsenji|change|elfu|ngiri|crate|kĩrate|kilate|mkate|maziwa|sukari|thukari|unga|mũtu|mutu|soda|yoghurt|mayai|eggs|mafuta|bale)\b/i.test(
+        textLower
+      ) ||
+      (inventory || []).some((it) =>
+        it.name
+          .toLowerCase()
+          .split(/\s+/)
+          .some((tok) => tok.length >= 4 && textLower.includes(tok))
+      ) ||
+      (options?.customAliases || []).some((al) =>
+        al.spokenPhrase.trim() && textLower.includes(al.spokenPhrase.toLowerCase().trim())
+      );
+
+    // 2. Check proprietor-trained Ignored Phrases
+    const matchedIgnored = (options?.ignoredPhrases || []).find(
+      (p) => p.trim().length >= 3 && textLower.includes(p.toLowerCase().trim())
+    );
+    if (matchedIgnored) {
+      return {
+        isCommercialTransaction: false,
+        classification: "REJECTED_CHATTER",
+        rejectionCategory: "CASUAL_CHATTER",
+        rejectionReason: `Matched trained ignore rule: "${matchedIgnored}"`,
+        detectedLanguage: highestLang,
+        confidence: 0.98,
+        intentType: "NONE",
+        items: [],
+        totalAmount: 0,
+        amountPaid: 0,
+        cashPaid: 0,
+        mpesaPaid: 0,
+        debtAmount: 0,
+        changeGiven: 0,
+        paymentMethod: "CASH",
+        counterparty: "",
+        isCollected: true,
+        englishTranslation: cleanText
+      };
+    }
+
+    // 3. Filter Music / Lyrics & TikTok / YouTube / Radio audio
+    if (ignoreMedia) {
+      const hitMedia = TIKTOK_OR_MEDIA_MARKERS.find((m) => textLower.includes(m));
+      if (hitMedia && !hasExplicitCommercialAction) {
+        return {
+          isCommercialTransaction: false,
+          classification: "REJECTED_MEDIA",
+          rejectionCategory: "TIKTOK_OR_MEDIA",
+          rejectionReason: `Filtered TikTok / phone media / broadcast audio ("${hitMedia}")`,
+          detectedLanguage: highestLang,
+          confidence: 0.96,
+          intentType: "NONE",
+          items: [],
+          totalAmount: 0,
+          amountPaid: 0,
+          cashPaid: 0,
+          mpesaPaid: 0,
+          debtAmount: 0,
+          changeGiven: 0,
+          paymentMethod: "CASH",
+          counterparty: "",
+          isCollected: true,
+          englishTranslation: cleanText
+        };
+      }
+
+      const hitMusic = MUSIC_OR_LYRICS_MARKERS.find((m) => textLower.includes(m));
+      if (hitMusic && !hasExplicitCommercialAction) {
+        return {
+          isCommercialTransaction: false,
+          classification: "REJECTED_MEDIA",
+          rejectionCategory: "MUSIC_OR_LYRICS",
+          rejectionReason: `Filtered background music or song lyrics ("${hitMusic}")`,
+          detectedLanguage: highestLang,
+          confidence: 0.95,
+          intentType: "NONE",
+          items: [],
+          totalAmount: 0,
+          amountPaid: 0,
+          cashPaid: 0,
+          mpesaPaid: 0,
+          debtAmount: 0,
+          changeGiven: 0,
+          paymentMethod: "CASH",
+          counterparty: "",
+          isCollected: true,
+          englishTranslation: cleanText
+        };
+      }
+    }
+
+    // 4. Filter Price-Only Inquiries & Non-Buying Greetings / Chatter
+    if (strictFilter) {
+      const isPriceInquiryOnly =
+        /\b(bei gani|pesa ngapi|how much|ni ngapi|kiasi gani)\b/i.test(textLower) &&
+        !/\b(amelipa|nimeuza|chukua|nipe|leta|weka|deni|mpesa|cash|elfu|mia|chenji|change)\b/i.test(textLower);
+      if (isPriceInquiryOnly) {
+        return {
+          isCommercialTransaction: false,
+          classification: "REJECTED_INQUIRY",
+          rejectionCategory: "PRICE_INQUIRY",
+          rejectionReason: "Price inquiry only — no actual purchase, credit, or payment confirmed.",
+          detectedLanguage: highestLang,
+          confidence: 0.91,
+          intentType: "NONE",
+          items: [],
+          totalAmount: 0,
+          amountPaid: 0,
+          cashPaid: 0,
+          mpesaPaid: 0,
+          debtAmount: 0,
+          changeGiven: 0,
+          paymentMethod: "CASH",
+          counterparty: "",
+          isCollected: true,
+          englishTranslation: cleanText
+        };
+      }
+
+      const isGreetingOnly = CASUAL_GREETING_ONLY_MARKERS.some((g) => textLower.includes(g));
+      if ((isGreetingOnly || cleanText.split(/\s+/).length <= 2) && !hasExplicitCommercialAction) {
+        return {
+          isCommercialTransaction: false,
+          classification: "REJECTED_CHATTER",
+          rejectionCategory: "CASUAL_CHATTER",
+          rejectionReason: "Casual conversation / greeting filtered (no buying intent).",
+          detectedLanguage: highestLang,
+          confidence: 0.92,
+          intentType: "NONE",
+          items: [],
+          totalAmount: 0,
+          amountPaid: 0,
+          cashPaid: 0,
+          mpesaPaid: 0,
+          debtAmount: 0,
+          changeGiven: 0,
+          paymentMethod: "CASH",
+          counterparty: "",
+          isCollected: true,
+          englishTranslation: cleanText
+        };
+      }
+
+      if (!hasExplicitCommercialAction) {
+        return {
+          isCommercialTransaction: false,
+          classification: "REJECTED_CHATTER",
+          rejectionCategory: "CASUAL_CHATTER",
+          rejectionReason: "Speech contains no shop item, quantity, credit, or payment cue.",
+          detectedLanguage: highestLang,
+          confidence: 0.87,
+          intentType: "NONE",
+          items: [],
+          totalAmount: 0,
+          amountPaid: 0,
+          cashPaid: 0,
+          mpesaPaid: 0,
+          debtAmount: 0,
+          changeGiven: 0,
+          paymentMethod: "CASH",
+          counterparty: "",
+          isCollected: true,
+          englishTranslation: cleanText
+        };
+      }
+    }
+
+    // 5. Intent Classification
+    const isSupplier =
+      /\b(kĩrate|kirate|crate|crates|bale|bales|supplier|ameleta|rehe|ete|leta|shusha|drop|deliver|delivery|restock)\b/i.test(
+        textLower
+      );
+    const isCredit =
+      /\b(thiirĩ|thiiri|thĩnĩ|nthĩĩ|deni|kopa|kopea|niope|credit|ngakũrĩha|ngakwĩva|nitalipa kesho|niandike|niandikie|andika|kitabu)\b/i.test(
+        textLower
+      );
+    const isAdvance =
+      /\b(hwaĩ-inĩ|hwai-ini|wĩoo|wioo|jioni|nitachukua|atachukua|ngacoka|ngasyoka|pick up|reserved|nimeacha)\b/i.test(
+        textLower
+      );
+
+    let intentType: "SUPPLIER_DELIVERY" | "CREDIT_RECORD" | "ADVANCE_PAYMENT" | "CASH_SALE" = "CASH_SALE";
+    if (isSupplier) intentType = "SUPPLIER_DELIVERY";
+    else if (isCredit) intentType = "CREDIT_RECORD";
+    else if (isAdvance) intentType = "ADVANCE_PAYMENT";
+
+    // 6. Payment Mode & Counterparty Extraction
+    const isMpesa = /\b(mpesa|m-pesa|till|pochi|send money|equitel)\b/i.test(textLower);
+    const paymentMethod: "CASH" | "MPESA" | "CREDIT" =
+      intentType === "CREDIT_RECORD" && !/\b(amelipa|paid)\b/i.test(textLower)
+        ? "CREDIT"
+        : isMpesa
+        ? "MPESA"
+        : "CASH";
+
+    let counterparty = intentType === "SUPPLIER_DELIVERY" ? "Wholesale Supplier" : "Walk-in Customer";
+    const namedMatch =
+      cleanText.match(/\b(Mama\s+[A-Z][a-z]+|Baba\s+[A-Z][a-z]+|Pastor\s+[A-Z][a-z]+)\b/i) ||
+      cleanText.match(/\b(Kamau|Wanjiku|Mutua|Otieno|Grace|Jane|David|Boi|Brayo|Stacy|Sharon|Kibet|Njoroge|Achieng)\b/i);
+    if (namedMatch) {
+      counterparty = namedMatch[0];
+    } else if (textLower.includes("brookside")) {
+      counterparty = "Brookside Dairy Delivery";
+    }
+
+    // 7. Helper to look up real catalog item price
+    const findCatalogMatch = (keywords: string[], fallbackName: string, fallbackUnit: string, fallbackPrice: number) => {
+      // First check custom aliases
+      for (const alias of options?.customAliases || []) {
+        const phrase = alias.spokenPhrase.toLowerCase().trim();
+        if (phrase && textLower.includes(phrase)) {
+          const invHit = (inventory || []).find((i) =>
+            i.name.toLowerCase().includes(alias.mappedItemName.toLowerCase())
+          );
+          if (invHit) {
+            return {
+              name: invHit.name,
+              unit: invHit.unit_type || fallbackUnit,
+              price: Number(invHit.unit_retail) || fallbackPrice
+            };
+          }
+          return { name: alias.mappedItemName, unit: fallbackUnit, price: fallbackPrice };
+        }
+      }
+      // Next match shop inventory
+      for (const kw of keywords) {
+        const invHit = (inventory || []).find((i) => i.name.toLowerCase().includes(kw.toLowerCase()));
+        if (invHit) {
+          return {
+            name: invHit.name,
+            unit: invHit.unit_type || fallbackUnit,
+            price: isSupplier
+              ? Number(invHit.unit_cost) || fallbackPrice
+              : Number(invHit.unit_retail) || fallbackPrice
+          };
+        }
+      }
+      return { name: fallbackName, unit: fallbackUnit, price: fallbackPrice };
+    };
+
+    const items: Array<{ itemName: string; quantity: number; unit: string; unitPrice: number; subtotal: number }> = [];
+
+    const extractQtyNear = (pattern: RegExp, defaultQty = 1): number => {
+      const m = textLower.match(pattern);
+      if (!m) return defaultQty;
+      const chunk = m[0];
+      const numMatch = chunk.match(/\b(\d+)\b/);
+      if (numMatch) return Math.max(1, Number(numMatch[1]));
+      if (/\b(mbili|igĩrĩ|igiri|ilĩ|ili|two)\b/.test(chunk)) return 2;
+      if (/\b(tatu|ithatũ|ithatu|itatũ|itatu|three)\b/.test(chunk)) return 3;
+      if (/\b(nne|inya|four)\b/.test(chunk)) return 4;
+      if (/\b(tano|ithano|ĩtano|itano|five)\b/.test(chunk)) return 5;
+      if (/\b(ishirini|twenty|mĩrongo ĩrĩ|mĩongo ĩlĩ)\b/.test(chunk)) return 20;
+      return defaultQty;
+    };
+
+    if (/\b(maziwa|milk|iria|ĩia|iia)\b/i.test(textLower)) {
+      const qty = extractQtyNear(/(?:\b\w+\s+){0,2}(?:maziwa|milk|iria|ĩia|iia)(?:\s+\w+){0,2}/i, isSupplier ? 2 : 1);
+      const isCrate = /\b(crate|kĩrate|kilate|crates)\b/i.test(textLower);
+      const matched = findCatalogMatch(["milk", "brookside", "fresha"], "Brookside Fresh Milk 500ml", isCrate ? "crates" : "packets", isCrate ? 1320 : 60);
+      const price = isCrate ? 1320 : matched.price;
+      items.push({
+        itemName: matched.name,
+        quantity: qty,
+        unit: isCrate ? "crates" : matched.unit,
+        unitPrice: price,
+        subtotal: qty * price
+      });
+    }
+
+    if (/\b(mkate|mikate|bread|mũgate|migate|mũkate|boflo)\b/i.test(textLower)) {
+      const qty = extractQtyNear(/(?:\b\w+\s+){0,2}(?:mkate|mikate|bread|mũgate|migate|mũkate|boflo)(?:\s+\w+){0,2}/i, isSupplier ? 20 : 1);
+      const matched = findCatalogMatch(["bread", "broadways", "festive"], "Broadways White Bread 400g", "loaves", 65);
+      items.push({
+        itemName: matched.name,
+        quantity: qty,
+        unit: matched.unit,
+        unitPrice: matched.price,
+        subtotal: qty * matched.price
+      });
+    }
+
+    if (/\b(sukari|thukari|cukari|sugar)\b/i.test(textLower)) {
+      const qty = extractQtyNear(/(?:\b\w+\s+){0,2}(?:sukari|thukari|cukari|sugar)(?:\s+\w+){0,2}/i, 1);
+      const priceMatch = textLower.includes("40") || textLower.includes("arobaini") || textLower.includes("forty") || textLower.includes("mĩrongo ĩna") ? 40 : undefined;
+      const matched = findCatalogMatch(["sugar", "mumias"], "Mumias Sugar", textLower.includes("robo") || priceMatch === 40 ? "quarter-kg" : "kg", priceMatch ?? 160);
+      const price = priceMatch ?? matched.price;
+      items.push({
+        itemName: matched.name,
+        quantity: qty,
+        unit: priceMatch === 40 ? "quarter-kg" : matched.unit,
+        unitPrice: price,
+        subtotal: qty * price
+      });
+    }
+
+    if (/\b(unga|mũtu|mutu|flour|pembe|jogoo)\b/i.test(textLower)) {
+      const qty = extractQtyNear(/(?:\b\w+\s+){0,2}(?:unga|mũtu|mutu|flour|pembe|jogoo)(?:\s+\w+){0,2}/i, 1);
+      const isBaleOr600 = textLower.includes("600") || textLower.includes("mia sita") || textLower.includes("soo sita") || textLower.includes("bale") || textLower.includes("matandat");
+      const matched = findCatalogMatch(["unga", "jogoo", "pembe"], isBaleOr600 ? "Unga Jogoo 2kg Bale" : "Unga Jogoo 2kg", isBaleOr600 ? "bale" : "packet", isBaleOr600 ? 600 : 185);
+      const price = isBaleOr600 ? 600 : matched.price;
+      items.push({
+        itemName: matched.name,
+        quantity: qty,
+        unit: isBaleOr600 ? "bale" : matched.unit,
+        unitPrice: price,
+        subtotal: qty * price
+      });
+    }
+
+    if (/\b(yoghurt|yogurt)\b/i.test(textLower)) {
+      const matched = findCatalogMatch(["yoghurt", "ilara"], "Ilara Yoghurt 150ml", "cup", 35);
+      items.push({ itemName: matched.name, quantity: 1, unit: matched.unit, unitPrice: matched.price, subtotal: matched.price });
+    }
+
+    if (/\b(soda|coca|fanta|sprite)\b/i.test(textLower)) {
+      const matched = findCatalogMatch(["soda", "coca"], "Soda 300ml", "bottle", 50);
+      items.push({ itemName: matched.name, quantity: 1, unit: matched.unit, unitPrice: matched.price, subtotal: matched.price });
+    }
+
+    if (/\b(mafuta|oil|salit|elianto)\b/i.test(textLower)) {
+      const matched = findCatalogMatch(["oil", "salit", "mafuta"], "Salit Cooking Oil 1L", "bottle", 320);
+      items.push({ itemName: matched.name, quantity: 1, unit: matched.unit, unitPrice: matched.price, subtotal: matched.price });
+    }
+
+    // Check any custom alias not yet matched above
+    for (const alias of options?.customAliases || []) {
+      const phrase = alias.spokenPhrase.toLowerCase().trim();
+      if (phrase && textLower.includes(phrase) && !items.some((i) => i.itemName.toLowerCase().includes(alias.mappedItemName.toLowerCase()))) {
+        const invHit = (inventory || []).find((i) => i.name.toLowerCase().includes(alias.mappedItemName.toLowerCase()));
+        const price = Number(invHit?.unit_retail) || 100;
+        items.push({
+          itemName: invHit?.name || alias.mappedItemName,
+          quantity: 1,
+          unit: invHit?.unit_type || "pcs",
+          unitPrice: price,
+          subtotal: price
+        });
+      }
+    }
+
+    // Direct numeric fallback if items still empty but speech explicitly had inventory or money
+    const spokenNumbers = (cleanText.match(/\b\d+\b/g) || []).map((n) => Number(n));
+    let totalAmount = items.reduce((acc, it) => acc + it.subtotal, 0);
+
+    if (items.length === 0) {
+      const fallbackAmt = spokenNumbers.find((n) => n >= 10 && n <= 100000) || 100;
+      const invMatch = (inventory || []).find((i) =>
+        i.name.toLowerCase().split(/\s+/).some((tok) => tok.length >= 4 && textLower.includes(tok))
+      );
+      const itemName = invMatch?.name || "Counter Retail Item";
+      const price = Number(invMatch?.unit_retail) || fallbackAmt;
+      items.push({
+        itemName,
+        quantity: 1,
+        unit: invMatch?.unit_type || "pcs",
+        unitPrice: price,
+        subtotal: price
+      });
+      totalAmount = price;
+    }
+
+    // Override/split paid & debt amounts when explicitly spoken
+    let debtAmount = 0;
+    let cashPaid = 0;
+    let mpesaPaid = 0;
+    let changeGiven = 0;
+    let amountPaid = totalAmount;
+
+    const deniExplicitMatch = textLower.match(/(?:deni|debt)\s+(?:ya\s+)?(\d+)/i);
+    if (intentType === "CREDIT_RECORD") {
+      debtAmount = deniExplicitMatch ? Number(deniExplicitMatch[1]) : totalAmount;
+      const paidExplicit = textLower.match(/(?:amelipa|cash|paid)\s+(\d+)/i);
+      const paidVal = paidExplicit ? Number(paidExplicit[1]) : 0;
+      if (paidVal > 0 && paidVal < totalAmount) {
+        debtAmount = totalAmount - paidVal;
+        cashPaid = isMpesa ? 0 : paidVal;
+        mpesaPaid = isMpesa ? paidVal : 0;
+        amountPaid = paidVal;
+      } else {
+        amountPaid = 0;
+      }
+    } else if (intentType === "ADVANCE_PAYMENT") {
+      const tendered1000 = textLower.includes("1000") || textLower.includes("elfu") || textLower.includes("ngiri");
+      const paidVal = tendered1000 ? 1000 : (spokenNumbers.find((n) => n >= totalAmount) || totalAmount);
+      amountPaid = paidVal;
+      changeGiven = Math.max(0, paidVal - totalAmount);
+      cashPaid = totalAmount;
+    } else if (paymentMethod === "MPESA") {
+      mpesaPaid = totalAmount;
+      amountPaid = totalAmount;
+    } else {
+      cashPaid = totalAmount;
+      amountPaid = totalAmount;
+    }
+
+    return {
+      isCommercialTransaction: true,
+      classification:
+        intentType === "CREDIT_RECORD"
+          ? "VALID_CREDIT"
+          : intentType === "SUPPLIER_DELIVERY"
+          ? "VALID_RESTOCK"
+          : intentType === "ADVANCE_PAYMENT"
+          ? "VALID_ADVANCE"
+          : "VALID_SALE",
+      detectedLanguage: highestLang,
+      confidence: 0.94,
+      intentType,
+      items,
+      totalAmount,
+      amountPaid,
+      cashPaid,
+      mpesaPaid,
+      debtAmount,
+      changeGiven,
+      paymentMethod,
+      counterparty,
+      isCollected: intentType !== "ADVANCE_PAYMENT",
+      englishTranslation: `${intentType.replace("_", " ")}: ${items.map((i) => `${i.quantity}x ${i.itemName}`).join(", ")} (${paymentMethod})`
+    };
+  }
+
+  /**
+   * Backward-compatible wrapper used by MultilingualVoiceTab.
    */
   public static parseMultilingualSpeech(rawText: string): {
     detectedLanguage: KenyanLanguage;
@@ -519,123 +1096,21 @@ export class KenyanDialectEngine {
     pickupDeferred: boolean;
     transcriptionEnglish: string;
   } {
-    const textLower = rawText.toLowerCase().trim();
-
-    // 1. Language Detection via dialect marker scoring
-    let highestLang: KenyanLanguage = "SWAHILI";
-    let highestScore = 0;
-
-    (Object.keys(KENYAN_DIALECT_DICTIONARIES) as KenyanLanguage[]).forEach((langKey) => {
-      const dict = KENYAN_DIALECT_DICTIONARIES[langKey];
-      let score = 0;
-
-      // Check money markers
-      dict.terms.money.forEach((w) => { if (textLower.includes(w)) score += 3; });
-      // Check debt markers
-      dict.terms.debt_credit.forEach((w) => { if (textLower.includes(w)) score += 4; });
-      // Check commodity markers
-      dict.terms.milk.forEach((w) => { if (textLower.includes(w)) score += 3; });
-      dict.terms.bread.forEach((w) => { if (textLower.includes(w)) score += 3; });
-      dict.terms.sugar.forEach((w) => { if (textLower.includes(w)) score += 3; });
-      dict.terms.flour_unga.forEach((w) => { if (textLower.includes(w)) score += 3; });
-      dict.terms.crate.forEach((w) => { if (textLower.includes(w)) score += 3; });
-      dict.terms.tomorrow_later.forEach((w) => { if (textLower.includes(w)) score += 2; });
-
-      if (score > highestScore) {
-        highestScore = score;
-        highestLang = langKey;
-      }
+    const res = KenyanDialectEngine.evaluateCommercialUtterance(rawText, [], {
+      strictBuyIntentFilter: false,
+      ignoreMediaAndTikTok: true
     });
-
-    // 2. Intent Classification
-    let intent: "SUPPLIER_DELIVERY" | "CREDIT_RECORD" | "ADVANCE_PAYMENT" | "CASH_SALE" | "UNKNOWN" = "UNKNOWN";
-
-    const isSupplier = 
-      textLower.includes("kĩrate") || textLower.includes("kirate") || textLower.includes("crate") ||
-      textLower.includes("rehe") || textLower.includes("ete") || textLower.includes("leta") ||
-      textLower.includes("shusha") || textLower.includes("drop") || textLower.includes("deliver");
-
-    const isCredit = 
-      textLower.includes("thiirĩ") || textLower.includes("thiiri") || textLower.includes("thĩnĩ") || 
-      textLower.includes("nthĩĩ") || textLower.includes("deni") || textLower.includes("kopa") || 
-      textLower.includes("credit") || textLower.includes("ngakũrĩha") || textLower.includes("ngakwĩva") || 
-      textLower.includes("nitalipa kesho");
-
-    const isAdvance = 
-      textLower.includes("hwaĩ-inĩ") || textLower.includes("hwai-ini") || textLower.includes("wĩoo") || 
-      textLower.includes("wioo") || textLower.includes("jioni") || textLower.includes("nitachukua") || 
-      textLower.includes("ngacoka") || textLower.includes("ngasyoka") || textLower.includes("pick") ||
-      textLower.includes("chenji") || textLower.includes("tsenji") || textLower.includes("change");
-
-    if (isSupplier) {
-      intent = "SUPPLIER_DELIVERY";
-    } else if (isCredit) {
-      intent = "CREDIT_RECORD";
-    } else if (isAdvance) {
-      intent = "ADVANCE_PAYMENT";
-    } else {
-      intent = "CASH_SALE";
-    }
-
-    // 3. Extract items & quantities
-    let extractedItems: Array<{ itemName: string; quantity: number; unit: string }> = [];
-    let amount = 0;
-    let changeGiven = 0;
-    let paymentMode: "CASH" | "MPESA" | "CREDIT" = "CASH";
-    let counterparty = "Walk-in Customer";
-    let pickupDeferred = false;
-    let transcriptionEnglish = rawText;
-
-    if (intent === "SUPPLIER_DELIVERY") {
-      extractedItems = [
-        { itemName: "Brookside Fresh Milk", quantity: 2, unit: "crates" },
-        { itemName: "Broadways White Bread", quantity: 20, unit: "loaves" }
-      ];
-      amount = 3940;
-      paymentMode = "MPESA";
-      counterparty = "Wholesale Distributor";
-      transcriptionEnglish = "Supplier delivery: 2 crates milk and 20 loaves bread paid via M-Pesa";
-
-    } else if (intent === "CREDIT_RECORD") {
-      extractedItems = [
-        { itemName: "Mumias Sugar", quantity: 1, unit: "quarter-kg" }
-      ];
-      amount = 40;
-      paymentMode = "CREDIT";
-      counterparty = "Credit Customer";
-      transcriptionEnglish = "Credit record: 40 KSh sugar owed, promised to pay tomorrow";
-
-    } else if (intent === "ADVANCE_PAYMENT") {
-      extractedItems = [
-        { itemName: "Unga Jogoo 2kg Bale", quantity: 1, unit: "bale" }
-      ];
-      amount = 600;
-      changeGiven = 400;
-      paymentMode = "CASH";
-      counterparty = "Evening Pickup Customer";
-      pickupDeferred = true;
-      transcriptionEnglish = "Paid 1,000 for 600 flour, 400 change returned, goods reserved for evening pickup";
-
-    } else {
-      extractedItems = [
-        { itemName: "General Store Item", quantity: 1, unit: "unit" }
-      ];
-      amount = 100;
-      paymentMode = "CASH";
-      transcriptionEnglish = "Direct counter sale recorded";
-    }
-
     return {
-      detectedLanguage: highestLang,
-      confidence: 0.96,
-      intent,
-      extractedItems,
-      amount,
-      changeGiven,
-      paymentMode,
-      counterparty,
-      pickupDeferred,
-      transcriptionEnglish
+      detectedLanguage: res.detectedLanguage,
+      confidence: res.confidence,
+      intent: res.intentType === "NONE" ? "UNKNOWN" : res.intentType,
+      extractedItems: res.items.map((i) => ({ itemName: i.itemName, quantity: i.quantity, unit: i.unit })),
+      amount: res.totalAmount,
+      changeGiven: res.changeGiven,
+      paymentMode: res.paymentMethod,
+      counterparty: res.counterparty || "Walk-in Customer",
+      pickupDeferred: !res.isCollected,
+      transcriptionEnglish: res.rejectionReason || res.englishTranslation
     };
   }
 }
