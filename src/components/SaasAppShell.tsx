@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { 
   Rocket, LayoutDashboard, TrendingUp, ShoppingBag, Layers, 
   Sun, Mic, Users, BookOpen, BarChart2, ChevronDown, HelpCircle, 
@@ -12,8 +12,11 @@ import { PaymentChannelConfig, PaymentChannelSubType } from "../types/alacio";
 import { getDefaultPaymentChannelsForBlueprint } from "../services/alacioStorage";
 import { YuBiFloMark } from "./YuBiFloLogo";
 import type { DemoPreset } from "../services/dukaDemoSandbox";
-import VideoFactorModal from "./VideoFactorModal";
-import QuickCreateModal from "./QuickCreateModal";
+import type { OverdueDebtorAlert } from "../utils/debtScheduleHelper";
+import { formatDebtItemsSummary } from "../utils/debtScheduleHelper";
+
+const VideoFactorModal = lazy(() => import("./VideoFactorModal"));
+const QuickCreateModal = lazy(() => import("./QuickCreateModal"));
 
 export interface SaasNavItem {
   id: string;
@@ -53,6 +56,8 @@ interface SaasAppShellProps {
   onOpenQuickDeni?: () => void;
   onResetToSkeleton?: () => void;
   onOpenDataVault?: () => void;
+  overdueDebtors?: OverdueDebtorAlert[];
+  currency?: string;
   children: React.ReactNode;
 }
 
@@ -79,6 +84,8 @@ export default function SaasAppShell({
   onOpenQuickDeni,
   onResetToSkeleton,
   onOpenDataVault,
+  overdueDebtors = [],
+  currency = "KSh",
   children
 }: SaasAppShellProps) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -131,8 +138,12 @@ export default function SaasAppShell({
     { id: "stock_vault", name: "Stock Vault", icon: <Layers size={17} /> },
     { id: "dawn_lock", name: "Dawn Lock", icon: <Sun size={17} /> },
     { id: "voice_ledger", name: "Voice Ledger", icon: <Mic size={17} /> },
-    { id: "customers", name: "Customers", icon: <Users size={17} /> },
-    { id: "customer_deni", name: "Customer Deni", icon: <BookOpen size={17} /> },
+    {
+      id: "customer_deni",
+      name: "Customer Deni",
+      icon: <BookOpen size={17} />,
+      badge: overdueDebtors.length > 0 ? `${overdueDebtors.length} Due` : undefined
+    },
     { id: "three_fold_ledgers", name: "3-Fold Ledgers", icon: <Bookmark size={17} /> },
     { id: "analytics", name: "Business Analytics", icon: <BarChart2 size={17} /> }
   ];
@@ -599,7 +610,7 @@ export default function SaasAppShell({
                 Modules
               </span>
               <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-[#FDF5E2] text-[#996515] border border-[#E6CF8B] font-bold">
-                12 ACTIVE
+                11 ACTIVE
               </span>
             </div>
 
@@ -627,9 +638,16 @@ export default function SaasAppShell({
                         </span>
                         <span className="truncate">{item.name}</span>
                       </div>
-                      {hasChildren && (
-                        <ChevronDown size={13} className="text-slate-400 shrink-0" />
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {item.badge && (
+                          <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white font-mono text-[9px] font-bold">
+                            {item.badge}
+                          </span>
+                        )}
+                        {hasChildren && (
+                          <ChevronDown size={13} className="text-slate-400 shrink-0" />
+                        )}
+                      </div>
                     </button>
 
                     {hasChildren && (
@@ -713,7 +731,7 @@ export default function SaasAppShell({
                   Modules
                 </span>
                 <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold">
-                  12 Active
+                  11 Active
                 </span>
               </div>
 
@@ -732,7 +750,12 @@ export default function SaasAppShell({
                       <span className={activeTab === item.id ? "text-[#1A56DB]" : "text-slate-500"}>
                         {item.icon}
                       </span>
-                      <span>{item.name}</span>
+                      <span className="flex-1">{item.name}</span>
+                      {item.badge && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white font-mono text-[9px] font-bold">
+                          {item.badge}
+                        </span>
+                      )}
                     </button>
                     {item.children && item.children.map((child) => (
                       <button
@@ -786,28 +809,65 @@ export default function SaasAppShell({
 
         {/* MAIN CONTENT CANVAS */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          {overdueDebtors.length > 0 && activeTab !== "customer_deni" && activeTab !== "customers" && (
+            <div className="mb-4 max-w-6xl mx-auto rounded-2xl bg-red-50 border border-red-300 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs">
+              <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+                <AlertCircle size={18} className="text-red-600 shrink-0 mt-0.5 sm:mt-0" />
+                <div className="text-xs text-red-950 min-w-0">
+                  <span className="font-bold">
+                    Past-Due Debt Alert ({overdueDebtors.length}):{" "}
+                    <span className="font-mono text-red-700">
+                      {currency} {overdueDebtors.reduce((sum, d) => sum + (Number(d.debt_balance) || 0), 0).toLocaleString()}
+                    </span>
+                  </span>{" "}
+                  <span className="text-red-800">
+                    &mdash; {overdueDebtors.slice(0, 2).map((d) => {
+                      const itemsText = formatDebtItemsSummary(d.items_taken);
+                      return `${d.name} (${currency} ${d.debt_balance.toLocaleString()}, ${d.daysPastDue}d past ${d.due_date}${itemsText ? `: ${itemsText}` : ""})`;
+                    }).join(" • ")}
+                    {overdueDebtors.length > 2 ? ` +${overdueDebtors.length - 2} more` : ""}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigateTab("customer_deni")}
+                className="px-3.5 py-1.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer shrink-0 self-start sm:self-auto"
+              >
+                Open Debtor Ledger &rarr;
+              </button>
+            </div>
+          )}
           {children}
         </main>
 
       </div>
 
       {/* QUICK CREATE MODAL */}
-      <QuickCreateModal
-        isOpen={quickCreateOpen}
-        onClose={() => setQuickCreateOpen(false)}
-        onNavigateTab={onNavigateTab}
-        onOpenQuickSale={onOpenQuickSale}
-        onOpenQuickPurchase={onOpenQuickPurchase}
-        onOpenQuickDeni={onOpenQuickDeni}
-      />
+      {quickCreateOpen && (
+        <Suspense fallback={null}>
+          <QuickCreateModal
+            isOpen={quickCreateOpen}
+            onClose={() => setQuickCreateOpen(false)}
+            onNavigateTab={onNavigateTab}
+            onOpenQuickSale={onOpenQuickSale}
+            onOpenQuickPurchase={onOpenQuickPurchase}
+            onOpenQuickDeni={onOpenQuickDeni}
+          />
+        </Suspense>
+      )}
 
       {/* VIDEO FACTOR MODAL & DOCKED MINI PLAYER */}
-      <VideoFactorModal
-        isOpen={videoModalOpen}
-        onClose={() => setVideoModalOpen(false)}
-        isDocked={videoIsDocked}
-        onToggleDock={() => setVideoIsDocked(!videoIsDocked)}
-      />
+      {(videoModalOpen || videoIsDocked) && (
+        <Suspense fallback={null}>
+          <VideoFactorModal
+            isOpen={videoModalOpen}
+            onClose={() => setVideoModalOpen(false)}
+            isDocked={videoIsDocked}
+            onToggleDock={() => setVideoIsDocked(!videoIsDocked)}
+          />
+        </Suspense>
+      )}
 
       {/* CREATE NEW BUSINESS ACCOUNT MODAL (UNDER SAME GMAIL) */}
       {isAddAccountModalOpen && (

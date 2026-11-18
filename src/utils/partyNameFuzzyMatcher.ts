@@ -11,7 +11,7 @@
  * 3. Auto-registers new suppliers and new customers on the fly during supply or sales logging.
  */
 
-import { CustomerDebtor, SupplierProfile } from "../types/alacio";
+import { CustomerDebtor, DebtLineItem, SupplierProfile } from "../types/alacio";
 
 /**
  * Normalizes a name string by removing special characters, excess spaces,
@@ -236,7 +236,11 @@ export function reconcileOrRegisterCustomer(
   meta?: {
     debtDelta?: number;
     phone?: string;
+    nationalId?: string;
+    creditLimit?: number;
     date?: string;
+    dueDate?: string;
+    itemsTaken?: DebtLineItem[];
     notes?: string;
   }
 ): {
@@ -252,15 +256,33 @@ export function reconcileOrRegisterCustomer(
   const match = findMatchingCustomer(cleanName, existingCustomers);
 
   if (match) {
-    // Merge into existing customer
+    // Merge into existing debtor account
     const updated = existingCustomers.map((c) => {
       if (c.id === match.id) {
+        const nextBalance = Math.max(0, (Number(c.debt_balance) || 0) + (Number(meta?.debtDelta) || 0));
+        const mergedItems = [
+          ...(meta?.itemsTaken || []),
+          ...(c.items_taken || [])
+        ];
+        const nextDueDate = meta?.dueDate || c.due_date;
+        const nextLimit = meta?.creditLimit
+          ? Math.max(Number(c.credit_limit) || 0, meta.creditLimit, nextBalance)
+          : Math.max(Number(c.credit_limit) || 0, nextBalance);
+
         return {
           ...c,
-          debt_balance: Math.max(0, (Number(c.debt_balance) || 0) + (Number(meta?.debtDelta) || 0)),
-          last_transaction_date: meta?.date || "Today",
-          phone: meta?.phone || c.phone,
-          notes: meta?.notes ? `${c.notes || ""}; ${meta.notes}`.trim() : c.notes
+          debt_balance: nextBalance,
+          credit_limit: nextLimit,
+          last_transaction_date: meta?.date || new Date().toISOString().slice(0, 10),
+          due_date: nextDueDate,
+          items_taken: mergedItems,
+          national_id: meta?.nationalId || c.national_id,
+          phone: meta?.phone && meta.phone !== "07XX XXX XXX" ? meta.phone : c.phone,
+          notes: meta?.notes
+            ? c.notes && !c.notes.includes(meta.notes)
+              ? `${c.notes}; ${meta.notes}`.trim()
+              : c.notes || meta.notes
+            : c.notes
         };
       }
       return c;
@@ -273,15 +295,20 @@ export function reconcileOrRegisterCustomer(
     };
   }
 
-  // Auto-register new customer
+  // Auto-register new debtor account
+  const initialDebt = Math.max(0, Number(meta?.debtDelta) || 0);
   const newCustomer: CustomerDebtor = {
     id: `cust_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     name: cleanName,
     phone: meta?.phone || "0700 000 000",
-    credit_limit: 5000,
-    debt_balance: Math.max(0, Number(meta?.debtDelta) || 0),
-    last_transaction_date: meta?.date || "Today",
-    notes: meta?.notes || "Auto-registered from sales recording"
+    national_id: meta?.nationalId,
+    credit_limit: Math.max(meta?.creditLimit || 5000, initialDebt),
+    debt_balance: initialDebt,
+    last_transaction_date: meta?.date || new Date().toISOString().slice(0, 10),
+    due_date: meta?.dueDate,
+    items_taken: meta?.itemsTaken || [],
+    total_repaid: 0,
+    notes: meta?.notes || ""
   };
 
   return {

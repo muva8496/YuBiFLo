@@ -1,5 +1,6 @@
 import { AlacioMasterState } from "../types/alacio";
 import { INITIAL_ALACIO_STATE, calculateKpis } from "./alacioStorage";
+import { getLocalTodayIso, addDaysToIso } from "../utils/debtScheduleHelper";
 
 export type DemoPreset = "duka" | "eatery";
 
@@ -222,24 +223,36 @@ export function createFreshDemoState(preset: DemoPreset = "duka"): AlacioMasterS
       }
     ];
 
+    const eateryToday = getLocalTodayIso();
     const eateryCustomers = [
       {
         id: "eat_cust_1",
-        name: "Juma Boda (Stage #4)",
-        phone: "0722 418 902",
-        debt_balance: 300,
+        name: "Benson Mwangi (Boda Stage)",
+        phone: "0720 441 902",
+        debt_balance: 360,
         credit_limit: 1000,
-        last_transaction_date: "Today",
-        notes: "Cleared every Friday evening"
+        last_transaction_date: addDaysToIso(eateryToday, -4),
+        due_date: addDaysToIso(eateryToday, -1),
+        items_taken: [
+          { id: "edi_1", item_name: "Beef Stew & 2 Chapati Plate", qty: 2, unit_type: "Plates", unit_price: 180, line_total: 360, date_taken: addDaysToIso(eateryToday, -4) }
+        ],
+        total_repaid: 0,
+        notes: "Lunch meals on tab"
       },
       {
         id: "eat_cust_2",
-        name: "Mama Wanjiku (Salon Next Door)",
+        name: "Wanjiku Hair Studio",
         phone: "0711 892 310",
         debt_balance: 450,
         credit_limit: 1500,
-        last_transaction_date: "Yesterday",
-        notes: "Tea & lunch orders for staff"
+        last_transaction_date: eateryToday,
+        due_date: addDaysToIso(eateryToday, 2),
+        items_taken: [
+          { id: "edi_2", item_name: "Ugali, Beef & Sukuma", qty: 2, unit_type: "Plates", unit_price: 150, line_total: 300, date_taken: eateryToday },
+          { id: "edi_3", item_name: "Kibanda Cold Soda 300ml", qty: 3, unit_type: "Bottles", unit_price: 50, line_total: 150, date_taken: eateryToday }
+        ],
+        total_repaid: 0,
+        notes: "Staff lunch orders — clears Friday"
       }
     ];
 

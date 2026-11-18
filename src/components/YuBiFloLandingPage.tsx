@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { 
   Building2, ArrowRight, Check, ChevronDown, Plus, 
   DollarSign, Receipt, Users, Smartphone, RefreshCw, 
@@ -7,11 +7,12 @@ import {
   TrendingUp, Clock, Package, Truck, Layers, Wrench, CheckCircle2,
   FileText, Utensils
 } from "lucide-react";
-import PrdViewerModal from "./PrdViewerModal";
 import LoopingDashboardDemo from "./LoopingDashboardDemo";
 import ProofBand from "./ProofBand";
-import EngineeringLabModal from "./EngineeringLabModal";
-import OnboardingModal from "./OnboardingModal";
+
+const PrdViewerModal = lazy(() => import("./PrdViewerModal"));
+const EngineeringLabModal = lazy(() => import("./EngineeringLabModal"));
+const OnboardingModal = lazy(() => import("./OnboardingModal"));
 import {
   SolutionsMegaMenu,
   BusinessTypesMegaMenu,
@@ -1881,11 +1882,15 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 10B. COMPREHENSIVE PRD VIEWER MODAL                                       */}
       {/* ========================================================================= */}
-      <PrdViewerModal
-        isOpen={isPrdModalOpen}
-        onClose={() => setIsPrdModalOpen(false)}
-        onLaunchWorkspace={handleLaunchWorkspace}
-      />
+      {isPrdModalOpen && (
+        <Suspense fallback={null}>
+          <PrdViewerModal
+            isOpen={isPrdModalOpen}
+            onClose={() => setIsPrdModalOpen(false)}
+            onLaunchWorkspace={handleLaunchWorkspace}
+          />
+        </Suspense>
+      )}
 
       {/* ========================================================================= */}
       {/* 11. WAITLIST MODAL FOR NON-LIVE BUSINESS APPS                             */}
@@ -2115,26 +2120,34 @@ export default function YuBiFloLandingPage({
       {/* ========================================================================= */}
       {/* 13. ENGINEERING LAB MODAL (TECHNICAL SPEC FOR PARTNERS & INVESTORS)       */}
       {/* ========================================================================= */}
-      <EngineeringLabModal
-        isOpen={isEngineeringLabOpen}
-        onClose={() => setIsEngineeringLabOpen(false)}
-        onLaunchWorkspace={handleLaunchWorkspace}
-      />
+      {isEngineeringLabOpen && (
+        <Suspense fallback={null}>
+          <EngineeringLabModal
+            isOpen={isEngineeringLabOpen}
+            onClose={() => setIsEngineeringLabOpen(false)}
+            onLaunchWorkspace={handleLaunchWorkspace}
+          />
+        </Suspense>
+      )}
 
       {/* ========================================================================= */}
       {/* 14. ONBOARDING MODAL (TWO PATHS, ONE DASHBOARD)                           */}
       {/* ========================================================================= */}
-      <OnboardingModal
-        isOpen={isOnboardingOpen}
-        onClose={() => setIsOnboardingOpen(false)}
-        initialPath={onboardingInitialPath}
-        onCompleteOnboarding={(customState) => {
-          if (onCompleteOnboarding) {
-            onCompleteOnboarding(customState);
-          }
-          handleLaunchWorkspace();
-        }}
-      />
+      {isOnboardingOpen && (
+        <Suspense fallback={null}>
+          <OnboardingModal
+            isOpen={isOnboardingOpen}
+            onClose={() => setIsOnboardingOpen(false)}
+            initialPath={onboardingInitialPath}
+            onCompleteOnboarding={(customState) => {
+              if (onCompleteOnboarding) {
+                onCompleteOnboarding(customState);
+              }
+              handleLaunchWorkspace();
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* ========================================================================= */}
       {/* 15. STICKY BOTTOM BAR ON MOBILE (AS MANDATED)                             */}

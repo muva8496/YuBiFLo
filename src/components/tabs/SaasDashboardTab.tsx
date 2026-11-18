@@ -8,6 +8,7 @@ import {
 import { AlacioMasterState, PayoutOrDrawing } from "../../types/alacio";
 import { isEateryBusinessState, resolvePaymentChannels } from "../../services/alacioStorage";
 import { LaunchpadProgress } from "./LaunchpadTab";
+import { getOverdueDebtors, formatDebtItemsSummary } from "../../utils/debtScheduleHelper";
 
 interface SaasDashboardTabProps {
   state: AlacioMasterState;
@@ -134,6 +135,8 @@ export default function SaasDashboardTab({
   const todaySalesTotal = todaySales.reduce((acc, s) => acc + safeNum(s.total_amount, 0, 5_000_000), 0);
 
   const totalDeniOwed = customers.reduce((acc, c) => acc + safeNum(c.debt_balance, 0, 5_000_000), 0);
+  const overdueDebtors = getOverdueDebtors(customers);
+  const totalOverdueDeni = overdueDebtors.reduce((acc, c) => acc + safeNum(c.debt_balance, 0, 5_000_000), 0);
   const totalStockValue = inventory.reduce((acc, i) => {
     const stock = safeNum(i.current_stock, 0, 500_000);
     const retail = safeNum(i.unit_retail, 0, 1_000_000);
@@ -545,6 +548,69 @@ export default function SaasDashboardTab({
           </div>
         );
       })()}
+
+      {/* ========================================================================= */}
+      {/* 1C. PAST-DUE DEBTOR ACCOUNTS (REFLECTS ONLY ONCE PAY-BY DATE PASSES)      */}
+      {/* ========================================================================= */}
+      {overdueDebtors.length > 0 && (
+        <div className="rounded-2xl bg-red-50/95 border-2 border-red-300 p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0">
+                <AlertCircle size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-red-950">
+                  {overdueDebtors.length} Debtor Account{overdueDebtors.length > 1 ? "s" : ""} Past Pay-By Date
+                </h3>
+                <p className="text-xs text-red-800">
+                  Total overdue reflecting today:{" "}
+                  <strong className="font-mono text-red-950">
+                    {currency} {totalOverdueDeni.toLocaleString()}
+                  </strong>
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigateTab("customer_deni")}
+              className="px-4 py-1.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer self-start sm:self-auto"
+            >
+              Collect in Customer Deni &rarr;
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {overdueDebtors.map((od) => {
+              const itemsText = formatDebtItemsSummary(od.items_taken);
+              return (
+                <div
+                  key={od.id}
+                  className="bg-white border border-red-200 rounded-xl p-3 flex items-start justify-between gap-3"
+                >
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-slate-900 text-xs">{od.name}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-mono text-[10px] font-bold">
+                        {od.daysPastDue}d past {od.due_date}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 truncate" title={itemsText || od.notes}>
+                      {itemsText ? `Items: ${itemsText}` : od.notes || "Real debt balance past deadline"}
+                    </p>
+                    <p className="text-[10px] font-mono text-slate-500">{od.phone}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-sm font-black font-mono text-red-700">
+                      {currency} {od.debt_balance.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 2. ROW OF 4 PASTEL ROUNDED ACTION CARDS                                   */}

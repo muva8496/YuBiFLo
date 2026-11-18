@@ -162,6 +162,27 @@ export default function PurchasesTab({
     };
   }, []);
 
+  // Inbound Cargo Entry Mode: "itemized" (minute item-by-item under supplier) vs "whole_batch" (whole filled batch quantity)
+  const [cargoEntryMode, setCargoEntryMode] = useState<"itemized" | "whole_batch">("itemized");
+  const WHOLE_BATCH_UNIT_OPTIONS = [
+    "Whole Filled Batch",
+    "Bulk Lot / Consignment",
+    "Wholesale Sacks / Bags",
+    "Mixed Cartons (Whole)",
+    "Bulk Drums / Containers",
+    "Packages / Parcels",
+    "Pieces / Units"
+  ];
+  const [wholeBatchTitle, setWholeBatchTitle] = useState<string>("");
+  const [wholeBatchCategory, setWholeBatchCategory] = useState<string>(
+    isEateryShell ? "Foodstuff & Viungo" : "General Wholesaler"
+  );
+  const [wholeBatchQuantity, setWholeBatchQuantity] = useState<number>(1);
+  const [wholeBatchUnit, setWholeBatchUnit] = useState<string>("Whole Filled Batch");
+  const [wholeBatchTotalCost, setWholeBatchTotalCost] = useState<number>(0);
+  const [wholeBatchExpectedSellingTotal, setWholeBatchExpectedSellingTotal] = useState<number>(0);
+  const [wholeBatchContentsSummary, setWholeBatchContentsSummary] = useState<string>("");
+
   // Multiple item lines in a lot of goods (Suppliers supply 1 to many goods)
   const [itemLines, setItemLines] = useState<PurchaseItemLine[]>(() =>
     isCleanShell || isEateryShell
@@ -357,12 +378,31 @@ export default function PurchasesTab({
   // Common Supply Unit measurements in Kenya retail & wholesale (Bales, Crates, Outa, Dozen, Litres, Loaves 200g/400g/600g, Kg, etc.)
   const unitOptions = KENYA_SUPPLY_UNIT_OPTIONS;
 
-  // Calculate lot summary
+  // Calculate lot summary (minute itemized vs whole filled batch)
   const totalLotUnits = itemLines.reduce(
     (acc, line) => acc + (Number(line.quantity) || 0) * getSupplyUnitMultiplier(line.unit),
     0
   );
   const totalLotCost = itemLines.reduce((acc, line) => acc + (Number(line.totalCost) || 0), 0);
+
+  const safeWholeBatchQty = Number(wholeBatchQuantity) > 0 ? Number(wholeBatchQuantity) : 0;
+  const safeWholeBatchCost = Number(wholeBatchTotalCost) > 0 ? Number(wholeBatchTotalCost) : 0;
+  const wholeBatchUnitWholesale =
+    safeWholeBatchQty > 0 && safeWholeBatchCost > 0
+      ? Math.round((safeWholeBatchCost / safeWholeBatchQty) * 100) / 100
+      : 0;
+  const wholeBatchUnitRetail =
+    safeWholeBatchQty > 0 && wholeBatchExpectedSellingTotal > 0
+      ? Math.round((Number(wholeBatchExpectedSellingTotal) / safeWholeBatchQty) * 100) / 100
+      : Math.round(wholeBatchUnitWholesale * 1.25 * 100) / 100;
+  const wholeBatchExpectedProfit =
+    Number(wholeBatchExpectedSellingTotal) > 0 && safeWholeBatchCost > 0
+      ? Math.round((Number(wholeBatchExpectedSellingTotal) - safeWholeBatchCost) * 100) / 100
+      : 0;
+  const wholeBatchMarginPct =
+    safeWholeBatchCost > 0 && Number(wholeBatchExpectedSellingTotal) > 0
+      ? Math.round(((Number(wholeBatchExpectedSellingTotal) - safeWholeBatchCost) / safeWholeBatchCost) * 1000) / 10
+      : 0;
 
   // Copy helper
   const handleCopyId = (idNumber: string) => {
@@ -919,6 +959,7 @@ export default function PurchasesTab({
       scannedReceipt.paymentMode === "CASH" ? "CASH" : "NATIONAL_ID_DEPOSIT"
     );
     setItemLines(lines);
+    setCargoEntryMode("itemized");
     setAttachedReceiptUrl(scannedReceiptImage);
     setNotes(scannedReceipt.rawTextNotes || `Scanned receipt ${scannedReceipt.receiptNumber} with ${lines.length} goods`);
     
@@ -932,9 +973,74 @@ export default function PurchasesTab({
     }
   };
 
-  // Submit complete purchase batch
+  // Submit complete purchase batch (supports both Minute Item-by-Item and Whole Filled Batch modes)
   const handleSavePurchase = (e: React.FormEvent) => {
     e.preventDefault();
+    const supplierLabel = selectedSupplierName.trim();
+    if (!supplierLabel) {
+      setSuccessNote("Please select or type the Supplier / Wholesaler name.");
+      setTimeout(() => setSuccessNote(null), 3500);
+      return;
+    }
+
+    if (cargoEntryMode === "whole_batch") {
+      const cleanTitle = wholeBatchTitle.trim();
+      if (!cleanTitle || safeWholeBatchQty <= 0 || safeWholeBatchCost <= 0) {
+        setSuccessNote("Please enter a Whole Batch Title, Batch Quantity, and Total Batch Cost.");
+        setTimeout(() => setSuccessNote(null), 3500);
+        return;
+      }
+
+      const contentsSuffix = wholeBatchContentsSummary.trim()
+        ? ` (${wholeBatchContentsSummary.trim()})`
+        : "";
+      const wholeBatchLine: PurchaseItemLine = {
+        id: `line_whole_${Date.now()}`,
+        itemName: cleanTitle,
+        category: wholeBatchCategory.trim() || currentSupplier?.category || "General Wholesaler",
+        quantity: safeWholeBatchQty,
+        unit: wholeBatchUnit,
+        unitCost: wholeBatchUnitWholesale,
+        retailPrice: wholeBatchUnitRetail,
+        totalCost: safeWholeBatchCost
+      };
+
+      const wholeSummary = `Whole Filled Batch: ${safeWholeBatchQty} ${wholeBatchUnit} — ${cleanTitle}${contentsSuffix}`;
+
+      if (onLogPurchase) {
+        onLogPurchase({
+          receiptNumber: deliveryNoteNumber,
+          supplier: supplierLabel,
+          supplierPhone: currentSupplier.phone,
+          supplierNationalId: currentSupplier.national_id,
+          items: wholeSummary,
+          itemLines: [wholeBatchLine],
+          amount: safeWholeBatchCost,
+          payment_channel: paymentChannel,
+          date: purchaseDate,
+          notes:
+            notes.trim() ||
+            `Whole Filled Batch (${deliveryNoteNumber}): ${safeWholeBatchQty} ${wholeBatchUnit} of ${cleanTitle}${contentsSuffix}`,
+          receiptImageUrl: attachedReceiptUrl || undefined
+        });
+      }
+
+      setSuccessNote(
+        `Saved Whole Filled Batch "${cleanTitle}" (${safeWholeBatchQty} ${wholeBatchUnit} • ${currency} ${safeWholeBatchCost.toLocaleString()}) from ${supplierLabel}!`
+      );
+      setWholeBatchTitle("");
+      setWholeBatchQuantity(1);
+      setWholeBatchTotalCost(0);
+      setWholeBatchExpectedSellingTotal(0);
+      setWholeBatchContentsSummary("");
+      setDeliveryNoteNumber(`DN-${Math.floor(1000 + Math.random() * 9000)}`);
+      setIsAddingPurchase(false);
+      setAttachedReceiptUrl(null);
+      setNotes("");
+      setTimeout(() => setSuccessNote(null), 5000);
+      return;
+    }
+
     if (itemLines.length === 0 || totalLotCost <= 0) {
       setSuccessNote("Please add goods with valid quantities and costs.");
       setTimeout(() => setSuccessNote(null), 3000);
@@ -947,7 +1053,8 @@ export default function PurchasesTab({
 
     if (onLogPurchase) {
       onLogPurchase({
-        supplier: selectedSupplierName,
+        receiptNumber: deliveryNoteNumber,
+        supplier: supplierLabel,
         supplierPhone: currentSupplier.phone,
         supplierNationalId: currentSupplier.national_id,
         items: itemsSummary,
@@ -961,8 +1068,9 @@ export default function PurchasesTab({
     }
 
     setSuccessNote(
-      `Saved purchase of ${itemLines.length} goods (${currency} ${totalLotCost.toLocaleString()}) from ${selectedSupplierName}!`
+      `Saved purchase of ${itemLines.length} goods (${currency} ${totalLotCost.toLocaleString()}) from ${supplierLabel}!`
     );
+    setDeliveryNoteNumber(`DN-${Math.floor(1000 + Math.random() * 9000)}`);
     setIsAddingPurchase(false);
     setAttachedReceiptUrl(null);
     setNotes("");
@@ -2603,31 +2711,56 @@ export default function PurchasesTab({
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base font-serif font-bold text-slate-900 flex items-center gap-2">
-                <Layers className="text-blue-600" size={18} /> Record Inbound Cargo Batch (Lot of Goods)
+                <Layers className="text-blue-600" size={18} /> Record Inbound Cargo Batch
               </h2>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold uppercase">
-                {itemLines.length} Goods in Lot
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase ${
+                cargoEntryMode === "whole_batch"
+                  ? "bg-amber-100 text-amber-900 border border-amber-200"
+                  : "bg-slate-100 text-slate-700"
+              }`}>
+                {cargoEntryMode === "whole_batch"
+                  ? `Whole Filled • ${wholeBatchQuantity || 1} ${wholeBatchUnit}`
+                  : `${itemLines.length} Minute Goods`}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Enter all goods supplied in this shipment. Each good increments your shelf stock and locks in wholesale unit costs.
+              Choose between minute item-by-item breakdown under a supplier or a single whole filled batch quantity.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {!isAddingPurchase ? (
-              <button
-                onClick={() => setIsAddingPurchase(true)}
-                className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition cursor-pointer"
-              >
-                Expand Lot Builder
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCargoEntryMode("itemized");
+                    setIsAddingPurchase(true);
+                  }}
+                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Layers size={13} />
+                  <span>Minute Item-by-Item</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCargoEntryMode("whole_batch");
+                    setIsAddingPurchase(true);
+                  }}
+                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Package size={13} />
+                  <span>Whole Filled Batch</span>
+                </button>
+              </>
             ) : (
               <button
+                type="button"
                 onClick={() => setIsAddingPurchase(false)}
-                className="text-xs text-slate-400 hover:text-slate-700 p-1"
+                className="text-xs text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
               >
                 ✕ Minimize
               </button>
@@ -2886,6 +3019,293 @@ export default function PurchasesTab({
 
             </div>
 
+            {/* INBOUND CARGO MODE SWITCHER: OPTION 1 (MINUTE ITEM-BY-ITEM) VS OPTION 2 (WHOLE FILLED BATCH) */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap px-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Inbound Cargo Entry Mode
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  Select how {selectedSupplierName || "this wholesaler"} delivered this shipment
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setCargoEntryMode("itemized")}
+                  className={`text-left p-3.5 rounded-xl border-2 transition cursor-pointer flex items-start gap-3 ${
+                    cargoEntryMode === "itemized"
+                      ? "bg-white border-blue-600 shadow-xs ring-2 ring-blue-500/10"
+                      : "bg-white/60 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                    cargoEntryMode === "itemized" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
+                  }`}>
+                    <Layers size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-slate-900">
+                        1. Existing · Minute Item-by-Item
+                      </span>
+                      {cargoEntryMode === "itemized" && (
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 uppercase">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                      Break down every minute item under the supplier with supply units, unit wholesale &amp; selling prices.
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCargoEntryMode("whole_batch")}
+                  className={`text-left p-3.5 rounded-xl border-2 transition cursor-pointer flex items-start gap-3 ${
+                    cargoEntryMode === "whole_batch"
+                      ? "bg-white border-amber-500 shadow-xs ring-2 ring-amber-500/15"
+                      : "bg-white/60 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                    cargoEntryMode === "whole_batch" ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-500"
+                  }`}>
+                    <Package size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-slate-900">
+                        2. Whole Filled · Batch Quantity
+                      </span>
+                      {cargoEntryMode === "whole_batch" && (
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 uppercase">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                      Record a wholesaler&apos;s whole filled batch or lump quantity in one entry without breaking down minute items.
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {cargoEntryMode === "whole_batch" ? (
+              <div className="space-y-4 animate-in fade-in">
+                <div className="bg-amber-50/60 border border-amber-200 rounded-2xl p-4 sm:p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/70 pb-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <Package size={16} className="text-amber-600" />
+                        Whole Filled Batch Entry
+                      </h3>
+                      <p className="text-[11px] text-slate-600 mt-0.5">
+                        Enter the whole batch quantity and lump wholesale cost supplied by {selectedSupplierName || "this wholesaler"}.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-white border border-amber-300 text-amber-900 self-start sm:self-auto">
+                      Single Batch Lot
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
+                    <div className="md:col-span-2">
+                      <label className="text-slate-700 font-semibold block mb-1">
+                        Whole Batch / Cargo Title *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={wholeBatchTitle}
+                        onChange={(e) => setWholeBatchTitle(e.target.value)}
+                        placeholder="e.g. Assorted Wholesaler Batch, Mixed Produce Lot, Full Hardware Crate"
+                        className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-amber-500"
+                        list="inventory-suggestions"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-slate-700 font-semibold block mb-1">
+                        Category
+                      </label>
+                      <input
+                        type="text"
+                        value={wholeBatchCategory}
+                        onChange={(e) => setWholeBatchCategory(e.target.value)}
+                        placeholder="e.g. General Wholesaler"
+                        className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs font-medium text-slate-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
+                    <div>
+                      <label className="text-slate-700 font-semibold block mb-1">
+                        Batch Quantity *
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        min={0.01}
+                        required
+                        value={wholeBatchQuantity === 0 ? "" : wholeBatchQuantity}
+                        onChange={(e) =>
+                          setWholeBatchQuantity(e.target.value === "" ? 0 : parseFloat(e.target.value))
+                        }
+                        placeholder="e.g. 1 or 10"
+                        className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs font-mono font-bold text-slate-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-slate-700 font-semibold block mb-1">
+                        Batch Pack / Lot Unit
+                      </label>
+                      <select
+                        value={wholeBatchUnit}
+                        onChange={(e) => setWholeBatchUnit(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs font-semibold text-slate-800 cursor-pointer"
+                      >
+                        {WHOLE_BATCH_UNIT_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-slate-700 font-semibold block mb-1">
+                        Total Whole Batch Cost ({currency}) *
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        min={1}
+                        required
+                        value={wholeBatchTotalCost === 0 ? "" : wholeBatchTotalCost}
+                        onChange={(e) =>
+                          setWholeBatchTotalCost(e.target.value === "" ? 0 : parseFloat(e.target.value))
+                        }
+                        placeholder="0.00"
+                        className="w-full bg-white border-2 border-amber-400 rounded-xl p-2.5 text-xs font-mono font-bold text-amber-950 text-right focus:outline-amber-600"
+                      />
+                      {safeWholeBatchQty > 0 && safeWholeBatchCost > 0 && (
+                        <span className="block text-[10px] font-mono text-amber-800 font-semibold mt-1 text-right">
+                          {currency} {wholeBatchUnitWholesale.toLocaleString()} per {wholeBatchUnit}
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1 gap-1">
+                        <label className="text-emerald-800 font-bold text-xs">
+                          Expected Selling Total ({currency})
+                        </label>
+                        {safeWholeBatchCost > 0 && (
+                          <div className="flex items-center gap-1">
+                            {[20, 25, 30].map((pct) => (
+                              <button
+                                key={pct}
+                                type="button"
+                                onClick={() =>
+                                  setWholeBatchExpectedSellingTotal(
+                                    Math.round(safeWholeBatchCost * (1 + pct / 100))
+                                  )
+                                }
+                                className="text-[9px] bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-mono font-bold px-1.5 py-0.5 rounded cursor-pointer"
+                              >
+                                +{pct}%
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        step="any"
+                        min={0}
+                        value={wholeBatchExpectedSellingTotal === 0 ? "" : wholeBatchExpectedSellingTotal}
+                        onChange={(e) =>
+                          setWholeBatchExpectedSellingTotal(
+                            e.target.value === "" ? 0 : parseFloat(e.target.value)
+                          )
+                        }
+                        placeholder="Optional retail target"
+                        className="w-full bg-emerald-50/70 border border-emerald-300 rounded-xl p-2.5 text-xs font-mono font-bold text-emerald-950 text-right focus:outline-emerald-600"
+                      />
+                      {wholeBatchExpectedSellingTotal > 0 && safeWholeBatchCost > 0 && (
+                        <span
+                          className={`block text-[10px] font-mono font-bold mt-1 text-right ${
+                            wholeBatchExpectedProfit >= 0 ? "text-emerald-700" : "text-rose-700"
+                          }`}
+                        >
+                          Est. Profit: {wholeBatchExpectedProfit >= 0 ? "+" : ""}
+                          {currency} {wholeBatchExpectedProfit.toLocaleString()} ({wholeBatchMarginPct}%)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-700 font-semibold block mb-1 text-xs">
+                      Goods Summary inside Whole Batch (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={wholeBatchContentsSummary}
+                      onChange={(e) => setWholeBatchContentsSummary(e.target.value)}
+                      placeholder="Optional rough contents e.g. assorted plastics, basins, buckets & brooms packed in 1 filled lot"
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                {/* WHOLE FILLED BATCH SUMMARY BAR */}
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-slate-900 text-sm">
+                        Whole Filled Batch for {selectedSupplierName || "Wholesaler"}:
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-600 text-white text-[10px] font-bold font-mono">
+                        {safeWholeBatchQty} {wholeBatchUnit}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-slate-600 font-mono text-[11px] flex-wrap">
+                      <span>
+                        Cost / Unit Lot:{" "}
+                        <strong className="text-slate-900">
+                          {currency} {wholeBatchUnitWholesale.toLocaleString()}
+                        </strong>
+                      </span>
+                      {wholeBatchExpectedSellingTotal > 0 && (
+                        <span>
+                          Expected Yield:{" "}
+                          <strong className="text-emerald-700">
+                            {currency} {Number(wholeBatchExpectedSellingTotal).toLocaleString()} ({wholeBatchMarginPct}%)
+                          </strong>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs uppercase font-bold text-amber-900 font-mono">
+                      Total Batch Cost:
+                    </span>
+                    <span className="text-2xl font-serif font-black text-slate-950 bg-white px-3.5 py-1.5 rounded-xl border border-amber-300 shadow-2xs font-mono">
+                      {currency} {safeWholeBatchCost.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+            <>
             {/* GOODS SUPPLIED BY THIS DISTRIBUTOR (SUPPLIERS SUPPLY FROM 1 TO MANY ITEMS) */}
             <div className="bg-blue-50/70 border border-blue-200/90 rounded-2xl p-3.5 space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -3425,6 +3845,8 @@ export default function PurchasesTab({
               </div>
 
             </div>
+            </>
+            )}
 
             {/* NOTES & SUBMISSION */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center pt-2 border-t border-slate-100">

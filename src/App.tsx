@@ -23,7 +23,8 @@ import {
   SavedReceiptRecord,
   SupplierBatchCard,
   BatchTurnoverItem,
-  PaymentChannelConfig
+  PaymentChannelConfig,
+  DebtLineItem
 } from "./types/alacio";
 import { 
   loadAlacioState, 
@@ -68,12 +69,15 @@ import {
 } from "./utils/chronologicalReceiptSalesEngine";
 import type { VoiceTransactionPayload } from "./components/VoiceLedger";
 import { reconcileOrRegisterSupplier, reconcileOrRegisterCustomer } from "./utils/partyNameFuzzyMatcher";
+import { addDaysToIso, getLocalTodayIso, getOverdueDebtors } from "./utils/debtScheduleHelper";
 
-// Immediate Critical Path Modules (Header, Dashboard & Auth)
-import SaasAppShell from "./components/SaasAppShell";
-import SaasDashboardTab from "./components/tabs/SaasDashboardTab";
+// Immediate Critical Path Modules (Landing Page)
 import YuBiFloLandingPage from "./components/YuBiFloLandingPage";
-import UnifiedAuthModal from "./components/UnifiedAuthModal";
+
+// Lazy-Loaded Workspace Shell, Dashboard & Auth Modal (never parsed on landing page)
+const SaasAppShell = lazy(() => import("./components/SaasAppShell"));
+const SaasDashboardTab = lazy(() => import("./components/tabs/SaasDashboardTab"));
+const UnifiedAuthModal = lazy(() => import("./components/UnifiedAuthModal"));
 
 // Lazy-Loaded Tabs & Heavy Modals for Instant Bundle Execution (<300ms)
 const LaunchpadTab = lazy(() => import("./components/tabs/LaunchpadTab"));
@@ -168,44 +172,50 @@ function TabLoadingSkeleton() {
 }
 
 export default function App() {
-  // Session State (90-day sliding session)
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    const session = getValidSession();
-    return session ? session.user : null;
-  });
+  // Session State (90-day sliding session) — read once on mount
+  const initialSessionRef = useRef<ReturnType<typeof getValidSession> | undefined>(undefined);
+  if (initialSessionRef.current === undefined) {
+    initialSessionRef.current = getValidSession();
+  }
+  const initialSession = initialSessionRef.current;
+
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() =>
+    initialSession ? initialSession.user : null
+  );
 
   // Main View Router: returning user with session opens straight to workspace
-  const [currentView, setCurrentView] = useState<"landing" | "workspace" | "developing" | "yubiflo_command">(() => {
-    const session = getValidSession();
-    return session ? "workspace" : "landing";
-  });
+  const [currentView, setCurrentView] = useState<"landing" | "workspace" | "developing" | "yubiflo_command">(() =>
+    initialSession ? "workspace" : "landing"
+  );
 
   const [activeDevelopingBlueprint, setActiveDevelopingBlueprint] = useState<Blueprint | null>(null);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [preselectedSupplier, setPreselectedSupplier] = useState<string | undefined>(undefined);
 
-  // MULTI-ACCOUNT MANAGEMENT UNDER SAME GMAIL
+  // MULTI-ACCOUNT MANAGEMENT UNDER SAME GMAIL (deferred until signed in)
   const [accounts, setAccounts] = useState<UserAccount[]>(() => {
-    const session = getValidSession();
-    const email = session?.user?.email || "mosesmukangai75@gmail.com";
-    return getUserAccounts(email);
+    if (!initialSession?.user?.email) return [];
+    return getUserAccounts(initialSession.user.email);
   });
   const [activeAccountId, setActiveAccountIdState] = useState<string>(() => {
-    const session = getValidSession();
-    const email = session?.user?.email || "mosesmukangai75@gmail.com";
-    return getActiveAccountId(email);
+    if (!initialSession?.user?.email) return "";
+    return getActiveAccountId(initialSession.user.email);
   });
 
-  // DUKA & EATERY INTERACTIVE SANDBOX ISOLATION (NO SIGN-IN REQUIRED)
+  // DUKA & EATERY INTERACTIVE SANDBOX ISOLATION (NO SIGN-IN REQUIRED, hydrated on entry)
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
   const [demoPreset, setDemoPreset] = useState<DemoPreset>(() => getActiveDemoPreset());
   const [demoOriginView, setDemoOriginView] = useState<"landing" | "workspace">("landing");
-  const [demoState, setDemoState] = useState<AlacioMasterState>(() => loadDemoSandboxState(getActiveDemoPreset()));
+  const [demoState, setDemoState] = useState<AlacioMasterState>(() =>
+    createSkeletonBusinessState("Duka Space", "Retail / Duka")
+  );
 
-  // REAL WORKSPACE STATE (Account-scoped with zero-data-loss fallback)
+  // REAL WORKSPACE STATE (Account-scoped; skip heavy reconciliation on public landing boot)
   const [alacioState, setAlacioState] = useState<AlacioMasterState>(() => {
-    const session = getValidSession();
-    const email = session?.user?.email || "mosesmukangai75@gmail.com";
+    if (!initialSession?.user?.email) {
+      return createSkeletonBusinessState("YuBiFLo", "Retail / Duka");
+    }
+    const email = initialSession.user.email;
     const initialAccId = getActiveAccountId(email);
     return loadAlacioState(email, initialAccId);
   });
@@ -662,14 +672,31 @@ export default function App() {
       let updatedCustomers = [...prev.customers];
       let canonicalCustomer = payload.customer;
       if (payload.debtAmount > 0) {
+        const todayIso = getLocalTodayIso();
+        const creditItems: DebtLineItem[] = (payload.items || []).map((it, idx) => {
+          const qty = Number(it.qty) || 1;
+          const subtotal = Number(it.subtotal) || 0;
+          const derivedUnitPrice = qty > 0 ? Math.round((subtotal / qty) * 100) / 100 : 0;
+          return {
+            id: `vcr_debt_${Date.now()}_${idx}`,
+            item_name: it.name,
+            qty,
+            unit_type: it.unit || "pcs",
+            unit_price: derivedUnitPrice,
+            line_total: Math.round(subtotal * 100) / 100,
+            date_taken: todayIso
+          };
+        });
         const reconciled = reconcileOrRegisterCustomer(
           payload.customer,
           updatedCustomers,
           {
             debtDelta: payload.debtAmount,
             phone: "07XX XXX XXX",
-            date: "Just now",
-            notes: "Recorded via Voice Simulator / VCR"
+            date: todayIso,
+            dueDate: addDaysToIso(todayIso, 7),
+            itemsTaken: creditItems,
+            notes: "Recorded via Voice Ledger"
           }
         );
         updatedCustomers = reconciled.updatedCustomers;
@@ -846,6 +873,8 @@ export default function App() {
     national_id?: string;
     credit_limit: number;
     initial_debt: number;
+    due_date?: string;
+    items_taken?: DebtLineItem[];
     notes: string;
     date?: string;
   }) => {
@@ -856,7 +885,11 @@ export default function App() {
         {
           debtDelta: newDebtor.initial_debt,
           phone: newDebtor.phone,
-          date: newDebtor.date || "Today",
+          nationalId: newDebtor.national_id,
+          creditLimit: newDebtor.credit_limit,
+          date: newDebtor.date || getLocalTodayIso(),
+          dueDate: newDebtor.due_date,
+          itemsTaken: newDebtor.items_taken,
           notes: newDebtor.notes
         }
       );
@@ -1700,7 +1733,7 @@ export default function App() {
     return (
       <>
         <YuBiFloLandingPage
-          state={alacioState}
+          state={currentUser ? alacioState : undefined}
           isLoggedIn={!!currentUser}
           onOpenAuth={(mode) => {
             setAuthModalMode(mode);
@@ -1745,12 +1778,16 @@ export default function App() {
           }}
         />
 
-        <UnifiedAuthModal
-          isOpen={isAuthModalOpen}
-          initialMode={authModalMode}
-          onClose={() => setIsAuthModalOpen(false)}
-          onSuccess={handleAuthSuccess}
-        />
+        {isAuthModalOpen && (
+          <Suspense fallback={null}>
+            <UnifiedAuthModal
+              isOpen={isAuthModalOpen}
+              initialMode={authModalMode}
+              onClose={() => setIsAuthModalOpen(false)}
+              onSuccess={handleAuthSuccess}
+            />
+          </Suspense>
+        )}
       </>
     );
   }
@@ -1812,6 +1849,7 @@ export default function App() {
   // -------------------------------------------------------------
   return (
     <>
+      <Suspense fallback={<TabLoadingSkeleton />}>
       <SaasAppShell
         user={currentUser}
         accounts={isDemoMode && !currentUser ? [] : accounts}
@@ -1846,6 +1884,8 @@ export default function App() {
         onOpenQuickDeni={() => setActiveTab("customer_deni")}
         onResetToSkeleton={handleResetToSkeleton}
         onOpenDataVault={() => setIsDataVaultOpen(true)}
+        overdueDebtors={getOverdueDebtors(currentMasterState.customers)}
+        currency={currentMasterState.currency}
         onOpenSettings={() => {}}
         onSignOut={() => {
           signOut();
@@ -2023,28 +2063,16 @@ export default function App() {
           />
         )}
 
-        {/* TAB 8: CUSTOMERS */}
-        {activeTab === "customers" && (
+        {/* TAB 8 & 9: CUSTOMER DENI // DEBTOR ACCOUNTS */}
+        {(activeTab === "customers" || activeTab === "customer_deni") && (
           <CustomersCreditTab
             currency={currentMasterState.currency}
             customers={currentMasterState.customers}
+            inventory={currentMasterState.inventory}
             onRepayDebt={handleRepayDebt}
             onAddDebtor={handleAddDebtor}
             onEditCustomer={handleEditCustomer}
             onDeleteCustomer={handleDeleteCustomer}
-          />
-        )}
-
-        {/* TAB 9: CUSTOMER DENI */}
-        {activeTab === "customer_deni" && (
-          <CustomersCreditTab
-            currency={currentMasterState.currency}
-            customers={currentMasterState.customers}
-            onRepayDebt={handleRepayDebt}
-            onAddDebtor={handleAddDebtor}
-            onEditCustomer={handleEditCustomer}
-            onDeleteCustomer={handleDeleteCustomer}
-            initialFilter="has_debt"
           />
         )}
 
@@ -2064,14 +2092,19 @@ export default function App() {
         )}
         </Suspense>
       </SaasAppShell>
+      </Suspense>
 
       {/* COMBINED INSTAGRAM-STYLE SIGN IN / SIGN UP MODAL */}
-      <UnifiedAuthModal
-        isOpen={isAuthModalOpen}
-        initialMode={authModalMode}
-        onClose={() => setIsAuthModalOpen(false)}
-        onSuccess={handleAuthSuccess}
-      />
+      {isAuthModalOpen && (
+        <Suspense fallback={null}>
+          <UnifiedAuthModal
+            isOpen={isAuthModalOpen}
+            initialMode={authModalMode}
+            onClose={() => setIsAuthModalOpen(false)}
+            onSuccess={handleAuthSuccess}
+          />
+        </Suspense>
+      )}
 
       {/* RESTOCK MODAL */}
       {isRestockOpen && selectedRestockItem && (

@@ -1,5 +1,16 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db, handleFirestoreError, OperationType } from "./firebase";
+let firestoreModulesPromise: Promise<
+  [typeof import("./firebase"), typeof import("firebase/firestore")]
+> | null = null;
+
+function loadFirestoreModules() {
+  if (!firestoreModulesPromise) {
+    firestoreModulesPromise = Promise.all([
+      import("./firebase"),
+      import("firebase/firestore")
+    ]);
+  }
+  return firestoreModulesPromise;
+}
 import {
   encryptClientData,
   decryptClientDataWithFallbacks,
@@ -359,6 +370,7 @@ export async function saveAccountDirectoryToCloud(
       getPortableEncryptionSecret(cleanEmail)
     );
 
+    const [{ db }, { doc, setDoc }] = await loadFirestoreModules();
     const ref = doc(db, "workspaces", docId);
     await setDoc(ref, {
       id: docId,
@@ -369,7 +381,10 @@ export async function saveAccountDirectoryToCloud(
       last_updated: vaultPayload.updatedAt,
     });
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `workspaces/${docId}`);
+    try {
+      const [{ handleFirestoreError, OperationType }] = await loadFirestoreModules();
+      handleFirestoreError(err, OperationType.WRITE, `workspaces/${docId}`);
+    } catch {}
   }
 }
 
@@ -391,6 +406,7 @@ export async function syncAccountDirectoryFromCloud(
   const docId = getDirectoryDocId(cleanEmail);
 
   try {
+    const [{ db }, { doc, getDoc }] = await loadFirestoreModules();
     const ref = doc(db, "workspaces", docId);
     const snap = await getDoc(ref);
 
@@ -465,7 +481,10 @@ export async function syncAccountDirectoryFromCloud(
       saveAccountDirectoryToCloud(cleanEmail, localAccounts, localActiveId, localLaunchpad).catch(() => {});
     }
   } catch (err) {
-    handleFirestoreError(err, OperationType.GET, `workspaces/${docId}`);
+    try {
+      const [{ handleFirestoreError, OperationType }] = await loadFirestoreModules();
+      handleFirestoreError(err, OperationType.GET, `workspaces/${docId}`);
+    } catch {}
   }
 
   return {

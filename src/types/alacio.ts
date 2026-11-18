@@ -18,6 +18,16 @@ export interface InventoryItem {
   [key: string]: any;
 }
 
+export interface DebtLineItem {
+  id: string;
+  item_name: string;
+  qty: number;
+  unit_type?: string;
+  unit_price: number;
+  line_total: number;
+  date_taken?: string;
+}
+
 export interface CustomerDebtor {
   id: string;
   name: string;
@@ -26,6 +36,9 @@ export interface CustomerDebtor {
   debt_balance: number;
   credit_limit: number;
   last_transaction_date: string;
+  due_date?: string; // Hard YYYY-MM-DD deadline ("date it should not go past")
+  items_taken?: DebtLineItem[]; // Real items/stuff taken on debt with qty & unit price
+  total_repaid?: number;
   notes?: string;
 }
 

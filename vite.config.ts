@@ -17,16 +17,32 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      warmup: {
+        clientFiles: [
+          './src/main.tsx',
+          './src/App.tsx',
+          './src/components/YuBiFloLandingPage.tsx',
+          './src/components/LoopingDashboardDemo.tsx',
+        ],
+      },
     },
     build: {
       chunkSizeWarningLimit: 1200,
       rollupOptions: {
         output: {
           manualChunks(id) {
-            if (id.includes('node_modules/recharts')) {
+            if (
+              id.includes('node_modules/react/') ||
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/scheduler/') ||
+              id.includes('node_modules/react-is/')
+            ) {
+              return 'vendor-react';
+            }
+            if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) {
               return 'vendor-recharts';
             }
-            if (id.includes('node_modules/firebase')) {
+            if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) {
               return 'vendor-firebase';
             }
             if (id.includes('node_modules/lucide-react')) {

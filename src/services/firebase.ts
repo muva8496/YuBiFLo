@@ -67,7 +67,7 @@ export function handleFirestoreError(
   return errInfo;
 }
 
-// Startup connection verification
+// Startup connection verification (call on demand when workspace sync connects)
 export async function testConnection() {
   try {
     await getDocFromServer(doc(db, "test", "connection"));
@@ -77,6 +77,3 @@ export async function testConnection() {
     }
   }
 }
-
-// Auto-run test connection
-testConnection();

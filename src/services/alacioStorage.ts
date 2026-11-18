@@ -18,8 +18,21 @@ import { deduplicateMorningBookends } from "../utils/morningBookendHelper";
 import { deduplicateSuppliers } from "../utils/supplierHelper";
 import { reconcileChronologicalReceiptsAndSales } from "../utils/chronologicalReceiptSalesEngine";
 import { getSupplyUnitMultiplier } from "./bulkConversionEngine";
-import { db, handleFirestoreError, OperationType } from "./firebase";
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { getLocalTodayIso, addDaysToIso } from "../utils/debtScheduleHelper";
+
+let firestoreModulesPromise: Promise<
+  [typeof import("./firebase"), typeof import("firebase/firestore")]
+> | null = null;
+
+function loadFirestoreModules() {
+  if (!firestoreModulesPromise) {
+    firestoreModulesPromise = Promise.all([
+      import("./firebase"),
+      import("firebase/firestore")
+    ]);
+  }
+  return firestoreModulesPromise;
+}
 import {
   encryptClientData,
   decryptClientDataWithFallbacks,
@@ -449,10 +462,56 @@ export const INITIAL_INVENTORY_43: InventoryItem[] = [
   { id: 43, name: "Kasuku Exercise Books 120pgs", category: "Stationery", unit_type: "books", unit_cost: 65, unit_retail: 85, current_stock: 20, opening_stock: 20, expected_margin: 20, total_shelf_value: 1700, velocity_badge: "Medium" }
 ];
 
+const _demoTodayIso = getLocalTodayIso();
+
 export const INITIAL_CUSTOMERS: CustomerDebtor[] = [
-  { id: "cust_1", name: "Mama Boi", phone: "0712 345 678", national_id: "24891044", debt_balance: 450, credit_limit: 1000, last_transaction_date: "Yesterday", notes: "Regular morning customer • Verified ID for OTC deposits • 2 pkts milk + bread on credit" },
-  { id: "cust_2", name: "Baba Junior", phone: "0723 456 789", national_id: "29440182", debt_balance: 280, credit_limit: 800, last_transaction_date: "Today", notes: "Clears balance weekly via Equity Agent • Cooking oil on account" },
-  { id: "cust_3", name: "Mama Stacy", phone: "0734 567 890", national_id: "31802941", debt_balance: 620, credit_limit: 1500, last_transaction_date: "2 days ago", notes: "Grocery credit account • Prompt payer on Friday" }
+  {
+    id: "cust_1",
+    name: "Samuel Kamau",
+    phone: "0712 345 678",
+    national_id: "24891044",
+    debt_balance: 450,
+    credit_limit: 1000,
+    last_transaction_date: addDaysToIso(_demoTodayIso, -5),
+    due_date: addDaysToIso(_demoTodayIso, -2),
+    items_taken: [
+      { id: "di_1", item_name: "Pembe Maize Flour 2kg", qty: 2, unit_type: "pkts", unit_price: 160, line_total: 320, date_taken: addDaysToIso(_demoTodayIso, -5) },
+      { id: "di_2", item_name: "Brookside Fresh Milk 500ml", qty: 2, unit_type: "pkts", unit_price: 65, line_total: 130, date_taken: addDaysToIso(_demoTodayIso, -5) }
+    ],
+    total_repaid: 0,
+    notes: "Promised settlement after 3 days"
+  },
+  {
+    id: "cust_2",
+    name: "Grace Wambui",
+    phone: "0723 456 789",
+    national_id: "29440182",
+    debt_balance: 340,
+    credit_limit: 800,
+    last_transaction_date: _demoTodayIso,
+    due_date: addDaysToIso(_demoTodayIso, 3),
+    items_taken: [
+      { id: "di_3", item_name: "Elianto Cooking Oil 1L", qty: 1, unit_type: "bottle", unit_price: 340, line_total: 340, date_taken: _demoTodayIso }
+    ],
+    total_repaid: 0,
+    notes: "Clears via M-Pesa on Friday"
+  },
+  {
+    id: "cust_3",
+    name: "Peter Ochieng",
+    phone: "0734 567 890",
+    national_id: "31802941",
+    debt_balance: 620,
+    credit_limit: 1500,
+    last_transaction_date: addDaysToIso(_demoTodayIso, -1),
+    due_date: addDaysToIso(_demoTodayIso, 5),
+    items_taken: [
+      { id: "di_4", item_name: "Kabras Sugar 2kg", qty: 1, unit_type: "pkt", unit_price: 320, line_total: 320, date_taken: addDaysToIso(_demoTodayIso, -1) },
+      { id: "di_5", item_name: "Ketepa Tea Leaves 250g", qty: 2, unit_type: "pkts", unit_price: 150, line_total: 300, date_taken: addDaysToIso(_demoTodayIso, -1) }
+    ],
+    total_repaid: 0,
+    notes: "Weekly grocery account"
+  }
 ];
 
 export const INITIAL_SUPPLIERS: SupplierProfile[] = [
@@ -2006,6 +2065,7 @@ export async function flushWorkspaceToCloudNow(
   const recordScore = computeStateRichnessScore(stateToPersist);
 
   try {
+    const [{ db, handleFirestoreError, OperationType }, { doc, getDoc, setDoc }] = await loadFirestoreModules();
     const workspaceRef = doc(db, "workspaces", docId);
 
     // Protect existing richer cloud records if local is an empty skeleton
@@ -2046,7 +2106,10 @@ export async function flushWorkspaceToCloudNow(
     await setDoc(workspaceRef, cloudDoc);
     return true;
   } catch (cloudErr) {
-    handleFirestoreError(cloudErr, OperationType.WRITE, `workspaces/${docId}`);
+    try {
+      const [{ handleFirestoreError, OperationType }] = await loadFirestoreModules();
+      handleFirestoreError(cloudErr, OperationType.WRITE, `workspaces/${docId}`);
+    } catch {}
     return false;
   }
 }
@@ -2146,6 +2209,7 @@ export async function syncWorkspaceWithCloud(
   let bestCloud: { state: AlacioMasterState; score: number; time: number; docId: string; wasEncrypted: boolean } | null = null;
 
   try {
+    const [{ db, handleFirestoreError, OperationType }, { doc, getDoc }] = await loadFirestoreModules();
     const snapshots = await Promise.all(
       candidateDocIds.map(async (id) => {
         try {
@@ -2248,42 +2312,55 @@ export function subscribeToWorkspaceCloud(
   const docId = sanitizeWorkspaceDocId(cleanEmail, activeAccId);
   const path = `workspaces/${docId}`;
 
-  return onSnapshot(
-    doc(db, "workspaces", docId),
-    async (snap) => {
-      if (!snap.exists()) return;
-      const data = snap.data();
-      const remoteUpdated = String(data?.last_updated || "");
-      if (remoteUpdated && recentlyWrittenTimestamps.get(docId) === remoteUpdated) {
-        return; // Ignore our own local flush echo
-      }
+  let unsub: (() => void) | null = null;
+  let disposed = false;
 
-      const decoded = await decodeWorkspaceDocData(data, cleanEmail, activeAccId);
-      if (!decoded) return;
+  loadFirestoreModules()
+    .then(([{ db, handleFirestoreError, OperationType }, { doc, onSnapshot }]) => {
+      if (disposed) return;
+      unsub = onSnapshot(
+        doc(db, "workspaces", docId),
+        async (snap) => {
+          if (disposed || !snap.exists()) return;
+          const data = snap.data();
+          const remoteUpdated = String(data?.last_updated || "");
+          if (remoteUpdated && recentlyWrittenTimestamps.get(docId) === remoteUpdated) {
+            return; // Ignore our own local flush echo
+          }
 
-      const remoteScore = computeStateRichnessScore(decoded.state);
-      const localReal = hasRealLocalSavedState(cleanEmail, activeAccId)
-        ? loadAlacioState(cleanEmail, activeAccId)
-        : null;
-      const localScore = localReal ? computeStateRichnessScore(localReal) : 0;
-      const localTime = localReal
-        ? Date.parse(localReal.last_persisted_at || localReal.last_updated || "0") || 0
-        : 0;
-      const remoteTime = Date.parse(decoded.state.last_persisted_at || decoded.state.last_updated || "0") || 0;
+          const decoded = await decodeWorkspaceDocData(data, cleanEmail, activeAccId);
+          if (!decoded || disposed) return;
 
-      if (
-        !localReal ||
-        remoteScore > localScore ||
-        (remoteScore === localScore && remoteTime > localTime + 3000)
-      ) {
-        persistStateLocallyOnly(decoded.state, cleanEmail, activeAccId);
-        onRemoteState(decoded.state);
-      }
-    },
-    (error) => {
-      handleFirestoreError(error, OperationType.GET, path);
-    }
-  );
+          const remoteScore = computeStateRichnessScore(decoded.state);
+          const localReal = hasRealLocalSavedState(cleanEmail, activeAccId)
+            ? loadAlacioState(cleanEmail, activeAccId)
+            : null;
+          const localScore = localReal ? computeStateRichnessScore(localReal) : 0;
+          const localTime = localReal
+            ? Date.parse(localReal.last_persisted_at || localReal.last_updated || "0") || 0
+            : 0;
+          const remoteTime = Date.parse(decoded.state.last_persisted_at || decoded.state.last_updated || "0") || 0;
+
+          if (
+            !localReal ||
+            remoteScore > localScore ||
+            (remoteScore === localScore && remoteTime > localTime + 3000)
+          ) {
+            persistStateLocallyOnly(decoded.state, cleanEmail, activeAccId);
+            onRemoteState(decoded.state);
+          }
+        },
+        (error) => {
+          handleFirestoreError(error, OperationType.GET, path);
+        }
+      );
+    })
+    .catch(() => {});
+
+  return () => {
+    disposed = true;
+    if (unsub) unsub();
+  };
 }
 
 /**
