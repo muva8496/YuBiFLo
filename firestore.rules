@@ -24,10 +24,54 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isValidCargoEditEvidence(data, workspaceId, editId) {
+      return data.keys().hasAll([
+          'id', 'workspace_id', 'record_type', 'payout_id',
+          'previous_date', 'new_date', 'previous_amount', 'new_amount',
+          'edit_reason', 'edited_at', 'immutable'
+        ])
+        && data.keys().hasOnly([
+          'id', 'workspace_id', 'record_type', 'payout_id', 'receipt_id',
+          'supplier_name', 'previous_date', 'new_date',
+          'previous_timestamp', 'new_timestamp',
+          'previous_amount', 'new_amount',
+          'previous_payment_channel', 'new_payment_channel',
+          'previous_notes', 'new_notes', 'changed_fields',
+          'edit_reason', 'edited_by_email', 'edited_by_uid',
+          'edited_at', 'server_timestamp', 'immutable'
+        ])
+        && data.id is string && data.id == editId && data.id.size() > 0 && data.id.size() <= 128
+        && data.workspace_id is string && data.workspace_id == workspaceId && data.workspace_id.size() <= 128
+        && data.record_type == 'INBOUND_CARGO_EDIT'
+        && data.payout_id is string && data.payout_id.size() > 0 && data.payout_id.size() <= 128
+        && (!('receipt_id' in data) || (data.receipt_id is string && data.receipt_id.size() <= 128))
+        && (!('supplier_name' in data) || (data.supplier_name is string && data.supplier_name.size() <= 160))
+        && data.previous_date is string && data.previous_date.size() >= 8 && data.previous_date.size() <= 20
+        && data.new_date is string && data.new_date.size() >= 8 && data.new_date.size() <= 20
+        && (!('previous_timestamp' in data) || (data.previous_timestamp is string && data.previous_timestamp.size() <= 40))
+        && (!('new_timestamp' in data) || (data.new_timestamp is string && data.new_timestamp.size() <= 40))
+        && data.previous_amount is number && data.previous_amount >= 0
+        && data.new_amount is number && data.new_amount >= 0
+        && (!('previous_payment_channel' in data) || (data.previous_payment_channel is string && data.previous_payment_channel.size() <= 50))
+        && (!('new_payment_channel' in data) || (data.new_payment_channel is string && data.new_payment_channel.size() <= 50))
+        && (!('previous_notes' in data) || (data.previous_notes is string && data.previous_notes.size() <= 1000))
+        && (!('new_notes' in data) || (data.new_notes is string && data.new_notes.size() <= 1000))
+        && (!('changed_fields' in data) || (data.changed_fields is list && data.changed_fields.size() <= 10 && (data.changed_fields.size() == 0 || data.changed_fields[0] is string)))
+        && data.edit_reason is string && data.edit_reason.size() > 0 && data.edit_reason.size() <= 300
+        && (!('edited_by_email' in data) || (data.edited_by_email is string && data.edited_by_email.size() <= 160))
+        && (!('edited_by_uid' in data) || (data.edited_by_uid is string && data.edited_by_uid.size() <= 128))
+        && data.edited_at is string && data.edited_at.size() <= 60
+        && (!('server_timestamp' in data) || data.server_timestamp == request.time)
+        && data.immutable == true;
+    }
+
     // Workspace Root
     match /workspaces/{workspaceId} {
       allow read: if true;
-      allow create, update: if isValidId(workspaceId) && incoming().id is string;
+      allow create, update: if isValidId(workspaceId)
+        && incoming().id is string
+        && incoming().id == workspaceId
+        && (!('cargo_edits_count' in incoming()) || incoming().cargo_edits_count is number);
       allow delete: if false;
 
       // Active Shelf Inventory
@@ -84,6 +128,15 @@ service cloud.firestore {
         allow create, update: if isValidId(workspaceId) && isValidId(floatId)
           && incoming().total_amount is number;
         allow delete: if false;
+      }
+
+      // Immutable Inbound Cargo Edit Evidence (Plaintext Audit Trail in Firebase DB)
+      match /cargo_edit_evidence/{editId} {
+        allow get: if isValidId(workspaceId) && isValidId(editId);
+        allow list: if isValidId(workspaceId) && existing().workspace_id == workspaceId;
+        allow create: if isValidId(workspaceId) && isValidId(editId)
+          && isValidCargoEditEvidence(incoming(), workspaceId, editId);
+        allow update, delete: if false; // Tamper-proof audit evidence
       }
     }
   }

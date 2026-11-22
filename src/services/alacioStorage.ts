@@ -12,7 +12,8 @@ import {
   RestockReconciliationCard,
   SavedReceiptRecord,
   SupplierProfile,
-  PaymentChannelConfig
+  PaymentChannelConfig,
+  CargoEditAuditEntry
 } from "../types/alacio";
 import { deduplicateMorningBookends } from "../utils/morningBookendHelper";
 import { deduplicateSuppliers } from "../utils/supplierHelper";
@@ -2125,7 +2126,17 @@ export async function flushWorkspaceToCloudNow(
     const passphrase = getPortableEncryptionSecret(targetEmail);
     const e2ee_vault = await encryptClientData(sanitizedState, passphrase);
 
-    const cloudDoc = {
+    const allCargoEdits: CargoEditAuditEntry[] = [];
+    for (const p of stateToPersist.payouts || []) {
+      if (Array.isArray(p.edit_history)) {
+        allCargoEdits.push(...p.edit_history);
+      }
+    }
+    const latestEdit = [...allCargoEdits].sort((a, b) =>
+      String(b.edited_at || "").localeCompare(String(a.edited_at || ""))
+    )[0];
+
+    const cloudDoc: Record<string, any> = {
       id: docId,
       business_name: stateToPersist.merchant_name || "YuBiFlo Merchant",
       client_type: stateToPersist.client_type || "Retail / Duka",
@@ -2134,10 +2145,25 @@ export async function flushWorkspaceToCloudNow(
       record_score: recordScore,
       e2ee_protected: true,
       e2ee_vault,
+      cargo_edits_count: allCargoEdits.length,
+      ...(latestEdit
+        ? {
+            latest_cargo_edit: {
+              edit_id: String(latestEdit.id || "").slice(0, 128),
+              previous_date: String(latestEdit.previous_date || "").slice(0, 20),
+              new_date: String(latestEdit.new_date || "").slice(0, 20),
+              previous_amount: Number(latestEdit.previous_amount) || 0,
+              new_amount: Number(latestEdit.new_amount) || 0,
+              reason: String(latestEdit.reason || "").slice(0, 300),
+              edited_by: String(latestEdit.edited_by || "").slice(0, 160),
+              edited_at: String(latestEdit.edited_at || "").slice(0, 60)
+            }
+          }
+        : {}),
       last_updated: stateToPersist.last_persisted_at
     };
 
-    const sig = `${recordScore}:${stateToPersist.receiptsArchive?.length || 0}:${stateToPersist.payouts?.length || 0}:${stateToPersist.salesLedger?.length || 0}:${stateToPersist.inventory?.length || 0}:${stateToPersist.cash_register_balance}`;
+    const sig = `${recordScore}:${stateToPersist.receiptsArchive?.length || 0}:${stateToPersist.payouts?.length || 0}:${stateToPersist.salesLedger?.length || 0}:${stateToPersist.inventory?.length || 0}:${stateToPersist.cash_register_balance}:${allCargoEdits.length}`;
     recentlyWrittenTimestamps.set(docId, String(cloudDoc.last_updated));
     lastFlushedCloudSignatures.set(docId, sig);
 
@@ -2150,6 +2176,148 @@ export async function flushWorkspaceToCloudNow(
       handleFirestoreError(cloudErr, OperationType.WRITE, `workspaces/${docId}`);
     } catch {}
     return false;
+  }
+}
+
+export interface FirebaseCargoEditEvidenceRecord {
+  id: string;
+  workspace_id: string;
+  record_type: "INBOUND_CARGO_EDIT";
+  payout_id: string;
+  receipt_id?: string;
+  supplier_name?: string;
+  previous_date: string;
+  new_date: string;
+  previous_timestamp?: string;
+  new_timestamp?: string;
+  previous_amount: number;
+  new_amount: number;
+  previous_payment_channel?: string;
+  new_payment_channel?: string;
+  previous_notes?: string;
+  new_notes?: string;
+  changed_fields: string[];
+  edit_reason: string;
+  edited_by_email?: string;
+  edited_by_uid?: string;
+  edited_at: string;
+  immutable: true;
+}
+
+/**
+ * Resolves the canonical Firestore workspace document ID for a user/account.
+ */
+export function resolveWorkspaceCloudDocId(userEmail?: string, accountId?: string): string {
+  const cleanEmail = (userEmail || "mosesmukangai75@gmail.com").trim().toLowerCase();
+  const activeAccId = accountId || "acc_alacio_mini";
+  return sanitizeWorkspaceDocId(cleanEmail, activeAccId);
+}
+
+/**
+ * Writes an immutable plaintext audit evidence document to
+ * `/workspaces/{workspaceId}/cargo_edit_evidence/{editId}` in Firebase Firestore
+ * whenever an Inbound Cargo delivery date or detail is edited.
+ */
+export async function recordCargoEditEvidenceToFirebase(params: {
+  userEmail?: string;
+  accountId?: string;
+  editId: string;
+  payoutId: string;
+  receiptId?: string;
+  supplierName?: string;
+  previousDate: string;
+  newDate: string;
+  previousTimestamp?: string;
+  newTimestamp?: string;
+  previousAmount: number;
+  newAmount: number;
+  previousPaymentChannel?: string;
+  newPaymentChannel?: string;
+  previousNotes?: string;
+  newNotes?: string;
+  changedFields: string[];
+  editReason: string;
+  editedByEmail?: string;
+  editedAt: string;
+}): Promise<{ ok: boolean; docPath: string; editId: string }> {
+  const docId = resolveWorkspaceCloudDocId(params.userEmail, params.accountId);
+  const safeEditId = String(params.editId || `cargo_edit_${Date.now()}`)
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .slice(0, 128);
+  const path = `workspaces/${docId}/cargo_edit_evidence/${safeEditId}`;
+
+  try {
+    const [{ auth, db, handleFirestoreError, OperationType }, { doc, setDoc, serverTimestamp }] =
+      await loadFirestoreModules();
+
+    const evidencePayload = {
+      id: safeEditId,
+      workspace_id: docId,
+      record_type: "INBOUND_CARGO_EDIT" as const,
+      payout_id: String(params.payoutId || "").slice(0, 128),
+      receipt_id: String(params.receiptId || "").slice(0, 128),
+      supplier_name: String(params.supplierName || "Supplier Delivery").slice(0, 160),
+      previous_date: String(params.previousDate || "").slice(0, 20),
+      new_date: String(params.newDate || "").slice(0, 20),
+      previous_timestamp: String(params.previousTimestamp || "").slice(0, 40),
+      new_timestamp: String(params.newTimestamp || "").slice(0, 40),
+      previous_amount: Math.max(0, Math.round((Number(params.previousAmount) || 0) * 100) / 100),
+      new_amount: Math.max(0, Math.round((Number(params.newAmount) || 0) * 100) / 100),
+      previous_payment_channel: String(params.previousPaymentChannel || "CASH").slice(0, 50),
+      new_payment_channel: String(params.newPaymentChannel || "CASH").slice(0, 50),
+      previous_notes: String(params.previousNotes || "").slice(0, 1000),
+      new_notes: String(params.newNotes || "").slice(0, 1000),
+      changed_fields: (params.changedFields || []).map((f) => String(f).slice(0, 40)).slice(0, 10),
+      edit_reason: String(params.editReason || "Corrected missed delivery date").trim().slice(0, 300) || "Corrected missed delivery date",
+      edited_by_email: String(params.editedByEmail || params.userEmail || auth.currentUser?.email || "merchant").slice(0, 160),
+      edited_by_uid: String(auth.currentUser?.uid || "workspace_session").slice(0, 128),
+      edited_at: String(params.editedAt || new Date().toISOString()).slice(0, 60),
+      server_timestamp: serverTimestamp(),
+      immutable: true as const
+    };
+
+    try {
+      await setDoc(doc(db, "workspaces", docId, "cargo_edit_evidence", safeEditId), evidencePayload);
+      return { ok: true, docPath: path, editId: safeEditId };
+    } catch (writeErr) {
+      handleFirestoreError(writeErr, OperationType.CREATE, path);
+      return { ok: false, docPath: path, editId: safeEditId };
+    }
+  } catch {
+    return { ok: false, docPath: path, editId: safeEditId };
+  }
+}
+
+/**
+ * Fetches immutable Inbound Cargo edit evidence records directly from Firestore
+ * `/workspaces/{workspaceId}/cargo_edit_evidence`.
+ */
+export async function fetchCargoEditEvidenceFromFirebase(
+  userEmail?: string,
+  accountId?: string
+): Promise<FirebaseCargoEditEvidenceRecord[]> {
+  const docId = resolveWorkspaceCloudDocId(userEmail, accountId);
+  const colPath = `workspaces/${docId}/cargo_edit_evidence`;
+  try {
+    const [{ db, handleFirestoreError, OperationType }, { collection, getDocs, query, where }] =
+      await loadFirestoreModules();
+    try {
+      const q = query(collection(db, "workspaces", docId, "cargo_edit_evidence"), where("workspace_id", "==", docId));
+      const snap = await getDocs(q);
+      const records: FirebaseCargoEditEvidenceRecord[] = [];
+      snap.forEach((docSnap) => {
+        const d = docSnap.data() as FirebaseCargoEditEvidenceRecord;
+        if (d && d.id) {
+          records.push(d);
+        }
+      });
+      return records.sort((a, b) => String(b.edited_at || "").localeCompare(String(a.edited_at || "")));
+    } catch (readErr) {
+      handleFirestoreError(readErr, OperationType.LIST, colPath);
+      return [];
+    }
+  } catch {
+    return [];
   }
 }
 

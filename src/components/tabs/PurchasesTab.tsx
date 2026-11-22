@@ -4,7 +4,7 @@ import {
   Layers, ArrowUpRight, Search, Filter, AlertCircle, RefreshCw,
   Camera, Upload, FileText, Image as ImageIcon, Sparkles, Check,
   Trash2, Copy, ShieldCheck, ChevronDown, ChevronUp, Eye, Phone,
-  Scan, Clock, Package, XCircle, CheckSquare, Square, History, X, Wallet, Building2
+  Scan, Clock, Package, XCircle, CheckSquare, Square, History, X, Wallet, Building2, Pencil, Database
 } from "lucide-react";
 import { 
   AlacioMasterState, 
@@ -27,7 +27,11 @@ import {
   getSupplyUnitMultiplier,
   deriveUnitWholesaleCost
 } from "../../services/bulkConversionEngine";
-import { isEateryBusinessState } from "../../services/alacioStorage";
+import {
+  isEateryBusinessState,
+  fetchCargoEditEvidenceFromFirebase,
+  FirebaseCargoEditEvidenceRecord
+} from "../../services/alacioStorage";
 
 export interface PurchaseItemLine {
   id: string;
@@ -87,8 +91,20 @@ interface PurchasesTabProps {
   onSaveReceiptToDatabase?: (receipt: SavedReceiptRecord) => void;
   onAddExpense?: (expense: PayoutOrDrawing) => void;
   onEditExpense?: (id: string, updated: Partial<PayoutOrDrawing>) => void;
+  onEditInboundCargo?: (payload: {
+    payoutId: string;
+    newDate: string;
+    newTimestamp?: string;
+    newAmount: number;
+    newPaymentChannel?: string;
+    newNotes: string;
+    reason: string;
+  }) => Promise<{ ok: boolean; docPath?: string; editId?: string; firebaseSynced: boolean }>;
   onDeleteExpense?: (id: string) => void;
   onUpdateInventoryItem?: (itemId: string | number, updates: Partial<InventoryItem>) => void;
+  userEmail?: string;
+  accountId?: string;
+  isDemo?: boolean;
 }
 
 export default function PurchasesTab({ 
@@ -103,8 +119,12 @@ export default function PurchasesTab({
   onSaveReceiptToDatabase,
   onAddExpense,
   onEditExpense,
+  onEditInboundCargo,
   onDeleteExpense,
-  onUpdateInventoryItem
+  onUpdateInventoryItem,
+  userEmail,
+  accountId,
+  isDemo = false
 }: PurchasesTabProps) {
   const { currency, inventory = [], suppliers = [], payouts = [], restockCards = [], receiptsArchive = [] } = state;
   const isCleanShell = Boolean(state.is_skeleton);
@@ -391,8 +411,104 @@ export default function PurchasesTab({
   const [editedRetailPrices, setEditedRetailPrices] = useState<Record<string, number>>({});
   const [isSavingPrices, setIsSavingPrices] = useState(false);
 
-  // Past purchases with expanded view tracking
+  // Past purchases with expanded view & inline edit tracking
   const [expandedPurchaseId, setExpandedPurchaseId] = useState<string | null>(null);
+  const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
+  const [editCargoDate, setEditCargoDate] = useState<string>("");
+  const [editCargoTime, setEditCargoTime] = useState<string>("");
+  const [editCargoAmount, setEditCargoAmount] = useState<string>("");
+  const [editCargoChannel, setEditCargoChannel] = useState<string>("CASH");
+  const [editCargoNotes, setEditCargoNotes] = useState<string>("");
+  const [editCargoReason, setEditCargoReason] = useState<string>("Corrected missed delivery date");
+  const [isSavingCargoEdit, setIsSavingCargoEdit] = useState<boolean>(false);
+  const [cargoEditBanner, setCargoEditBanner] = useState<{ text: string; synced: boolean } | null>(null);
+  const [firebaseEvidenceList, setFirebaseEvidenceList] = useState<FirebaseCargoEditEvidenceRecord[]>([]);
+
+  useEffect(() => {
+    if (isDemo || !userEmail) return;
+    let active = true;
+    fetchCargoEditEvidenceFromFirebase(userEmail, accountId)
+      .then((records) => {
+        if (active && records.length > 0) {
+          setFirebaseEvidenceList(records);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [isDemo, userEmail, accountId]);
+
+  const shiftIsoLocal = (daysDelta: number): string => {
+    const dt = new Date();
+    dt.setDate(dt.getDate() + daysDelta);
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const openCargoEdit = (purchase: PayoutOrDrawing) => {
+    setEditingPurchaseId(purchase.id);
+    setEditCargoDate((purchase.date || shiftIsoLocal(0)).slice(0, 10));
+    setEditCargoTime(purchase.timestamp || "");
+    setEditCargoAmount(String(purchase.amount ?? 0));
+    setEditCargoChannel(purchase.payment_channel || "CASH");
+    setEditCargoNotes(purchase.notes || "");
+    setEditCargoReason("Corrected missed delivery date");
+  };
+
+  const handleSaveCargoEdit = async (purchase: PayoutOrDrawing) => {
+    const parsedAmt = parseFloat(editCargoAmount);
+    const safeAmt = Number.isFinite(parsedAmt) && parsedAmt >= 0 ? parsedAmt : Number(purchase.amount) || 0;
+    const cleanDate = editCargoDate || (purchase.date || shiftIsoLocal(0));
+    const cleanNotes = editCargoNotes.trim() || purchase.notes || "Supplier Restock Delivery";
+    const cleanReason = editCargoReason.trim() || "Corrected missed delivery date";
+
+    setIsSavingCargoEdit(true);
+    try {
+      if (onEditInboundCargo) {
+        const res = await onEditInboundCargo({
+          payoutId: purchase.id,
+          newDate: cleanDate,
+          newTimestamp: editCargoTime.trim() || purchase.timestamp,
+          newAmount: safeAmt,
+          newPaymentChannel: editCargoChannel,
+          newNotes: cleanNotes,
+          reason: cleanReason
+        });
+
+        if (!isDemo && userEmail) {
+          fetchCargoEditEvidenceFromFirebase(userEmail, accountId)
+            .then((records) => setFirebaseEvidenceList(records))
+            .catch(() => {});
+        }
+
+        setCargoEditBanner({
+          text: res.firebaseSynced
+            ? `Updated delivery date (${purchase.date || "Today"} -> ${cleanDate}) & logged immutable edit evidence to Firebase (${res.editId}).`
+            : isDemo
+              ? `Updated demo delivery (${purchase.date || "Today"} -> ${cleanDate}) with local audit record.`
+              : `Updated delivery (${purchase.date || "Today"} -> ${cleanDate}) locally; edit history queued for Firebase sync.`,
+          synced: res.firebaseSynced
+        });
+        setTimeout(() => setCargoEditBanner(null), 7000);
+      } else if (onEditExpense) {
+        onEditExpense(purchase.id, {
+          date: cleanDate,
+          timestamp: editCargoTime.trim() || purchase.timestamp,
+          amount: safeAmt,
+          payment_channel: editCargoChannel,
+          notes: cleanNotes,
+          last_edited_at: new Date().toISOString()
+        });
+      }
+      setEditingPurchaseId(null);
+      setExpandedPurchaseId(purchase.id);
+    } finally {
+      setIsSavingCargoEdit(false);
+    }
+  };
 
   // Common Supply Unit measurements in Kenya retail & wholesale (Bales, Crates, Outa, Dozen, Litres, Loaves 200g/400g/600g, Kg, etc.)
   const unitOptions = KENYA_SUPPLY_UNIT_OPTIONS;
@@ -4403,6 +4519,29 @@ export default function PurchasesTab({
           </div>
         </div>
 
+        {cargoEditBanner && (
+          <div
+            className={`rounded-2xl border px-4 py-3 text-xs flex items-center justify-between gap-2 ${
+              cargoEditBanner.synced
+                ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                : "bg-amber-50 border-amber-200 text-amber-900"
+            }`}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Database size={14} className="shrink-0" />
+              <span className="font-medium">{cargoEditBanner.text}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCargoEditBanner(null)}
+              className="text-slate-500 hover:text-slate-800 cursor-pointer shrink-0"
+              aria-label="Dismiss edit confirmation"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {supplierPurchases.length === 0 ? (
           <div className="text-center py-12 space-y-3">
             <ShoppingBag size={36} className="text-slate-300 mx-auto" />
@@ -4421,31 +4560,87 @@ export default function PurchasesTab({
           <div className="divide-y divide-slate-100">
             {supplierPurchases.map((purchase) => {
               const isExpanded = expandedPurchaseId === purchase.id;
+              const isEditing = editingPurchaseId === purchase.id;
+              const cloudEditsForRow = firebaseEvidenceList.filter((ev) => ev.payout_id === purchase.id);
+              const localEditsForRow = Array.isArray(purchase.edit_history) ? purchase.edit_history : [];
+              const mergedEvidence = [
+                ...localEditsForRow.map((le) => {
+                  const cloudMatch = cloudEditsForRow.find((ce) => ce.id === le.id);
+                  return {
+                    id: le.id,
+                    edited_at: le.edited_at,
+                    edited_by: cloudMatch?.edited_by_email || le.edited_by,
+                    reason: cloudMatch?.edit_reason || le.reason,
+                    previous_date: le.previous_date,
+                    new_date: le.new_date,
+                    previous_amount: le.previous_amount,
+                    new_amount: le.new_amount,
+                    changed_fields: le.changed_fields || [],
+                    docPath: le.firebase_doc_path,
+                    inCloud: Boolean(cloudMatch || le.firebase_synced)
+                  };
+                }),
+                ...cloudEditsForRow
+                  .filter((ce) => !localEditsForRow.some((le) => le.id === ce.id))
+                  .map((ce) => ({
+                    id: ce.id,
+                    edited_at: ce.edited_at,
+                    edited_by: ce.edited_by_email || "merchant",
+                    reason: ce.edit_reason,
+                    previous_date: ce.previous_date,
+                    new_date: ce.new_date,
+                    previous_amount: ce.previous_amount,
+                    new_amount: ce.new_amount,
+                    changed_fields: ce.changed_fields || [],
+                    docPath: `workspaces/.../cargo_edit_evidence/${ce.id}`,
+                    inCloud: true
+                  }))
+              ];
+              const earliestPrevDate =
+                mergedEvidence.length > 0
+                  ? mergedEvidence[mergedEvidence.length - 1].previous_date
+                  : null;
 
               return (
-                <div key={purchase.id} className="py-4 space-y-2">
+                <div key={purchase.id} className="py-4 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <strong className="text-slate-900 text-sm font-serif">
                           {purchase.notes || "Supplier Restock Delivery"}
                         </strong>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
                           {purchase.payment_channel ? purchase.payment_channel.replace(/_/g, " ") : "PAID"}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-500 flex items-center gap-2">
-                        <Calendar size={12} className="text-slate-400" />
-                        <span>Date: {purchase.date || "Today"}</span>
-                        <span>&bull;</span>
-                        <Clock size={12} className="text-slate-400" />
+                      <div className="text-[11px] text-slate-500 flex items-center gap-2 flex-wrap">
+                        <Calendar size={12} className="text-slate-400 shrink-0" />
+                        <span className="font-mono tabular-nums">Date: {purchase.date || "Today"}</span>
+                        <span aria-hidden="true">&bull;</span>
+                        <Clock size={12} className="text-slate-400 shrink-0" />
                         <span>Logged at: {purchase.timestamp}</span>
+                        {mergedEvidence.length > 0 && (
+                          <>
+                            <span aria-hidden="true">&bull;</span>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedPurchaseId(isExpanded ? null : purchase.id)}
+                              className="inline-flex items-center gap-1 text-amber-800 font-semibold hover:underline cursor-pointer"
+                              title="View Firebase edit evidence"
+                            >
+                              <Database size={11} className="text-amber-700 shrink-0" />
+                              <span>
+                                Edited {mergedEvidence.length}x{earliestPrevDate ? ` (was ${earliestPrevDate})` : ""} &middot; Firebase Evidence
+                              </span>
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                       <div className="text-right">
-                        <span className="text-base font-serif font-bold text-slate-900 block">
+                        <span className="text-base font-serif font-bold text-slate-900 block font-mono tabular-nums">
                           -{currency} {purchase.amount.toLocaleString()}
                         </span>
                         <span className="text-[10px] text-emerald-700 font-semibold block">
@@ -4454,9 +4649,24 @@ export default function PurchasesTab({
                       </div>
 
                       <button
+                        type="button"
+                        onClick={() => (isEditing ? setEditingPurchaseId(null) : openCargoEdit(purchase))}
+                        className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 transition cursor-pointer whitespace-nowrap shrink-0 ${
+                          isEditing
+                            ? "bg-[#0B1B32] border-[#0B1B32] text-white"
+                            : "border-slate-200 hover:bg-slate-100 text-slate-700"
+                        }`}
+                        title="Edit missed delivery date or details (logs evidence in Firebase)"
+                      >
+                        <Pencil size={12} />
+                        <span>{isEditing ? "Close Edit" : "Edit"}</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => setExpandedPurchaseId(isExpanded ? null : purchase.id)}
-                        className="px-2.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
-                        title="View goods breakdown in this lot"
+                        className="px-2.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-semibold flex items-center gap-1 transition cursor-pointer whitespace-nowrap shrink-0"
+                        title="View goods breakdown and Firebase edit evidence in this lot"
                       >
                         <span>Goods Lot</span>
                         {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -4464,14 +4674,175 @@ export default function PurchasesTab({
                     </div>
                   </div>
 
+                  {/* INLINE EDIT PANEL (WITH FIREBASE AUDIT EVIDENCE LOGGING) */}
+                  {isEditing && (
+                    <div className="bg-[#F8FAFC] border border-[#C8D9EA] rounded-2xl p-4 space-y-3 text-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <Pencil size={14} className="text-[#1A56DB] shrink-0" />
+                          <span className="font-bold text-slate-900">
+                            Edit Inbound Cargo Delivery &amp; Missed Date
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-600 flex items-center gap-1">
+                          <Database size={12} className="text-emerald-700 shrink-0" />
+                          <span>Saves permanent before/after edit evidence in Firebase</span>
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-700 block">
+                            Delivery Date
+                          </label>
+                          <input
+                            type="date"
+                            value={editCargoDate}
+                            onChange={(e) => setEditCargoDate(e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-mono text-xs text-slate-900"
+                          />
+                          <div className="flex items-center gap-1 pt-0.5 flex-wrap">
+                            {[
+                              { label: "Today", offset: 0 },
+                              { label: "Yesterday", offset: -1 },
+                              { label: "-2d", offset: -2 },
+                              { label: "-3d", offset: -3 }
+                            ].map((preset) => (
+                              <button
+                                key={preset.label}
+                                type="button"
+                                onClick={() => setEditCargoDate(shiftIsoLocal(preset.offset))}
+                                className="px-2 py-0.5 rounded bg-white border border-slate-200 hover:border-blue-400 text-[10px] font-medium text-slate-700 cursor-pointer"
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-700 block">
+                            Logged Time
+                          </label>
+                          <input
+                            type="text"
+                            value={editCargoTime}
+                            onChange={(e) => setEditCargoTime(e.target.value)}
+                            placeholder="e.g. 04:48 PM"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-mono text-xs text-slate-900"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-700 block">
+                            Batch Cost ({currency})
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={editCargoAmount}
+                            onChange={(e) => setEditCargoAmount(e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-mono text-xs text-slate-900"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-700 block">
+                            Payment Channel
+                          </label>
+                          <select
+                            value={editCargoChannel}
+                            onChange={(e) => setEditCargoChannel(e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs text-slate-900"
+                          >
+                            <option value="CASH">CASH</option>
+                            <option value="MPESA">MPESA</option>
+                            <option value="NATIONAL_ID_DEPOSIT">NATIONAL ID DEPOSIT</option>
+                            <option value="SUPPLIER_CREDIT">SUPPLIER CREDIT</option>
+                            <option value="BANK_TRANSFER">BANK TRANSFER</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-700 block">
+                            Goods Lot Description / Notes
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={editCargoNotes}
+                            onChange={(e) => setEditCargoNotes(e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs text-slate-900"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-700 block">
+                            Reason for Edit (Stored in Firebase Evidence)
+                          </label>
+                          <input
+                            type="text"
+                            value={editCargoReason}
+                            onChange={(e) => setEditCargoReason(e.target.value)}
+                            placeholder="e.g. Missed yesterday's delivery date"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs text-slate-900"
+                          />
+                          <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                            {[
+                              "Corrected missed delivery date",
+                              "Supplier invoice date mismatch",
+                              "Corrected batch amount"
+                            ].map((rPreset) => (
+                              <button
+                                key={rPreset}
+                                type="button"
+                                onClick={() => setEditCargoReason(rPreset)}
+                                className="px-2 py-0.5 rounded bg-white border border-slate-200 hover:border-blue-400 text-[10px] text-slate-600 cursor-pointer"
+                              >
+                                {rPreset}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200 flex-wrap">
+                        <span className="text-[11px] text-slate-500 font-mono">
+                          Original: {purchase.date || "Today"} &middot; {currency} {purchase.amount.toLocaleString()}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingPurchaseId(null)}
+                            disabled={isSavingCargoEdit}
+                            className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveCargoEdit(purchase)}
+                            disabled={isSavingCargoEdit}
+                            className="px-4 py-1.5 rounded-lg bg-[#0B1B32] hover:bg-[#13294B] text-white font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                          >
+                            <Check size={13} />
+                            <span>{isSavingCargoEdit ? "Saving Evidence..." : "Save & Log Firebase Evidence"}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* EXPANDED GOODS IN LOT DRAWER */}
                   {isExpanded && (
-                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2 animate-in fade-in">
-                      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-3 animate-in fade-in">
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-2 gap-2 flex-wrap">
                         <span className="font-bold text-slate-800">
                           Cargo Goods Breakdown &bull; {purchase.notes}
                         </span>
-                        <span className="text-[11px] text-slate-500 font-mono">
+                        <span className="text-[11px] text-slate-500 font-mono tabular-nums">
                           Batch Total: {currency} {purchase.amount.toLocaleString()}
                         </span>
                       </div>
@@ -4479,6 +4850,56 @@ export default function PurchasesTab({
                       <p className="text-[11px] text-slate-600 leading-relaxed">
                         {purchase.notes}
                       </p>
+
+                      {mergedEvidence.length > 0 && (
+                        <div className="pt-2 border-t border-slate-200 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                              <Database size={13} className="text-emerald-700" />
+                              <span>Firebase Database Edit Evidence ({mergedEvidence.length})</span>
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-500">
+                              Collection: cargo_edit_evidence (Immutable)
+                            </span>
+                          </div>
+
+                          <div className="divide-y divide-slate-200/80 bg-white rounded-xl border border-slate-200 px-3">
+                            {mergedEvidence.map((ev) => (
+                              <div key={ev.id} className="py-2.5 space-y-1">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <span className="font-semibold text-slate-900">
+                                    {ev.reason}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-slate-500 tabular-nums">
+                                    {ev.edited_at ? new Date(ev.edited_at).toLocaleString() : ""}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3 flex-wrap text-[11px] font-mono tabular-nums text-slate-700">
+                                  {ev.previous_date !== ev.new_date && (
+                                    <span>
+                                      Date: <span className="line-through text-slate-400">{ev.previous_date}</span> &rarr;{" "}
+                                      <strong className="text-emerald-800">{ev.new_date}</strong>
+                                    </span>
+                                  )}
+                                  {ev.previous_amount !== ev.new_amount && (
+                                    <span>
+                                      Amount: <span className="line-through text-slate-400">{currency} {ev.previous_amount.toLocaleString()}</span> &rarr;{" "}
+                                      <strong className="text-emerald-800">{currency} {ev.new_amount.toLocaleString()}</strong>
+                                    </span>
+                                  )}
+                                  <span>By: {ev.edited_by}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2 text-[10px] font-mono text-slate-500 flex-wrap">
+                                  <span>Audit ID: {ev.id}</span>
+                                  <span className={ev.inCloud ? "text-emerald-700 font-semibold" : "text-amber-700 font-semibold"}>
+                                    {ev.inCloud ? "Recorded in Firebase DB" : "Pending Firebase Sync"}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400">
                         <span>Verified wholesale cargo restock</span>

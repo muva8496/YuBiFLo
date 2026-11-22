@@ -24,7 +24,8 @@ import {
   SupplierBatchCard,
   BatchTurnoverItem,
   PaymentChannelConfig,
-  DebtLineItem
+  DebtLineItem,
+  CargoEditAuditEntry
 } from "./types/alacio";
 import { 
   loadAlacioState, 
@@ -38,8 +39,11 @@ import {
   PLATFORM_BLUEPRINTS,
   PROJECT_ALACIO_CASE_STUDY,
   resolvePaymentChannels,
-  syncLegacyBalancesFromChannels
+  syncLegacyBalancesFromChannels,
+  recordCargoEditEvidenceToFirebase,
+  resolveWorkspaceCloudDocId
 } from "./services/alacioStorage";
+import { testConnection } from "./services/firebase";
 import {
   getSupplyUnitMultiplier,
   deriveUnitWholesaleCost
@@ -299,6 +303,7 @@ export default function App() {
 
     const runCloudSync = async () => {
       try {
+        testConnection().catch(() => {});
         // 1. Sync user's business account directory & launchpad progress across domains
         const dirResult = await syncAccountDirectoryFromCloud(effectiveOwnerEmail, realLaunchpadProgress);
         if (cancelled) return;
@@ -1117,6 +1122,228 @@ export default function App() {
     }));
   };
 
+  const handleEditInboundCargoPurchase = async (payload: {
+    payoutId: string;
+    newDate: string;
+    newTimestamp?: string;
+    newAmount: number;
+    newPaymentChannel?: string;
+    newNotes: string;
+    reason: string;
+  }): Promise<{ ok: boolean; docPath?: string; editId?: string; firebaseSynced: boolean }> => {
+    const cleanNewDate = normalizeIsoDate(payload.newDate);
+    const cleanNewAmount = Math.max(0, Math.round((Number(payload.newAmount) || 0) * 100) / 100);
+    const cleanNewNotes = payload.newNotes.trim() || "Supplier Restock Delivery";
+    const editedAt = new Date().toISOString();
+    const editId = `cargo_edit_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const cloudDocId = resolveWorkspaceCloudDocId(effectiveOwnerEmail, activeAccountId);
+    const docPath = `workspaces/${cloudDocId}/cargo_edit_evidence/${editId}`;
+    const editorLabel =
+      currentUser?.email ||
+      currentUser?.name ||
+      currentMasterState.proprietor_name ||
+      "Merchant";
+
+    const currentPayout = (currentMasterState.payouts || []).find((p) => p.id === payload.payoutId);
+    if (!currentPayout) {
+      return { ok: false, firebaseSynced: false };
+    }
+
+    const prevDate = normalizeIsoDate(currentPayout.date || currentPayout.timestamp?.slice(0, 10));
+    const prevTimestamp = currentPayout.timestamp || "";
+    const cleanNewTimestamp = (payload.newTimestamp ?? prevTimestamp).trim() || prevTimestamp;
+    const prevAmount = Number(currentPayout.amount) || 0;
+    const prevChannel = currentPayout.payment_channel || "CASH";
+    const cleanNewChannel = (payload.newPaymentChannel || prevChannel).trim() || prevChannel;
+    const prevNotes = currentPayout.notes || "";
+
+    const changedFields: string[] = [];
+    if (prevDate !== cleanNewDate) changedFields.push("date");
+    if (prevTimestamp !== cleanNewTimestamp) changedFields.push("timestamp");
+    if (prevAmount !== cleanNewAmount) changedFields.push("amount");
+    if (prevChannel !== cleanNewChannel) changedFields.push("payment_channel");
+    if (prevNotes !== cleanNewNotes) changedFields.push("notes");
+    if (changedFields.length === 0) {
+      changedFields.push("date");
+    }
+
+    const reasonText =
+      payload.reason.trim() ||
+      (prevDate !== cleanNewDate
+        ? `Corrected missed delivery date (${prevDate} -> ${cleanNewDate})`
+        : "Updated inbound cargo details");
+
+    const auditEntry: CargoEditAuditEntry = {
+      id: editId,
+      edited_at: editedAt,
+      edited_by: editorLabel,
+      reason: reasonText,
+      previous_date: prevDate,
+      new_date: cleanNewDate,
+      previous_timestamp: prevTimestamp,
+      new_timestamp: cleanNewTimestamp,
+      previous_amount: prevAmount,
+      new_amount: cleanNewAmount,
+      previous_payment_channel: prevChannel,
+      new_payment_channel: cleanNewChannel,
+      previous_notes: prevNotes,
+      new_notes: cleanNewNotes,
+      changed_fields: changedFields,
+      firebase_doc_path: docPath,
+      firebase_synced: !isDemoMode
+    };
+
+    const inferredReceiptId =
+      currentPayout.receipt_id ||
+      (currentPayout.id.startsWith("payout_cargo_")
+        ? currentPayout.id.replace("payout_cargo_", "")
+        : undefined);
+
+    setMasterState((prev) => {
+      const updatedPayouts = (prev.payouts || []).map((p) => {
+        if (p.id !== payload.payoutId) return p;
+        return {
+          ...p,
+          date: cleanNewDate,
+          timestamp: cleanNewTimestamp,
+          amount: cleanNewAmount,
+          payment_channel: cleanNewChannel,
+          notes: cleanNewNotes,
+          ...(inferredReceiptId ? { receipt_id: inferredReceiptId } : {}),
+          last_edited_at: editedAt,
+          edit_history: [auditEntry, ...(p.edit_history || [])]
+        };
+      });
+
+      // Keep linked saved receipts aligned if delivery date / amount / payment channel changed
+      const updatedReceiptsArchive = (prev.receiptsArchive || []).map((r) => {
+        const isLinkedById = inferredReceiptId && r.id === inferredReceiptId;
+        const supplierToken = prevNotes.split(/[:\[]/)[0].trim().toLowerCase();
+        const isHeuristicMatch =
+          !inferredReceiptId &&
+          supplierToken.length >= 3 &&
+          r.supplierName.toLowerCase().includes(supplierToken) &&
+          normalizeIsoDate(r.receiptDate) === prevDate &&
+          Math.abs((Number(r.totalCost) || 0) - prevAmount) < 1;
+
+        if (!isLinkedById && !isHeuristicMatch) return r;
+
+        const mappedPayMode: SavedReceiptRecord["paymentMode"] =
+          cleanNewChannel === "MPESA" || cleanNewChannel === "MPESA_TILL"
+            ? "MPESA"
+            : cleanNewChannel === "SUPPLIER_CREDIT"
+              ? "SUPPLIER_CREDIT"
+              : cleanNewChannel === "NATIONAL_ID_DEPOSIT"
+                ? "NATIONAL_ID_DEPOSIT"
+                : "CASH";
+
+        return {
+          ...r,
+          receiptDate: cleanNewDate,
+          paymentMode: mappedPayMode,
+          totalCost: cleanNewAmount,
+          last_edited_at: editedAt,
+          edit_history: [auditEntry, ...(r.edit_history || [])]
+        };
+      });
+
+      // Reconcile channel balances if amount or channel changed
+      const getOutflowBucket = (ch: string): "CASH" | "MPESA" | "BANK" | "NONE" => {
+        const u = ch.toUpperCase();
+        if (u === "CASH" || u === "CASH_DRAWER") return "CASH";
+        if (u.includes("MPESA") || u.includes("POCHI") || u.includes("SEND_MONEY") || u.includes("PAYBILL")) return "MPESA";
+        if (u.includes("BANK") || u.includes("EQUITEL")) return "BANK";
+        return "NONE";
+      };
+
+      const oldBucket = getOutflowBucket(prevChannel);
+      const newBucket = getOutflowBucket(cleanNewChannel);
+      let cashDelta = 0;
+      let mpesaDelta = 0;
+      let bankDelta = 0;
+      if (oldBucket === "CASH") cashDelta += prevAmount;
+      if (oldBucket === "MPESA") mpesaDelta += prevAmount;
+      if (oldBucket === "BANK") bankDelta += prevAmount;
+      if (newBucket === "CASH") cashDelta -= cleanNewAmount;
+      if (newBucket === "MPESA") mpesaDelta -= cleanNewAmount;
+      if (newBucket === "BANK") bankDelta -= cleanNewAmount;
+
+      const channelUpdates =
+        cashDelta !== 0 || mpesaDelta !== 0 || bankDelta !== 0
+          ? applyDeltaToPaymentChannels(prev, { cashDelta, mpesaDelta, bankDelta })
+          : {};
+
+      const nextState: AlacioMasterState = {
+        ...prev,
+        payouts: updatedPayouts,
+        receiptsArchive: updatedReceiptsArchive,
+        ...channelUpdates,
+        last_updated: editedAt
+      };
+
+      const reconciled = reconcileChronologicalReceiptsAndSales(nextState);
+      const finalState = !reconciled.is_demo_template
+        ? archiveOldRecordsToDataWarehouse(reconciled).nextState
+        : reconciled;
+
+      if (!isDemoMode) {
+        saveAlacioState(finalState, effectiveOwnerEmail, activeAccountId, { immediate: true });
+      }
+      return finalState;
+    });
+
+    if (isDemoMode) {
+      return { ok: true, docPath, editId, firebaseSynced: false };
+    }
+
+    const supplierLabel = cleanNewNotes.split(/[:\[]/)[0].trim() || "Supplier Delivery";
+    const evidenceRes = await recordCargoEditEvidenceToFirebase({
+      userEmail: effectiveOwnerEmail,
+      accountId: activeAccountId,
+      editId,
+      payoutId: payload.payoutId,
+      receiptId: inferredReceiptId,
+      supplierName: supplierLabel,
+      previousDate: prevDate,
+      newDate: cleanNewDate,
+      previousTimestamp: prevTimestamp,
+      newTimestamp: cleanNewTimestamp,
+      previousAmount: prevAmount,
+      newAmount: cleanNewAmount,
+      previousPaymentChannel: prevChannel,
+      newPaymentChannel: cleanNewChannel,
+      previousNotes: prevNotes,
+      newNotes: cleanNewNotes,
+      changedFields,
+      editReason: reasonText,
+      editedByEmail: editorLabel,
+      editedAt
+    });
+
+    if (!evidenceRes.ok) {
+      setMasterState((prev) => ({
+        ...prev,
+        payouts: (prev.payouts || []).map((p) =>
+          p.id !== payload.payoutId
+            ? p
+            : {
+                ...p,
+                edit_history: (p.edit_history || []).map((eh) =>
+                  eh.id === editId ? { ...eh, firebase_synced: false } : eh
+                )
+              }
+        )
+      }));
+    }
+
+    return {
+      ok: true,
+      docPath: evidenceRes.docPath,
+      editId: evidenceRes.editId,
+      firebaseSynced: evidenceRes.ok
+    };
+  };
+
   const handleImportMpesa = (records: MpesaStatementRecord[]) => {
     setMasterState((prev) => ({
       ...prev,
@@ -1275,6 +1502,7 @@ export default function App() {
 
       const newPayout: PayoutOrDrawing = {
         id: `payout_cargo_${effectiveReceiptId}`,
+        receipt_id: effectiveReceiptId,
         date: normalizedDate,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         amount: cleanPurchaseAmt,
@@ -2079,8 +2307,12 @@ export default function App() {
             onSaveReceiptToDatabase={handleSaveReceiptToDatabase}
             onAddExpense={handleAddExpense}
             onEditExpense={handleEditExpense}
+            onEditInboundCargo={handleEditInboundCargoPurchase}
             onDeleteExpense={handleDeleteExpense}
             onUpdateInventoryItem={handleUpdateInventoryItem}
+            userEmail={effectiveOwnerEmail}
+            accountId={activeAccountId}
+            isDemo={isDemoMode}
           />
         )}
 

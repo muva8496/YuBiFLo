@@ -105,6 +105,26 @@ export interface SalesLedgerItem {
   source_type?: "COUNTER_SALE" | "VOICE_LEDGER" | "BATCH_REALIZED" | "CHRONO_RESTOCK";
 }
 
+export interface CargoEditAuditEntry {
+  id: string;
+  edited_at: string; // ISO timestamp
+  edited_by: string;
+  reason: string;
+  previous_date: string;
+  new_date: string;
+  previous_timestamp?: string;
+  new_timestamp?: string;
+  previous_amount: number;
+  new_amount: number;
+  previous_payment_channel?: string;
+  new_payment_channel?: string;
+  previous_notes?: string;
+  new_notes?: string;
+  changed_fields: string[];
+  firebase_doc_path?: string;
+  firebase_synced?: boolean;
+}
+
 export interface PayoutOrDrawing {
   id: string;
   timestamp: string;
@@ -127,6 +147,9 @@ export interface PayoutOrDrawing {
   notes: string;
   resolved_gap_id?: string;
   payment_channel?: string;
+  receipt_id?: string;
+  last_edited_at?: string;
+  edit_history?: CargoEditAuditEntry[];
 }
 
 export type PaymentChannelCategory = "CASH" | "MOBILE_MONEY" | "BANK";
@@ -462,5 +485,7 @@ export interface SavedReceiptRecord {
   processedAt: string;
   decidedAt: string;
   notes?: string;
+  last_edited_at?: string;
+  edit_history?: CargoEditAuditEntry[];
 }
 

@@ -14,6 +14,8 @@
         "schema_version": { "type": "number" },
         "e2ee_protected": { "type": "boolean" },
         "e2ee_vault": { "type": "object" },
+        "cargo_edits_count": { "type": "number" },
+        "latest_cargo_edit": { "type": "object" },
         "last_updated": { "type": "string" }
       },
       "required": ["id"]
@@ -120,6 +122,49 @@
         "verified_at": { "type": "string" }
       },
       "required": ["id", "total_amount", "verified_at"]
+    },
+    "CargoEditEvidence": {
+      "title": "CargoEditEvidence",
+      "description": "Immutable plaintext audit evidence logged to Firestore whenever an Inbound Cargo delivery date or record is edited",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "workspace_id": { "type": "string", "maxLength": 128 },
+        "record_type": { "type": "string", "enum": ["INBOUND_CARGO_EDIT"] },
+        "payout_id": { "type": "string", "maxLength": 128 },
+        "receipt_id": { "type": "string", "maxLength": 128 },
+        "supplier_name": { "type": "string", "maxLength": 160 },
+        "previous_date": { "type": "string", "maxLength": 20 },
+        "new_date": { "type": "string", "maxLength": 20 },
+        "previous_timestamp": { "type": "string", "maxLength": 40 },
+        "new_timestamp": { "type": "string", "maxLength": 40 },
+        "previous_amount": { "type": "number" },
+        "new_amount": { "type": "number" },
+        "previous_payment_channel": { "type": "string", "maxLength": 50 },
+        "new_payment_channel": { "type": "string", "maxLength": 50 },
+        "previous_notes": { "type": "string", "maxLength": 1000 },
+        "new_notes": { "type": "string", "maxLength": 1000 },
+        "changed_fields": { "type": "array" },
+        "edit_reason": { "type": "string", "maxLength": 300 },
+        "edited_by_email": { "type": "string", "maxLength": 160 },
+        "edited_by_uid": { "type": "string", "maxLength": 128 },
+        "edited_at": { "type": "string", "maxLength": 60 },
+        "server_timestamp": { "type": "string" },
+        "immutable": { "type": "boolean" }
+      },
+      "required": [
+        "id",
+        "workspace_id",
+        "record_type",
+        "payout_id",
+        "previous_date",
+        "new_date",
+        "previous_amount",
+        "new_amount",
+        "edit_reason",
+        "edited_at",
+        "immutable"
+      ]
     }
   },
   "firestore": {
@@ -150,6 +195,10 @@
     "/workspaces/{workspaceId}/floats/{floatId}": {
       "schema": "FloatAudit",
       "description": "Morning opening float records"
+    },
+    "/workspaces/{workspaceId}/cargo_edit_evidence/{editId}": {
+      "schema": "CargoEditEvidence",
+      "description": "Immutable Firebase database evidence of edits made to Inbound Cargo deliveries and missed dates"
     }
   }
 }
