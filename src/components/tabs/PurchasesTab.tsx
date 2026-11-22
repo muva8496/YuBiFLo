@@ -440,6 +440,7 @@ export default function PurchasesTab({
   const [deleteCargoReason, setDeleteCargoReason] = useState<string>("Duplicate or wrongly entered inbound cargo delivery");
   const [isDeletingCargo, setIsDeletingCargo] = useState<boolean>(false);
   const [showAllFirebaseEvidence, setShowAllFirebaseEvidence] = useState<boolean>(false);
+  const [collapsedDateGroups, setCollapsedDateGroups] = useState<Record<string, boolean>>({});
   const [cargoEditBanner, setCargoEditBanner] = useState<{ text: string; synced: boolean } | null>(null);
   const [firebaseEvidenceList, setFirebaseEvidenceList] = useState<FirebaseCargoEditEvidenceRecord[]>([]);
 
@@ -465,6 +466,61 @@ export default function PurchasesTab({
     const mm = String(dt.getMonth() + 1).padStart(2, "0");
     const dd = String(dt.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const resolvePurchaseDateKey = (purchase: PayoutOrDrawing): string => {
+    const rawDate = (purchase.date || "").trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+      return rawDate.slice(0, 10);
+    }
+    const rawTs = (purchase.timestamp || "").trim();
+    const isoMatch = rawTs.match(/(\d{4}-\d{2}-\d{2})/);
+    if (isoMatch) {
+      return isoMatch[1];
+    }
+    return "Undated";
+  };
+
+  const parsePurchaseTimeMinutes = (timestamp?: string): number => {
+    const raw = (timestamp || "").trim();
+    if (!raw) return -1;
+    const ampmMatch = raw.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)/i);
+    if (ampmMatch) {
+      let hours = parseInt(ampmMatch[1], 10);
+      const mins = parseInt(ampmMatch[2], 10);
+      const mer = ampmMatch[4].toUpperCase();
+      if (mer === "PM" && hours < 12) hours += 12;
+      if (mer === "AM" && hours === 12) hours = 0;
+      return hours * 60 + mins;
+    }
+    const h24Match = raw.match(/\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b/);
+    if (h24Match) {
+      return parseInt(h24Match[1], 10) * 60 + parseInt(h24Match[2], 10);
+    }
+    const parsedEpoch = Date.parse(raw);
+    if (Number.isFinite(parsedEpoch)) {
+      const d = new Date(parsedEpoch);
+      return d.getHours() * 60 + d.getMinutes();
+    }
+    return -1;
+  };
+
+  const formatPartitionDateLabel = (dateKey: string): string => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return dateKey;
+    const todayIso = shiftIsoLocal(0);
+    const yesterdayIso = shiftIsoLocal(-1);
+    const parsed = new Date(`${dateKey}T12:00:00`);
+    const readable = Number.isNaN(parsed.getTime())
+      ? dateKey
+      : parsed.toLocaleDateString("en-GB", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "numeric"
+        });
+    if (dateKey === todayIso) return `Today — ${readable}`;
+    if (dateKey === yesterdayIso) return `Yesterday — ${readable}`;
+    return readable;
   };
 
   const parseInboundCargoForEdit = (purchase: PayoutOrDrawing) => {
@@ -4868,6 +4924,37 @@ export default function PurchasesTab({
           String(b.edited_at || "").localeCompare(String(a.edited_at || ""))
         );
 
+        // Partition supply batches by date (YYYY-MM-DD) descending, and within each date order by amount descending
+        const partitionBuckets = new Map<string, { purchase: PayoutOrDrawing; originalIndex: number }[]>();
+        supplierPurchases.forEach((purchase, idx) => {
+          const dateKey = resolvePurchaseDateKey(purchase);
+          const list = partitionBuckets.get(dateKey) || [];
+          list.push({ purchase, originalIndex: idx });
+          partitionBuckets.set(dateKey, list);
+        });
+
+        const datePartitions = Array.from(partitionBuckets.entries())
+          .sort(([dateA], [dateB]) => {
+            if (dateA === "Undated" && dateB !== "Undated") return 1;
+            if (dateB === "Undated" && dateA !== "Undated") return -1;
+            return dateB.localeCompare(dateA);
+          })
+          .map(([dateKey, entries]) => {
+            const sortedEntries = [...entries].sort((a, b) => {
+              const amtDiff = (Number(b.purchase.amount) || 0) - (Number(a.purchase.amount) || 0);
+              if (amtDiff !== 0) return amtDiff;
+              const timeDiff = parsePurchaseTimeMinutes(b.purchase.timestamp) - parsePurchaseTimeMinutes(a.purchase.timestamp);
+              if (timeDiff !== 0) return timeDiff;
+              const epochA = parseInt((a.purchase.id.match(/(\d{10,13})/) || ["0", "0"])[1], 10) || 0;
+              const epochB = parseInt((b.purchase.id.match(/(\d{10,13})/) || ["0", "0"])[1], 10) || 0;
+              if (epochB !== epochA) return epochB - epochA;
+              return a.originalIndex - b.originalIndex;
+            });
+            const items = sortedEntries.map((e) => e.purchase);
+            const dayTotal = items.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+            return { dateKey, items, dayTotal };
+          });
+
         return (
           <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-2xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
@@ -4875,8 +4962,8 @@ export default function PurchasesTab({
                 <h3 className="text-base font-serif font-bold text-slate-900">
                   Recent Inbound Cargo Deliveries ({supplierPurchases.length})
                 </h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                  Last {state.dataWarehouseRetentionDays ?? 14} Days
+                <span className="text-[11px] text-slate-500">
+                  &middot; Last {state.dataWarehouseRetentionDays ?? 14} Days &middot; By Date &middot; Highest Amount First
                 </span>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
@@ -5013,7 +5100,7 @@ export default function PurchasesTab({
                 </button>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="space-y-5">
                 <datalist id="edit-cargo-suppliers-list">
                   {suppliers.map((s) => (
                     <option key={s.id} value={s.name} />
@@ -5025,7 +5112,48 @@ export default function PurchasesTab({
                   ))}
                 </datalist>
 
-                {supplierPurchases.map((purchase) => {
+                {datePartitions.map((partition) => {
+                  const isDateCollapsed = Boolean(collapsedDateGroups[partition.dateKey]);
+                  return (
+                    <div key={partition.dateKey} className="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCollapsedDateGroups((prev) => ({
+                            ...prev,
+                            [partition.dateKey]: !prev[partition.dateKey]
+                          }))
+                        }
+                        className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 transition text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                          <Calendar size={14} className="text-[#1A56DB] shrink-0" />
+                          <span className="text-xs sm:text-sm font-serif font-bold text-slate-900">
+                            {formatPartitionDateLabel(partition.dateKey)}
+                          </span>
+                          <span className="text-[11px] font-mono text-slate-500">
+                            ({partition.dateKey})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0 text-xs">
+                          <span className="text-slate-600 font-medium">
+                            {partition.items.length} {partition.items.length === 1 ? "batch" : "batches"}
+                          </span>
+                          <span aria-hidden="true" className="text-slate-300">&middot;</span>
+                          <span className="font-mono font-bold text-slate-900 tabular-nums">
+                            -{currency} {partition.dayTotal.toLocaleString()}
+                          </span>
+                          {isDateCollapsed ? (
+                            <ChevronDown size={15} className="text-slate-500" />
+                          ) : (
+                            <ChevronUp size={15} className="text-slate-500" />
+                          )}
+                        </div>
+                      </button>
+
+                      {!isDateCollapsed && (
+                        <div className="divide-y divide-slate-100 pl-1 sm:pl-2">
+                          {partition.items.map((purchase) => {
                   const isExpanded = expandedPurchaseId === purchase.id;
                   const isEditing = editingPurchaseId === purchase.id;
                   const cloudEditsForRow = firebaseEvidenceList.filter((ev) => ev.payout_id === purchase.id);
@@ -5681,6 +5809,11 @@ export default function PurchasesTab({
                               Inventory units verified in system
                             </span>
                           </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
                         </div>
                       )}
                     </div>
