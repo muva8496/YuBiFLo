@@ -32,7 +32,8 @@ service cloud.firestore {
         ])
         && data.keys().hasOnly([
           'id', 'workspace_id', 'record_type', 'payout_id', 'receipt_id',
-          'supplier_name', 'previous_date', 'new_date',
+          'supplier_name', 'previous_supplier', 'new_supplier',
+          'previous_date', 'new_date',
           'previous_timestamp', 'new_timestamp',
           'previous_amount', 'new_amount',
           'previous_payment_channel', 'new_payment_channel',
@@ -42,10 +43,12 @@ service cloud.firestore {
         ])
         && data.id is string && data.id == editId && data.id.size() > 0 && data.id.size() <= 128
         && data.workspace_id is string && data.workspace_id == workspaceId && data.workspace_id.size() <= 128
-        && data.record_type == 'INBOUND_CARGO_EDIT'
+        && data.record_type in ['INBOUND_CARGO_EDIT', 'INBOUND_CARGO_DELETE']
         && data.payout_id is string && data.payout_id.size() > 0 && data.payout_id.size() <= 128
         && (!('receipt_id' in data) || (data.receipt_id is string && data.receipt_id.size() <= 128))
         && (!('supplier_name' in data) || (data.supplier_name is string && data.supplier_name.size() <= 160))
+        && (!('previous_supplier' in data) || (data.previous_supplier is string && data.previous_supplier.size() <= 160))
+        && (!('new_supplier' in data) || (data.new_supplier is string && data.new_supplier.size() <= 160))
         && data.previous_date is string && data.previous_date.size() >= 8 && data.previous_date.size() <= 20
         && data.new_date is string && data.new_date.size() >= 8 && data.new_date.size() <= 20
         && (!('previous_timestamp' in data) || (data.previous_timestamp is string && data.previous_timestamp.size() <= 40))
@@ -54,8 +57,8 @@ service cloud.firestore {
         && data.new_amount is number && data.new_amount >= 0
         && (!('previous_payment_channel' in data) || (data.previous_payment_channel is string && data.previous_payment_channel.size() <= 50))
         && (!('new_payment_channel' in data) || (data.new_payment_channel is string && data.new_payment_channel.size() <= 50))
-        && (!('previous_notes' in data) || (data.previous_notes is string && data.previous_notes.size() <= 1000))
-        && (!('new_notes' in data) || (data.new_notes is string && data.new_notes.size() <= 1000))
+        && (!('previous_notes' in data) || (data.previous_notes is string && data.previous_notes.size() <= 2000))
+        && (!('new_notes' in data) || (data.new_notes is string && data.new_notes.size() <= 2000))
         && (!('changed_fields' in data) || (data.changed_fields is list && data.changed_fields.size() <= 10 && (data.changed_fields.size() == 0 || data.changed_fields[0] is string)))
         && data.edit_reason is string && data.edit_reason.size() > 0 && data.edit_reason.size() <= 300
         && (!('edited_by_email' in data) || (data.edited_by_email is string && data.edited_by_email.size() <= 160))

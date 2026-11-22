@@ -105,11 +105,23 @@ export interface SalesLedgerItem {
   source_type?: "COUNTER_SALE" | "VOICE_LEDGER" | "BATCH_REALIZED" | "CHRONO_RESTOCK";
 }
 
+export interface CargoEditAuditLineSnapshot {
+  itemName: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  totalCost: number;
+  retailPrice?: number;
+}
+
 export interface CargoEditAuditEntry {
   id: string;
+  action_type?: "EDIT" | "DELETE";
   edited_at: string; // ISO timestamp
   edited_by: string;
   reason: string;
+  previous_supplier?: string;
+  new_supplier?: string;
   previous_date: string;
   new_date: string;
   previous_timestamp?: string;
@@ -120,6 +132,8 @@ export interface CargoEditAuditEntry {
   new_payment_channel?: string;
   previous_notes?: string;
   new_notes?: string;
+  previous_items?: CargoEditAuditLineSnapshot[];
+  new_items?: CargoEditAuditLineSnapshot[];
   changed_fields: string[];
   firebase_doc_path?: string;
   firebase_synced?: boolean;
@@ -430,6 +444,7 @@ export interface AlacioMasterState {
   reconciliations: ReconciliationAudit[];
   restockCards?: RestockReconciliationCard[];
   supplierBatchCards?: SupplierBatchCard[];
+  cargoAuditLog?: CargoEditAuditEntry[];
   dataWarehouseArchive?: DataWarehouseArchive;
   dataWarehouseRetentionDays?: number;
   kpis: AlacioKpis;

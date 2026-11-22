@@ -2126,12 +2126,22 @@ export async function flushWorkspaceToCloudNow(
     const passphrase = getPortableEncryptionSecret(targetEmail);
     const e2ee_vault = await encryptClientData(sanitizedState, passphrase);
 
-    const allCargoEdits: CargoEditAuditEntry[] = [];
-    for (const p of stateToPersist.payouts || []) {
-      if (Array.isArray(p.edit_history)) {
-        allCargoEdits.push(...p.edit_history);
+    const cargoEditMap = new Map<string, CargoEditAuditEntry>();
+    for (const entry of stateToPersist.cargoAuditLog || []) {
+      if (entry && entry.id) {
+        cargoEditMap.set(entry.id, entry);
       }
     }
+    for (const p of stateToPersist.payouts || []) {
+      if (Array.isArray(p.edit_history)) {
+        for (const entry of p.edit_history) {
+          if (entry && entry.id && !cargoEditMap.has(entry.id)) {
+            cargoEditMap.set(entry.id, entry);
+          }
+        }
+      }
+    }
+    const allCargoEdits = Array.from(cargoEditMap.values());
     const latestEdit = [...allCargoEdits].sort((a, b) =>
       String(b.edited_at || "").localeCompare(String(a.edited_at || ""))
     )[0];
@@ -2150,6 +2160,13 @@ export async function flushWorkspaceToCloudNow(
         ? {
             latest_cargo_edit: {
               edit_id: String(latestEdit.id || "").slice(0, 128),
+              action_type: latestEdit.action_type === "DELETE" ? "DELETE" : "EDIT",
+              ...(latestEdit.previous_supplier
+                ? { previous_supplier: String(latestEdit.previous_supplier).slice(0, 160) }
+                : {}),
+              ...(latestEdit.new_supplier
+                ? { new_supplier: String(latestEdit.new_supplier).slice(0, 160) }
+                : {}),
               previous_date: String(latestEdit.previous_date || "").slice(0, 20),
               new_date: String(latestEdit.new_date || "").slice(0, 20),
               previous_amount: Number(latestEdit.previous_amount) || 0,
@@ -2182,10 +2199,12 @@ export async function flushWorkspaceToCloudNow(
 export interface FirebaseCargoEditEvidenceRecord {
   id: string;
   workspace_id: string;
-  record_type: "INBOUND_CARGO_EDIT";
+  record_type: "INBOUND_CARGO_EDIT" | "INBOUND_CARGO_DELETE";
   payout_id: string;
   receipt_id?: string;
   supplier_name?: string;
+  previous_supplier?: string;
+  new_supplier?: string;
   previous_date: string;
   new_date: string;
   previous_timestamp?: string;
@@ -2216,15 +2235,18 @@ export function resolveWorkspaceCloudDocId(userEmail?: string, accountId?: strin
 /**
  * Writes an immutable plaintext audit evidence document to
  * `/workspaces/{workspaceId}/cargo_edit_evidence/{editId}` in Firebase Firestore
- * whenever an Inbound Cargo delivery date or detail is edited.
+ * whenever an Inbound Cargo delivery is edited or deleted.
  */
 export async function recordCargoEditEvidenceToFirebase(params: {
   userEmail?: string;
   accountId?: string;
   editId: string;
+  recordType?: "INBOUND_CARGO_EDIT" | "INBOUND_CARGO_DELETE";
   payoutId: string;
   receiptId?: string;
   supplierName?: string;
+  previousSupplier?: string;
+  newSupplier?: string;
   previousDate: string;
   newDate: string;
   previousTimestamp?: string;
@@ -2245,6 +2267,8 @@ export async function recordCargoEditEvidenceToFirebase(params: {
     .replace(/[^a-zA-Z0-9_-]/g, "_")
     .slice(0, 128);
   const path = `workspaces/${docId}/cargo_edit_evidence/${safeEditId}`;
+  const resolvedRecordType: "INBOUND_CARGO_EDIT" | "INBOUND_CARGO_DELETE" =
+    params.recordType === "INBOUND_CARGO_DELETE" ? "INBOUND_CARGO_DELETE" : "INBOUND_CARGO_EDIT";
 
   try {
     const [{ auth, db, handleFirestoreError, OperationType }, { doc, setDoc, serverTimestamp }] =
@@ -2253,10 +2277,12 @@ export async function recordCargoEditEvidenceToFirebase(params: {
     const evidencePayload = {
       id: safeEditId,
       workspace_id: docId,
-      record_type: "INBOUND_CARGO_EDIT" as const,
+      record_type: resolvedRecordType,
       payout_id: String(params.payoutId || "").slice(0, 128),
       receipt_id: String(params.receiptId || "").slice(0, 128),
-      supplier_name: String(params.supplierName || "Supplier Delivery").slice(0, 160),
+      supplier_name: String(params.supplierName || params.newSupplier || params.previousSupplier || "Supplier Delivery").slice(0, 160),
+      previous_supplier: String(params.previousSupplier || "").slice(0, 160),
+      new_supplier: String(params.newSupplier || "").slice(0, 160),
       previous_date: String(params.previousDate || "").slice(0, 20),
       new_date: String(params.newDate || "").slice(0, 20),
       previous_timestamp: String(params.previousTimestamp || "").slice(0, 40),
@@ -2265,10 +2291,13 @@ export async function recordCargoEditEvidenceToFirebase(params: {
       new_amount: Math.max(0, Math.round((Number(params.newAmount) || 0) * 100) / 100),
       previous_payment_channel: String(params.previousPaymentChannel || "CASH").slice(0, 50),
       new_payment_channel: String(params.newPaymentChannel || "CASH").slice(0, 50),
-      previous_notes: String(params.previousNotes || "").slice(0, 1000),
-      new_notes: String(params.newNotes || "").slice(0, 1000),
+      previous_notes: String(params.previousNotes || "").slice(0, 2000),
+      new_notes: String(params.newNotes || "").slice(0, 2000),
       changed_fields: (params.changedFields || []).map((f) => String(f).slice(0, 40)).slice(0, 10),
-      edit_reason: String(params.editReason || "Corrected missed delivery date").trim().slice(0, 300) || "Corrected missed delivery date",
+      edit_reason:
+        String(params.editReason || (resolvedRecordType === "INBOUND_CARGO_DELETE" ? "Deleted inbound cargo delivery" : "Edited inbound cargo delivery"))
+          .trim()
+          .slice(0, 300) || "Edited inbound cargo delivery",
       edited_by_email: String(params.editedByEmail || params.userEmail || auth.currentUser?.email || "merchant").slice(0, 160),
       edited_by_uid: String(auth.currentUser?.uid || "workspace_session").slice(0, 128),
       edited_at: String(params.editedAt || new Date().toISOString()).slice(0, 60),

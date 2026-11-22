@@ -25,7 +25,9 @@ import {
   BatchTurnoverItem,
   PaymentChannelConfig,
   DebtLineItem,
-  CargoEditAuditEntry
+  CargoEditAuditEntry,
+  CargoEditAuditLineSnapshot,
+  SavedReceiptItem
 } from "./types/alacio";
 import { 
   loadAlacioState, 
@@ -1124,10 +1126,15 @@ export default function App() {
 
   const handleEditInboundCargoPurchase = async (payload: {
     payoutId: string;
+    newSupplierName?: string;
+    newSupplierPhone?: string;
+    newSupplierNationalId?: string;
     newDate: string;
     newTimestamp?: string;
     newAmount: number;
     newPaymentChannel?: string;
+    newItemLines?: PurchaseItemLine[];
+    previousItemLines?: PurchaseItemLine[];
     newNotes: string;
     reason: string;
   }): Promise<{ ok: boolean; docPath?: string; editId?: string; firebaseSynced: boolean }> => {
@@ -1156,28 +1163,88 @@ export default function App() {
     const prevChannel = currentPayout.payment_channel || "CASH";
     const cleanNewChannel = (payload.newPaymentChannel || prevChannel).trim() || prevChannel;
     const prevNotes = currentPayout.notes || "";
+    const prevSupplierRaw = prevNotes.split(/[:\[]/)[0].trim() || "Supplier Delivery";
+    const cleanNewSupplierInput = (payload.newSupplierName || "").trim() || prevSupplierRaw;
+
+    const inferredReceiptId =
+      currentPayout.receipt_id ||
+      (currentPayout.id.startsWith("payout_cargo_")
+        ? currentPayout.id.replace("payout_cargo_", "")
+        : undefined);
+
+    const existingArchiveList = currentMasterState.receiptsArchive || [];
+    const matchedPrevReceipt = existingArchiveList.find((r) => {
+      if (inferredReceiptId && r.id === inferredReceiptId) return true;
+      const supplierToken = prevSupplierRaw.toLowerCase();
+      return (
+        !inferredReceiptId &&
+        supplierToken.length >= 3 &&
+        r.supplierName.toLowerCase().includes(supplierToken) &&
+        normalizeIsoDate(r.receiptDate) === prevDate &&
+        Math.abs((Number(r.totalCost) || 0) - prevAmount) < 1
+      );
+    });
+
+    const prevItemSnapshots: CargoEditAuditLineSnapshot[] = matchedPrevReceipt
+      ? (matchedPrevReceipt.items || []).map((ri) => ({
+          itemName: ri.itemName,
+          quantity: Number(ri.supplyUnitsReceived) || 0,
+          unit: ri.supplyUnit || ri.retailUnit || "Pieces",
+          unitCost: Number(ri.unitCostAtDelivery) || 0,
+          totalCost: Number(ri.lineCost) || 0,
+          retailPrice: Number(ri.retailPrice) || 0
+        }))
+      : (payload.previousItemLines || []).map((l) => ({
+          itemName: l.itemName,
+          quantity: Number(l.quantity) || 0,
+          unit: l.unit || "Pieces",
+          unitCost: Number(l.unitCost) || 0,
+          totalCost: Number(l.totalCost) || 0,
+          retailPrice: Number(l.retailPrice) || 0
+        }));
+
+    const cleanNewItemLines = (payload.newItemLines || []).filter((l) => l.itemName.trim().length > 0);
+    const newItemSnapshots: CargoEditAuditLineSnapshot[] = cleanNewItemLines.map((l) => ({
+      itemName: l.itemName.trim(),
+      quantity: Number(l.quantity) || 0,
+      unit: l.unit || "Pieces",
+      unitCost: Number(l.unitCost) || 0,
+      totalCost: Number(l.totalCost) || 0,
+      retailPrice: Number(l.retailPrice) || 0
+    }));
 
     const changedFields: string[] = [];
+    if (prevSupplierRaw.toLowerCase() !== cleanNewSupplierInput.toLowerCase()) changedFields.push("supplier");
     if (prevDate !== cleanNewDate) changedFields.push("date");
     if (prevTimestamp !== cleanNewTimestamp) changedFields.push("timestamp");
-    if (prevAmount !== cleanNewAmount) changedFields.push("amount");
+    if (Math.abs(prevAmount - cleanNewAmount) > 0.01) changedFields.push("amount");
     if (prevChannel !== cleanNewChannel) changedFields.push("payment_channel");
-    if (prevNotes !== cleanNewNotes) changedFields.push("notes");
+    if (prevNotes !== cleanNewNotes) changedFields.push("goods");
+    if (
+      cleanNewItemLines.length > 0 &&
+      JSON.stringify(prevItemSnapshots.map((i) => `${i.itemName}|${i.quantity}|${i.unit}|${i.totalCost}`)) !==
+        JSON.stringify(newItemSnapshots.map((i) => `${i.itemName}|${i.quantity}|${i.unit}|${i.totalCost}`))
+    ) {
+      if (!changedFields.includes("goods")) changedFields.push("goods");
+    }
     if (changedFields.length === 0) {
-      changedFields.push("date");
+      changedFields.push("details");
     }
 
     const reasonText =
       payload.reason.trim() ||
       (prevDate !== cleanNewDate
         ? `Corrected missed delivery date (${prevDate} -> ${cleanNewDate})`
-        : "Updated inbound cargo details");
+        : "Updated inbound cargo store, goods, and delivery details");
 
     const auditEntry: CargoEditAuditEntry = {
       id: editId,
+      action_type: "EDIT",
       edited_at: editedAt,
       edited_by: editorLabel,
       reason: reasonText,
+      previous_supplier: prevSupplierRaw,
+      new_supplier: cleanNewSupplierInput,
       previous_date: prevDate,
       new_date: cleanNewDate,
       previous_timestamp: prevTimestamp,
@@ -1188,18 +1255,168 @@ export default function App() {
       new_payment_channel: cleanNewChannel,
       previous_notes: prevNotes,
       new_notes: cleanNewNotes,
+      previous_items: prevItemSnapshots,
+      new_items: newItemSnapshots.length > 0 ? newItemSnapshots : prevItemSnapshots,
       changed_fields: changedFields,
       firebase_doc_path: docPath,
       firebase_synced: !isDemoMode
     };
 
-    const inferredReceiptId =
-      currentPayout.receipt_id ||
-      (currentPayout.id.startsWith("payout_cargo_")
-        ? currentPayout.id.replace("payout_cargo_", "")
-        : undefined);
+    let flushedPromise: Promise<void> | null = null;
+    let resolvedSupplierLabel = cleanNewSupplierInput;
 
     setMasterState((prev) => {
+      // 1. Reconcile / register store in suppliers list & adjust order totals
+      const suppliedGoodNames = cleanNewItemLines.map((l) => l.itemName.trim()).filter(Boolean);
+      const { canonicalName: canonicalSupplier, updatedSuppliers: reconciledSuppliers } =
+        reconcileOrRegisterSupplier(cleanNewSupplierInput, prev.suppliers || [], {
+          phone: payload.newSupplierPhone,
+          national_id: payload.newSupplierNationalId,
+          deliveryDate: cleanNewDate,
+          suppliedItems: suppliedGoodNames
+        });
+      resolvedSupplierLabel = canonicalSupplier || cleanNewSupplierInput;
+
+      const updatedSuppliers = reconciledSuppliers.map((sup) => {
+        const isOldSup = sup.name.toLowerCase().trim() === prevSupplierRaw.toLowerCase().trim();
+        const isNewSup = sup.name.toLowerCase().trim() === resolvedSupplierLabel.toLowerCase().trim();
+        if (isOldSup && isNewSup) {
+          return {
+            ...sup,
+            total_orders_cost: Math.max(0, (Number(sup.total_orders_cost) || 0) - prevAmount + cleanNewAmount),
+            last_delivery_date: cleanNewDate
+          };
+        }
+        if (isOldSup) {
+          return {
+            ...sup,
+            total_orders_cost: Math.max(0, (Number(sup.total_orders_cost) || 0) - prevAmount)
+          };
+        }
+        if (isNewSup) {
+          return {
+            ...sup,
+            total_orders_cost: Math.max(0, (Number(sup.total_orders_cost) || 0) + cleanNewAmount),
+            last_delivery_date: cleanNewDate
+          };
+        }
+        return sup;
+      });
+
+      // 2. Apply net inventory changes if goods lines were provided/edited
+      let updatedInventory = [...(prev.inventory || [])];
+      if (cleanNewItemLines.length > 0) {
+        interface StockAdjustment {
+          displayName: string;
+          deltaUnits: number;
+          latestLine?: PurchaseItemLine;
+        }
+        const adjustments: StockAdjustment[] = [];
+        const addAdjustment = (name: string, delta: number, line?: PurchaseItemLine) => {
+          const cleanName = name.trim();
+          if (!cleanName) return;
+          const match = adjustments.find((a) => doProductsMatch(a.displayName, cleanName));
+          if (match) {
+            match.deltaUnits = Math.round((match.deltaUnits + delta) * 100) / 100;
+            if (line) match.latestLine = line;
+          } else {
+            adjustments.push({
+              displayName: cleanName,
+              deltaUnits: Math.round(delta * 100) / 100,
+              latestLine: line
+            });
+          }
+        };
+
+        prevItemSnapshots.forEach((oldItem) => {
+          const oldUnits =
+            Math.max(0, Number(oldItem.quantity) || 0) * getSupplyUnitMultiplier(oldItem.unit || "");
+          addAdjustment(oldItem.itemName, -oldUnits);
+        });
+
+        cleanNewItemLines.forEach((newLine) => {
+          const qty = Math.max(0, Number(newLine.quantity) || 0);
+          const mult = getSupplyUnitMultiplier(newLine.unit || "");
+          const newUnits = qty * mult;
+          addAdjustment(newLine.itemName, newUnits, newLine);
+        });
+
+        adjustments.forEach((adj) => {
+          const existingIdx = updatedInventory.findIndex((inv) =>
+            doProductsMatch(inv.name, adj.displayName)
+          );
+          if (existingIdx >= 0) {
+            const existing = updatedInventory[existingIdx];
+            const nextStock = Math.max(
+              0,
+              Math.round(((Number(existing.current_stock) || 0) + adj.deltaUnits) * 100) / 100
+            );
+            const lineCostNum = Number(adj.latestLine?.totalCost) || 0;
+            const lineQtyNum = Number(adj.latestLine?.quantity) || 1;
+            const derivedCost = adj.latestLine
+              ? lineCostNum > 0
+                ? deriveUnitWholesaleCost(lineCostNum, lineQtyNum, adj.latestLine.unit)
+                : Number(adj.latestLine.unitCost) || Number(existing.unit_cost) || 0
+              : Number(existing.unit_cost) || 0;
+            const derivedRetail =
+              adj.latestLine && (Number(adj.latestLine.retailPrice) || 0) > 0
+                ? Number(adj.latestLine.retailPrice)
+                : Number(existing.unit_retail) || 0;
+
+            updatedInventory[existingIdx] = {
+              ...existing,
+              current_stock: nextStock,
+              unit_cost: derivedCost,
+              unit_retail: derivedRetail,
+              expected_margin: Math.round((derivedRetail - derivedCost) * 100) / 100,
+              total_shelf_value: Math.round(nextStock * derivedRetail * 100) / 100,
+              supplier: adj.latestLine ? resolvedSupplierLabel : existing.supplier,
+              ...(adj.latestLine
+                ? {
+                    bulk_pack_size: getSupplyUnitMultiplier(adj.latestLine.unit),
+                    bulk_pack_name: adj.latestLine.unit
+                  }
+                : {})
+            };
+          } else if (adj.deltaUnits > 0 && adj.latestLine) {
+            const lineQty = Number(adj.latestLine.quantity) || 1;
+            const lineCost = Number(adj.latestLine.totalCost) || 0;
+            const packMult = getSupplyUnitMultiplier(adj.latestLine.unit);
+            const unitWholesale =
+              lineCost > 0
+                ? deriveUnitWholesaleCost(lineCost, lineQty, adj.latestLine.unit)
+                : Number(adj.latestLine.unitCost) || 0;
+            const effectiveRetail =
+              (Number(adj.latestLine.retailPrice) || 0) > 0
+                ? Number(adj.latestLine.retailPrice)
+                : Math.round(unitWholesale * 1.25 * 100) / 100;
+            const newSku: InventoryItem = {
+              id: `sku_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+              name: adj.latestLine.itemName.trim(),
+              category: adj.latestLine.category || "General Wholesaler",
+              unit_type: packMult > 1 ? "Packets" : (adj.latestLine.unit || "pcs"),
+              unit_cost: unitWholesale,
+              unit_retail: effectiveRetail,
+              current_stock: adj.deltaUnits,
+              opening_stock: adj.deltaUnits,
+              expected_margin: Math.round((effectiveRetail - unitWholesale) * 100) / 100,
+              total_shelf_value: Math.round(adj.deltaUnits * effectiveRetail * 100) / 100,
+              velocity_badge: "NORMAL",
+              reorder_point: 5,
+              supplier: resolvedSupplierLabel,
+              bulk_pack_size: packMult,
+              bulk_pack_name: adj.latestLine.unit,
+              is_bulk_decanted: packMult > 1
+            };
+            updatedInventory = [newSku, ...updatedInventory];
+          }
+        });
+      }
+
+      // 3. Update payouts
+      const effectiveReceiptId =
+        inferredReceiptId || matchedPrevReceipt?.id || `rcpt_edit_${payload.payoutId}`;
+
       const updatedPayouts = (prev.payouts || []).map((p) => {
         if (p.id !== payload.payoutId) return p;
         return {
@@ -1209,45 +1426,110 @@ export default function App() {
           amount: cleanNewAmount,
           payment_channel: cleanNewChannel,
           notes: cleanNewNotes,
-          ...(inferredReceiptId ? { receipt_id: inferredReceiptId } : {}),
+          receipt_id: effectiveReceiptId,
           last_edited_at: editedAt,
           edit_history: [auditEntry, ...(p.edit_history || [])]
         };
       });
 
-      // Keep linked saved receipts aligned if delivery date / amount / payment channel changed
-      const updatedReceiptsArchive = (prev.receiptsArchive || []).map((r) => {
-        const isLinkedById = inferredReceiptId && r.id === inferredReceiptId;
-        const supplierToken = prevNotes.split(/[:\[]/)[0].trim().toLowerCase();
-        const isHeuristicMatch =
-          !inferredReceiptId &&
-          supplierToken.length >= 3 &&
-          r.supplierName.toLowerCase().includes(supplierToken) &&
-          normalizeIsoDate(r.receiptDate) === prevDate &&
-          Math.abs((Number(r.totalCost) || 0) - prevAmount) < 1;
+      // 4. Sync or create linked SavedReceiptRecord in receiptsArchive
+      const mappedPayMode: SavedReceiptRecord["paymentMode"] =
+        cleanNewChannel === "MPESA" || cleanNewChannel === "MPESA_TILL"
+          ? "MPESA"
+          : cleanNewChannel === "SUPPLIER_CREDIT"
+            ? "SUPPLIER_CREDIT"
+            : cleanNewChannel === "NATIONAL_ID_DEPOSIT"
+              ? "NATIONAL_ID_DEPOSIT"
+              : "CASH";
 
-        if (!isLinkedById && !isHeuristicMatch) return r;
+      const mappedReceiptItems: SavedReceiptItem[] = cleanNewItemLines.map((l, idx) => {
+        const qty = Number(l.quantity) || 1;
+        const mult = getSupplyUnitMultiplier(l.unit || "");
+        const totalLineCost = Number(l.totalCost) || 0;
+        const uCost =
+          totalLineCost > 0
+            ? deriveUnitWholesaleCost(totalLineCost, qty, l.unit)
+            : Number(l.unitCost) || 0;
+        const rPrice =
+          (Number(l.retailPrice) || 0) > 0
+            ? Number(l.retailPrice)
+            : Math.round(uCost * 1.2 * 100) / 100;
+        const retailUnits = Math.max(1, Math.round(qty * mult * 100) / 100);
+        return {
+          id: l.id || `line_rcpt_${Date.now()}_${idx}`,
+          itemName: l.itemName.trim(),
+          supplyUnitsReceived: qty,
+          supplyUnit: l.unit || "Pieces",
+          conversionRatio: mult,
+          retailUnitsAdded: retailUnits,
+          retailUnit: l.unit || "Pieces",
+          unitCostAtDelivery: uCost,
+          lineCost: totalLineCost || Math.round(retailUnits * uCost * 100) / 100,
+          retailPrice: rPrice,
+          expectedMargin: Math.max(0, Math.round((rPrice - uCost) * 100) / 100),
+          approved: true
+        };
+      });
 
-        const mappedPayMode: SavedReceiptRecord["paymentMode"] =
-          cleanNewChannel === "MPESA" || cleanNewChannel === "MPESA_TILL"
-            ? "MPESA"
-            : cleanNewChannel === "SUPPLIER_CREDIT"
-              ? "SUPPLIER_CREDIT"
-              : cleanNewChannel === "NATIONAL_ID_DEPOSIT"
-                ? "NATIONAL_ID_DEPOSIT"
-                : "CASH";
+      let updatedReceiptsArchive = (prev.receiptsArchive || []).map((r) => {
+        const isMatched = matchedPrevReceipt ? r.id === matchedPrevReceipt.id : r.id === effectiveReceiptId;
+        if (!isMatched) return r;
+
+        const nextItems = mappedReceiptItems.length > 0 ? mappedReceiptItems : r.items;
+        const totalRetailVal = nextItems.reduce(
+          (acc, it) => acc + (Number(it.retailUnitsAdded) || Number(it.supplyUnitsReceived) || 1) * (Number(it.retailPrice) || 0),
+          0
+        );
+        const profitVal = Math.max(0, totalRetailVal - cleanNewAmount);
+        const markupVal = cleanNewAmount > 0 ? Math.round((profitVal / cleanNewAmount) * 1000) / 10 : 0;
 
         return {
           ...r,
+          supplierName: resolvedSupplierLabel,
           receiptDate: cleanNewDate,
           paymentMode: mappedPayMode,
           totalCost: cleanNewAmount,
+          totalRetailShelfValue: totalRetailVal > 0 ? Math.round(totalRetailVal * 100) / 100 : r.totalRetailShelfValue,
+          totalPotentialProfit: totalRetailVal > 0 ? Math.round(profitVal * 100) / 100 : r.totalPotentialProfit,
+          markupPercentage: totalRetailVal > 0 ? markupVal : r.markupPercentage,
+          itemsCount: nextItems.length,
+          items: nextItems,
+          notes: cleanNewNotes,
           last_edited_at: editedAt,
           edit_history: [auditEntry, ...(r.edit_history || [])]
         };
       });
 
-      // Reconcile channel balances if amount or channel changed
+      if (!matchedPrevReceipt && mappedReceiptItems.length > 0) {
+        const totalRetailVal = mappedReceiptItems.reduce(
+          (acc, it) => acc + (Number(it.retailUnitsAdded) || 1) * (Number(it.retailPrice) || 0),
+          0
+        );
+        const profitVal = Math.max(0, totalRetailVal - cleanNewAmount);
+        const markupVal = cleanNewAmount > 0 ? Math.round((profitVal / cleanNewAmount) * 1000) / 10 : 0;
+        const createdReceipt: SavedReceiptRecord = {
+          id: effectiveReceiptId,
+          receiptNumber: `ED-${Math.floor(1000 + Math.random() * 9000)}`,
+          supplierName: resolvedSupplierLabel,
+          receiptDate: cleanNewDate,
+          paymentMode: mappedPayMode,
+          status: "approved",
+          totalCost: cleanNewAmount,
+          totalRetailShelfValue: Math.round(totalRetailVal * 100) / 100,
+          totalPotentialProfit: Math.round(profitVal * 100) / 100,
+          markupPercentage: markupVal,
+          itemsCount: mappedReceiptItems.length,
+          items: mappedReceiptItems,
+          processedAt: cleanNewTimestamp || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          decidedAt: editedAt,
+          notes: cleanNewNotes,
+          last_edited_at: editedAt,
+          edit_history: [auditEntry]
+        };
+        updatedReceiptsArchive = [createdReceipt, ...updatedReceiptsArchive];
+      }
+
+      // 5. Reconcile channel balances if amount or channel changed
       const getOutflowBucket = (ch: string): "CASH" | "MPESA" | "BANK" | "NONE" => {
         const u = ch.toUpperCase();
         if (u === "CASH" || u === "CASH_DRAWER") return "CASH";
@@ -1273,10 +1555,19 @@ export default function App() {
           ? applyDeltaToPaymentChannels(prev, { cashDelta, mpesaDelta, bankDelta })
           : {};
 
+      const nextAuditLog = [
+        auditEntry,
+        ...(prev.cargoAuditLog || []).filter((e) => e.id !== editId)
+      ].slice(0, 200);
+
       const nextState: AlacioMasterState = {
         ...prev,
+        inventory: updatedInventory,
+        suppliers: updatedSuppliers,
         payouts: updatedPayouts,
         receiptsArchive: updatedReceiptsArchive,
+        cargoAuditLog: nextAuditLog,
+        kpis: calculateKpis(updatedInventory, prev.warehouse),
         ...channelUpdates,
         last_updated: editedAt
       };
@@ -1286,8 +1577,14 @@ export default function App() {
         ? archiveOldRecordsToDataWarehouse(reconciled).nextState
         : reconciled;
 
-      if (!isDemoMode) {
-        saveAlacioState(finalState, effectiveOwnerEmail, activeAccountId, { immediate: true });
+      if (!isDemoMode && !flushedPromise) {
+        flushedPromise = new Promise<void>((resolve) => {
+          queueMicrotask(() => {
+            saveAlacioState(finalState, effectiveOwnerEmail, activeAccountId, { immediate: true })
+              .catch(() => {})
+              .finally(resolve);
+          });
+        });
       }
       return finalState;
     });
@@ -1296,14 +1593,20 @@ export default function App() {
       return { ok: true, docPath, editId, firebaseSynced: false };
     }
 
-    const supplierLabel = cleanNewNotes.split(/[:\[]/)[0].trim() || "Supplier Delivery";
+    if (flushedPromise) {
+      await flushedPromise;
+    }
+
     const evidenceRes = await recordCargoEditEvidenceToFirebase({
       userEmail: effectiveOwnerEmail,
       accountId: activeAccountId,
       editId,
+      recordType: "INBOUND_CARGO_EDIT",
       payoutId: payload.payoutId,
       receiptId: inferredReceiptId,
-      supplierName: supplierLabel,
+      supplierName: resolvedSupplierLabel,
+      previousSupplier: prevSupplierRaw,
+      newSupplier: resolvedSupplierLabel,
       previousDate: prevDate,
       newDate: cleanNewDate,
       previousTimestamp: prevTimestamp,
@@ -1332,6 +1635,237 @@ export default function App() {
                   eh.id === editId ? { ...eh, firebase_synced: false } : eh
                 )
               }
+        ),
+        cargoAuditLog: (prev.cargoAuditLog || []).map((eh) =>
+          eh.id === editId ? { ...eh, firebase_synced: false } : eh
+        )
+      }));
+    }
+
+    return {
+      ok: true,
+      docPath: evidenceRes.docPath,
+      editId: evidenceRes.editId,
+      firebaseSynced: evidenceRes.ok
+    };
+  };
+
+  const handleDeleteInboundCargoPurchase = async (payload: {
+    payoutId: string;
+    parsedItems?: PurchaseItemLine[];
+    reason: string;
+  }): Promise<{ ok: boolean; docPath?: string; editId?: string; firebaseSynced: boolean }> => {
+    const editedAt = new Date().toISOString();
+    const editId = `cargo_del_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const cloudDocId = resolveWorkspaceCloudDocId(effectiveOwnerEmail, activeAccountId);
+    const docPath = `workspaces/${cloudDocId}/cargo_edit_evidence/${editId}`;
+    const editorLabel =
+      currentUser?.email ||
+      currentUser?.name ||
+      currentMasterState.proprietor_name ||
+      "Merchant";
+
+    const currentPayout = (currentMasterState.payouts || []).find((p) => p.id === payload.payoutId);
+    if (!currentPayout) {
+      return { ok: false, firebaseSynced: false };
+    }
+
+    const prevDate = normalizeIsoDate(currentPayout.date || currentPayout.timestamp?.slice(0, 10));
+    const prevTimestamp = currentPayout.timestamp || "";
+    const prevAmount = Number(currentPayout.amount) || 0;
+    const prevChannel = currentPayout.payment_channel || "CASH";
+    const prevNotes = currentPayout.notes || "Supplier Restock Delivery";
+    const prevSupplier = prevNotes.split(/[:\[]/)[0].trim() || "Supplier Delivery";
+    const reasonText =
+      payload.reason.trim() || `Deleted inbound cargo delivery from ${prevSupplier} (${prevDate})`;
+
+    const inferredReceiptId =
+      currentPayout.receipt_id ||
+      (currentPayout.id.startsWith("payout_cargo_")
+        ? currentPayout.id.replace("payout_cargo_", "")
+        : undefined);
+
+    const matchedPrevReceipt = (currentMasterState.receiptsArchive || []).find((r) => {
+      if (inferredReceiptId && r.id === inferredReceiptId) return true;
+      const supplierToken = prevSupplier.toLowerCase();
+      return (
+        !inferredReceiptId &&
+        supplierToken.length >= 3 &&
+        r.supplierName.toLowerCase().includes(supplierToken) &&
+        normalizeIsoDate(r.receiptDate) === prevDate &&
+        Math.abs((Number(r.totalCost) || 0) - prevAmount) < 1
+      );
+    });
+
+    const revertSnapshots: CargoEditAuditLineSnapshot[] = matchedPrevReceipt
+      ? (matchedPrevReceipt.items || []).map((ri) => ({
+          itemName: ri.itemName,
+          quantity: Number(ri.supplyUnitsReceived) || 0,
+          unit: ri.supplyUnit || ri.retailUnit || "Pieces",
+          unitCost: Number(ri.unitCostAtDelivery) || 0,
+          totalCost: Number(ri.lineCost) || 0,
+          retailPrice: Number(ri.retailPrice) || 0
+        }))
+      : (payload.parsedItems || []).map((l) => ({
+          itemName: l.itemName,
+          quantity: Number(l.quantity) || 0,
+          unit: l.unit || "Pieces",
+          unitCost: Number(l.unitCost) || 0,
+          totalCost: Number(l.totalCost) || 0,
+          retailPrice: Number(l.retailPrice) || 0
+        }));
+
+    const auditEntry: CargoEditAuditEntry = {
+      id: editId,
+      action_type: "DELETE",
+      edited_at: editedAt,
+      edited_by: editorLabel,
+      reason: reasonText,
+      previous_supplier: prevSupplier,
+      new_supplier: "[DELETED]",
+      previous_date: prevDate,
+      new_date: prevDate,
+      previous_timestamp: prevTimestamp,
+      new_timestamp: "DELETED",
+      previous_amount: prevAmount,
+      new_amount: 0,
+      previous_payment_channel: prevChannel,
+      new_payment_channel: "DELETED",
+      previous_notes: prevNotes,
+      new_notes: `[DELETED] ${prevNotes}`.slice(0, 2000),
+      previous_items: revertSnapshots,
+      new_items: [],
+      changed_fields: ["deleted"],
+      firebase_doc_path: docPath,
+      firebase_synced: !isDemoMode
+    };
+
+    let flushedPromise: Promise<void> | null = null;
+
+    setMasterState((prev) => {
+      // 1. Revert stock quantities from deleted batch (clamped >= 0)
+      const updatedInventory = (prev.inventory || []).map((inv) => {
+        const matchingRevert = revertSnapshots.filter((rs) =>
+          doProductsMatch(inv.name, rs.itemName)
+        );
+        if (matchingRevert.length === 0) return inv;
+        const totalUnitsToRevert = matchingRevert.reduce(
+          (sum, rs) => sum + Math.max(0, Number(rs.quantity) || 0) * getSupplyUnitMultiplier(rs.unit || ""),
+          0
+        );
+        const nextStock = Math.max(0, Math.round(((Number(inv.current_stock) || 0) - totalUnitsToRevert) * 100) / 100);
+        return {
+          ...inv,
+          current_stock: nextStock,
+          total_shelf_value: Math.round(nextStock * (Number(inv.unit_retail) || 0) * 100) / 100
+        };
+      });
+
+      // 2. Remove payout, linked receipt, and matching pending restock cards
+      const updatedPayouts = (prev.payouts || []).filter((p) => p.id !== payload.payoutId);
+      const updatedReceiptsArchive = matchedPrevReceipt
+        ? (prev.receiptsArchive || []).filter((r) => r.id !== matchedPrevReceipt.id)
+        : prev.receiptsArchive || [];
+      const updatedRestockCards = (prev.restockCards || []).filter((card) => {
+        if (card.status !== "PENDING_AUTHORIZATION") return true;
+        const sameSupplier = card.supplierName.toLowerCase().trim() === prevSupplier.toLowerCase().trim();
+        const sameDate = normalizeIsoDate(card.newBatchDate) === prevDate;
+        const sameSku = revertSnapshots.some((rs) => doProductsMatch(card.skuName, rs.itemName));
+        return !(sameSupplier && sameDate && sameSku);
+      });
+
+      // 3. Decrement supplier's total order cost
+      const updatedSuppliers = (prev.suppliers || []).map((s) =>
+        s.name.toLowerCase().trim() === prevSupplier.toLowerCase().trim()
+          ? { ...s, total_orders_cost: Math.max(0, (Number(s.total_orders_cost) || 0) - prevAmount) }
+          : s
+      );
+
+      // 4. Refund payment channel balance
+      const u = prevChannel.toUpperCase();
+      let cashDelta = 0;
+      let mpesaDelta = 0;
+      let bankDelta = 0;
+      if (u === "CASH" || u === "CASH_DRAWER") cashDelta = prevAmount;
+      else if (u.includes("MPESA") || u.includes("POCHI") || u.includes("SEND_MONEY") || u.includes("PAYBILL")) mpesaDelta = prevAmount;
+      else if (u.includes("BANK") || u.includes("EQUITEL")) bankDelta = prevAmount;
+
+      const channelUpdates =
+        cashDelta !== 0 || mpesaDelta !== 0 || bankDelta !== 0
+          ? applyDeltaToPaymentChannels(prev, { cashDelta, mpesaDelta, bankDelta })
+          : {};
+
+      const nextAuditLog = [auditEntry, ...(prev.cargoAuditLog || [])].slice(0, 200);
+
+      const nextState: AlacioMasterState = {
+        ...prev,
+        inventory: updatedInventory,
+        suppliers: updatedSuppliers,
+        payouts: updatedPayouts,
+        receiptsArchive: updatedReceiptsArchive,
+        restockCards: updatedRestockCards,
+        cargoAuditLog: nextAuditLog,
+        kpis: calculateKpis(updatedInventory, prev.warehouse),
+        ...channelUpdates,
+        last_updated: editedAt
+      };
+
+      const reconciled = reconcileChronologicalReceiptsAndSales(nextState);
+      const finalState = !reconciled.is_demo_template
+        ? archiveOldRecordsToDataWarehouse(reconciled).nextState
+        : reconciled;
+
+      if (!isDemoMode && !flushedPromise) {
+        flushedPromise = new Promise<void>((resolve) => {
+          queueMicrotask(() => {
+            saveAlacioState(finalState, effectiveOwnerEmail, activeAccountId, { immediate: true })
+              .catch(() => {})
+              .finally(resolve);
+          });
+        });
+      }
+      return finalState;
+    });
+
+    if (isDemoMode) {
+      return { ok: true, docPath, editId, firebaseSynced: false };
+    }
+
+    if (flushedPromise) {
+      await flushedPromise;
+    }
+
+    const evidenceRes = await recordCargoEditEvidenceToFirebase({
+      userEmail: effectiveOwnerEmail,
+      accountId: activeAccountId,
+      editId,
+      recordType: "INBOUND_CARGO_DELETE",
+      payoutId: payload.payoutId,
+      receiptId: matchedPrevReceipt?.id || inferredReceiptId,
+      supplierName: prevSupplier,
+      previousSupplier: prevSupplier,
+      newSupplier: "[DELETED]",
+      previousDate: prevDate,
+      newDate: prevDate,
+      previousTimestamp: prevTimestamp,
+      newTimestamp: "DELETED",
+      previousAmount: prevAmount,
+      newAmount: 0,
+      previousPaymentChannel: prevChannel,
+      newPaymentChannel: "DELETED",
+      previousNotes: prevNotes,
+      newNotes: `[DELETED] ${prevNotes}`,
+      changedFields: ["deleted"],
+      editReason: reasonText,
+      editedByEmail: editorLabel,
+      editedAt
+    });
+
+    if (!evidenceRes.ok) {
+      setMasterState((prev) => ({
+        ...prev,
+        cargoAuditLog: (prev.cargoAuditLog || []).map((eh) =>
+          eh.id === editId ? { ...eh, firebase_synced: false } : eh
         )
       }));
     }
@@ -2308,6 +2842,7 @@ export default function App() {
             onAddExpense={handleAddExpense}
             onEditExpense={handleEditExpense}
             onEditInboundCargo={handleEditInboundCargoPurchase}
+            onDeleteInboundCargo={handleDeleteInboundCargoPurchase}
             onDeleteExpense={handleDeleteExpense}
             onUpdateInventoryItem={handleUpdateInventoryItem}
             userEmail={effectiveOwnerEmail}
