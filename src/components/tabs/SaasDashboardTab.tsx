@@ -1,14 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { 
   FileText, Receipt, ArrowLeftRight, DollarSign, SlidersHorizontal, 
   ChevronDown, ExternalLink, ShieldCheck, AlertCircle, ArrowUpRight, 
-  ArrowDownRight, Check, CheckCircle2, TrendingUp, Sun, Mic, ShoppingBag, 
+  ArrowDownRight, Check, CheckCircle2, TrendingUp, TrendingDown, Activity, Sun, Mic, ShoppingBag, 
   Users, BookOpen, Layers, Truck, Camera, Sparkles, ArrowRight, Wallet, Plus, Home, Car, Coffee, UserMinus
 } from "lucide-react";
 import { AlacioMasterState, PayoutOrDrawing } from "../../types/alacio";
 import { isEateryBusinessState, resolvePaymentChannels } from "../../services/alacioStorage";
 import { LaunchpadProgress } from "./LaunchpadTab";
 import { getOverdueDebtors, formatDebtItemsSummary } from "../../utils/debtScheduleHelper";
+import { getBatchedRealizedSalesSummary } from "../../utils/supplierBatchSalesEngine";
 
 interface SaasDashboardTabProps {
   state: AlacioMasterState;
@@ -41,11 +42,21 @@ export default function SaasDashboardTab({
   launchpadProgress,
   isDemo = false
 }: SaasDashboardTabProps) {
-  const { currency, salesLedger = [], inventory = [], customers = [], payouts = [], suppliers = [] } = state;
+  const { currency, inventory = [], customers = [], payouts = [], suppliers = [] } = state;
+
+  // Include both direct counter/voice sales AND batched realized sales (auto-validated & reconciled)
+  const {
+    effectiveSalesLedger,
+    batchedRealizedTotal,
+    batchedRealizedProfit,
+    directSalesTotal,
+    realizedBatchCards
+  } = useMemo(() => getBatchedRealizedSalesSummary(state), [state]);
 
   // Selected filters
   const [expenseRange, setExpenseRange] = useState<"Year to date" | "This month" | "Last 30 days">("Year to date");
   const [cashflowRange, setCashflowRange] = useState<"Last 30 days" | "This month" | "Last 7 days">("Last 30 days");
+  const [pulseWindowMode, setPulseWindowMode] = useState<"rolling_7d" | "calendar_week">("rolling_7d");
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [hoveredExpenseSegment, setHoveredExpenseSegment] = useState<number | null>(null);
 
@@ -130,8 +141,8 @@ export default function SaasDashboardTab({
     return Math.round(num * 100) / 100;
   };
 
-  // Real Ledger Calculations
-  const todaySales = salesLedger.filter(s => (s.date || s.timestamp?.slice(0, 10) || "") === todayIso);
+  // Real Ledger Calculations (including batched realized sales)
+  const todaySales = effectiveSalesLedger.filter(s => (s.date || s.timestamp?.slice(0, 10) || "") === todayIso);
   const todaySalesTotal = todaySales.reduce((acc, s) => acc + safeNum(s.total_amount, 0, 5_000_000), 0);
 
   const totalDeniOwed = customers.reduce((acc, c) => acc + safeNum(c.debt_balance, 0, 5_000_000), 0);
@@ -149,7 +160,7 @@ export default function SaasDashboardTab({
     return acc + stock * cost;
   }, 0);
   const totalPotentialProfit = Math.max(0, totalStockValue - totalStockCost);
-  const totalRevenue = salesLedger.reduce((acc, s) => acc + safeNum(s.total_amount, 0, 5_000_000), 0);
+  const totalRevenue = effectiveSalesLedger.reduce((acc, s) => acc + safeNum(s.total_amount, 0, 5_000_000), 0);
   const totalPayouts = payouts.reduce((acc, p) => acc + safeNum(p.amount, 4160, 5_000_000), 0);
 
   const approvedReceipts = (state.receiptsArchive || []).filter(r => r.status === "approved");
@@ -308,7 +319,7 @@ export default function SaasDashboardTab({
     ? Array.from(
         new Set([
           ...approvedReceipts.map((r) => (r.receiptDate || "").slice(0, 10)),
-          ...salesLedger.map((s) => (s.date || s.timestamp?.slice(0, 10) || "").slice(0, 10)),
+          ...effectiveSalesLedger.map((s) => (s.date || s.timestamp?.slice(0, 10) || "").slice(0, 10)),
           ...payouts.map((p) => (p.date || p.timestamp?.slice(0, 10) || "").slice(0, 10))
         ])
       )
@@ -352,8 +363,8 @@ export default function SaasDashboardTab({
       };
     }
 
-    // Real client daily inflow from salesLedger on isoDate
-    const dayInflow = salesLedger
+    // Real client daily inflow from salesLedger + batched realized sales on isoDate
+    const dayInflow = effectiveSalesLedger
       .filter(s => (s.date || s.timestamp?.slice(0, 10) || "") === isoDate)
       .reduce((acc, s) => acc + safeNum(s.total_amount, 0, 5_000_000), 0);
 
@@ -428,6 +439,250 @@ export default function SaasDashboardTab({
   const liveBankEquitel = safeNum(state.equitel_account_balance, 0, 50_000_000);
   const latestBookend = (state.morning_bookends && state.morning_bookends.length > 0) ? state.morning_bookends[0] : null;
 
+  // =========================================================================
+  // AI INSIGHTS: RETAIL PULSE (WEEK-OVER-WEEK SALES REVENUE COMPARISON)
+  // =========================================================================
+  const retailPulse = useMemo(() => {
+    const parseIso = (raw?: string): string | null => {
+      if (!raw) return null;
+      const trimmed = raw.trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return trimmed.slice(0, 10);
+      const parsed = new Date(trimmed);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return parsed.toISOString().slice(0, 10);
+    };
+
+    const shiftIso = (iso: string, deltaDays: number): string => {
+      const [y, m, d] = iso.split("-").map(Number);
+      const utc = new Date(Date.UTC(y, (m || 1) - 1, (d || 1) + deltaDays));
+      return utc.toISOString().slice(0, 10);
+    };
+
+    const formatIsoShort = (iso: string): string => {
+      const [y, m, d] = iso.split("-").map(Number);
+      const dt = new Date(Date.UTC(y, (m || 1) - 1, d || 1));
+      return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    };
+
+    const formatDayShort = (iso: string): string => {
+      const [y, m, d] = iso.split("-").map(Number);
+      const dt = new Date(Date.UTC(y, (m || 1) - 1, d || 1));
+      return dt.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+    };
+
+    const getMondayIso = (iso: string): string => {
+      const [y, m, d] = iso.split("-").map(Number);
+      const dt = new Date(Date.UTC(y, (m || 1) - 1, d || 1));
+      const dayOfWeek = dt.getUTCDay(); // 0=Sun .. 6=Sat
+      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      return shiftIso(iso, diffToMonday);
+    };
+
+    if (isDemo) {
+      const demoCurrDaily = [36000, 29000, 51000, 43000, 39000, 48000, 41000];
+      const demoPrevDaily = [31000, 25000, 42000, 36000, 33000, 40400, 35000];
+      const currentTotal = demoCurrDaily.reduce((a, b) => a + b, 0);
+      const previousTotal = demoPrevDaily.reduce((a, b) => a + b, 0);
+      const deltaAmount = currentTotal - previousTotal;
+      const growthPct = Number((((currentTotal - previousTotal) / previousTotal) * 100).toFixed(1));
+      const currStart = shiftIso(todayIso, -6);
+      const prevStart = shiftIso(todayIso, -13);
+      const prevEnd = shiftIso(todayIso, -7);
+
+      const dailySeries = demoCurrDaily.map((val, idx) => {
+        const iso = shiftIso(currStart, idx);
+        return {
+          iso,
+          dayName: formatDayShort(iso),
+          label: formatIsoShort(iso),
+          current: val,
+          previous: demoPrevDaily[idx]
+        };
+      });
+
+      const peakDay = dailySeries.reduce((best, cur) => (cur.current > best.current ? cur : best), dailySeries[0]);
+
+      return {
+        currentTotal,
+        previousTotal,
+        deltaAmount,
+        growthPct,
+        currentCount: 42,
+        previousCount: 35,
+        currentBatchedTotal: 112000,
+        currentDirectTotal: currentTotal - 112000,
+        currentDailyAvg: Math.round(currentTotal / 7),
+        previousDailyAvg: Math.round(previousTotal / 7),
+        currRangeLabel: `${formatIsoShort(currStart)} – ${formatIsoShort(todayIso)}`,
+        prevRangeLabel: `${formatIsoShort(prevStart)} – ${formatIsoShort(prevEnd)}`,
+        dailySeries,
+        peakDay,
+        pulseTier: "STRONG_GROWTH" as const,
+        pulseLabel: "Strong Growth",
+        summaryText: `Sales revenue climbed +${growthPct}% (+${currency} ${deltaAmount.toLocaleString()}) over the previous 7 days, led by ${peakDay.dayName} (${currency} ${peakDay.current.toLocaleString()}).`,
+        isHistoricalAnchor: false
+      };
+    }
+
+    const datedSales = effectiveSalesLedger
+      .map((s) => {
+        const iso = parseIso(s.date) || parseIso(s.timestamp);
+        const amount = safeNum(s.total_amount, 0, 5_000_000);
+        const isBatched =
+          s.source_type === "BATCH_REALIZED" ||
+          s.source_type === "CHRONO_RESTOCK" ||
+          s.id.startsWith("sale_batch_") ||
+          s.id.startsWith("sale_rcpt_auto_");
+        return { iso, amount, isBatched };
+      })
+      .filter((x): x is { iso: string; amount: number; isBatched: boolean } => Boolean(x.iso) && x.amount > 0);
+
+    const computeBounds = (anchorIso: string) => {
+      if (pulseWindowMode === "calendar_week") {
+        const currStart = getMondayIso(anchorIso);
+        const currEnd = shiftIso(currStart, 6);
+        const prevStart = shiftIso(currStart, -7);
+        const prevEnd = shiftIso(currStart, -1);
+        return { currStart, currEnd, prevStart, prevEnd };
+      }
+      return {
+        currStart: shiftIso(anchorIso, -6),
+        currEnd: anchorIso,
+        prevStart: shiftIso(anchorIso, -13),
+        prevEnd: shiftIso(anchorIso, -7)
+      };
+    };
+
+    let anchorIso = todayIso;
+    let isHistoricalAnchor = false;
+    let bounds = computeBounds(anchorIso);
+
+    const hasSalesInBounds = (b: { currStart: string; currEnd: string; prevStart: string; prevEnd: string }) =>
+      datedSales.some((s) => s.iso >= b.prevStart && s.iso <= b.currEnd);
+
+    if (!hasSalesInBounds(bounds) && datedSales.length > 0) {
+      const latestIso = datedSales.reduce((max, s) => (s.iso > max ? s.iso : max), datedSales[0].iso);
+      anchorIso = latestIso;
+      isHistoricalAnchor = latestIso !== todayIso;
+      bounds = computeBounds(anchorIso);
+    }
+
+    const currentSales = datedSales.filter((s) => s.iso >= bounds.currStart && s.iso <= bounds.currEnd);
+    const previousSales = datedSales.filter((s) => s.iso >= bounds.prevStart && s.iso <= bounds.prevEnd);
+
+    const currentTotal = Math.round(currentSales.reduce((acc, s) => acc + s.amount, 0) * 100) / 100;
+    const previousTotal = Math.round(previousSales.reduce((acc, s) => acc + s.amount, 0) * 100) / 100;
+    const deltaAmount = Math.round((currentTotal - previousTotal) * 100) / 100;
+
+    const currentBatchedTotal = Math.round(
+      currentSales.filter((s) => s.isBatched).reduce((acc, s) => acc + s.amount, 0) * 100
+    ) / 100;
+    const currentDirectTotal = Math.max(0, Math.round((currentTotal - currentBatchedTotal) * 100) / 100);
+
+    const dailySeries = Array.from({ length: 7 }, (_, idx) => {
+      const currIso = shiftIso(bounds.currStart, idx);
+      const prevIso = shiftIso(bounds.prevStart, idx);
+      const currDaySum = currentSales
+        .filter((s) => s.iso === currIso)
+        .reduce((acc, s) => acc + s.amount, 0);
+      const prevDaySum = previousSales
+        .filter((s) => s.iso === prevIso)
+        .reduce((acc, s) => acc + s.amount, 0);
+      return {
+        iso: currIso,
+        dayName: formatDayShort(currIso),
+        label: formatIsoShort(currIso),
+        current: Math.round(currDaySum * 100) / 100,
+        previous: Math.round(prevDaySum * 100) / 100
+      };
+    });
+
+    const elapsedDaysInCurrentWeek =
+      pulseWindowMode === "calendar_week" && !isHistoricalAnchor
+        ? Math.max(1, Math.min(7, Math.floor((Date.parse(`${todayIso}T00:00:00Z`) - Date.parse(`${bounds.currStart}T00:00:00Z`)) / 86_400_000) + 1))
+        : 7;
+
+    const currentDailyAvg = Math.round((currentTotal / elapsedDaysInCurrentWeek) * 100) / 100;
+    const previousDailyAvg = Math.round((previousTotal / 7) * 100) / 100;
+
+    const peakDay = dailySeries.reduce(
+      (best, cur) => (cur.current > best.current ? cur : best),
+      dailySeries[0]
+    );
+
+    let growthPct: number | null = null;
+    if (previousTotal > 0) {
+      growthPct = Number((((currentTotal - previousTotal) / previousTotal) * 100).toFixed(1));
+    } else if (currentTotal === 0) {
+      growthPct = 0;
+    }
+
+    type PulseTier =
+      | "STRONG_GROWTH"
+      | "STEADY_GROWTH"
+      | "HOLDING_STEADY"
+      | "SLIGHT_DECLINE"
+      | "SHARP_DECLINE"
+      | "NEW_MOMENTUM"
+      | "NO_BASELINE";
+
+    let pulseTier: PulseTier = "NO_BASELINE";
+    let pulseLabel = "Awaiting Baseline";
+    let summaryText = "Log counter sales, voice sales, or supplier batch deliveries across consecutive weeks to unlock your Retail Pulse trend.";
+
+    if (currentTotal === 0 && previousTotal === 0) {
+      pulseTier = "NO_BASELINE";
+      pulseLabel = "Awaiting Baseline";
+    } else if (previousTotal === 0 && currentTotal > 0) {
+      pulseTier = "NEW_MOMENTUM";
+      pulseLabel = "New Sales Momentum";
+      summaryText = `Recorded ${currency} ${currentTotal.toLocaleString()} across ${currentSales.length} sale${currentSales.length === 1 ? "" : "s"} this week with no prior-week baseline yet.`;
+    } else if (growthPct !== null) {
+      if (growthPct >= 10) {
+        pulseTier = "STRONG_GROWTH";
+        pulseLabel = "Strong Growth";
+        summaryText = `Revenue expanded +${growthPct}% (+${currency} ${deltaAmount.toLocaleString()}) vs the previous week, averaging ${currency} ${currentDailyAvg.toLocaleString()}/day.`;
+      } else if (growthPct > 0) {
+        pulseTier = "STEADY_GROWTH";
+        pulseLabel = "Steady Growth";
+        summaryText = `Sales edged up +${growthPct}% (+${currency} ${deltaAmount.toLocaleString()}) compared to the previous week${peakDay.current > 0 ? `, peaking on ${peakDay.dayName} (${currency} ${peakDay.current.toLocaleString()})` : ""}.`;
+      } else if (growthPct === 0) {
+        pulseTier = "HOLDING_STEADY";
+        pulseLabel = "Holding Steady";
+        summaryText = `Sales revenue matched the previous week at ${currency} ${currentTotal.toLocaleString()}.`;
+      } else if (growthPct > -15) {
+        pulseTier = "SLIGHT_DECLINE";
+        pulseLabel = "Slight Decline";
+        summaryText = `Sales softened ${growthPct}% (${currency} ${Math.abs(deltaAmount).toLocaleString()} lower) compared to the previous week (${currency} ${previousTotal.toLocaleString()}).`;
+      } else {
+        pulseTier = "SHARP_DECLINE";
+        pulseLabel = "Revenue Decline";
+        summaryText = `Revenue dropped ${growthPct}% (-${currency} ${Math.abs(deltaAmount).toLocaleString()}) vs the prior week. Review fast-moving stock availability and credit recoveries.`;
+      }
+    }
+
+    return {
+      currentTotal,
+      previousTotal,
+      deltaAmount,
+      growthPct,
+      currentCount: currentSales.length,
+      previousCount: previousSales.length,
+      currentBatchedTotal,
+      currentDirectTotal,
+      currentDailyAvg,
+      previousDailyAvg,
+      currRangeLabel: `${formatIsoShort(bounds.currStart)} – ${formatIsoShort(bounds.currEnd)}`,
+      prevRangeLabel: `${formatIsoShort(bounds.prevStart)} – ${formatIsoShort(bounds.prevEnd)}`,
+      dailySeries,
+      peakDay,
+      pulseTier,
+      pulseLabel,
+      summaryText,
+      isHistoricalAnchor
+    };
+  }, [effectiveSalesLedger, pulseWindowMode, todayIso, currency, isDemo]);
+
   let cumulativeOffset = 0;
 
   return (
@@ -487,7 +742,7 @@ export default function SaasDashboardTab({
           {
             id: "supply_sales",
             label: "3. Today's Flow",
-            done: Boolean(isDemo || todaySales.length > 0 || salesLedger.length > 0 || launchpadProgress?.step3_firstSale),
+            done: Boolean(isDemo || todaySales.length > 0 || effectiveSalesLedger.length > 0 || launchpadProgress?.step3_firstSale),
             hint: "Daily inflows & counter sales"
           },
           {
@@ -702,6 +957,354 @@ export default function SaasDashboardTab({
           <span>Customize</span>
         </button>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 3B. SALES OVERVIEW: DIRECT + BATCHED REALIZED SALES ON DASHBOARD          */}
+      {/* ========================================================================= */}
+      <div className="bg-white/95 rounded-2xl border border-[#C8D9EA] hover:border-[#D4AF37]/55 transition-colors p-4 sm:p-5 shadow-[0_4px_16px_-6px_rgba(11,27,50,0.08)] space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-base sm:text-lg font-semibold text-slate-900">
+              Sales &amp; Batched Realized Revenue
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Combines direct counter / voice sales with realized supplier batch turnover
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateTab("supply_sales")}
+            className="text-xs font-semibold text-[#1A56DB] hover:underline inline-flex items-center gap-1 cursor-pointer self-start sm:self-auto whitespace-nowrap"
+          >
+            <span>Inspect Sales &amp; Batches</span>
+            <ArrowRight size={13} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="p-3.5 rounded-xl bg-[#F5F9FD] border border-[#C8D9EA] space-y-0.5">
+            <span className="text-[11px] text-slate-500 font-medium block">Total Sales</span>
+            <span className="text-lg sm:text-xl font-bold text-[#0B1B32] font-mono tabular-nums block">
+              {currency} {totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </span>
+            <span className="text-[11px] text-slate-500 block">
+              {effectiveSalesLedger.length} recorded sale{effectiveSalesLedger.length === 1 ? "" : "s"}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onNavigateTab("supply_sales")}
+            className="text-left p-3.5 rounded-xl bg-emerald-50/70 hover:bg-emerald-50 border border-emerald-200 transition cursor-pointer space-y-0.5"
+          >
+            <span className="text-[11px] text-emerald-800 font-medium block">Batched Realized Sales</span>
+            <span className="text-lg sm:text-xl font-bold text-emerald-900 font-mono tabular-nums block">
+              {currency} {batchedRealizedTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </span>
+            <span className="text-[11px] text-emerald-700 block">
+              {realizedBatchCards.length} batch{realizedBatchCards.length === 1 ? "" : "es"} realized{batchedRealizedProfit > 0 ? ` · +${currency} ${batchedRealizedProfit.toLocaleString()} margin` : ""}
+            </span>
+          </button>
+
+          <div className="p-3.5 rounded-xl bg-slate-50/90 border border-slate-200 space-y-0.5">
+            <span className="text-[11px] text-slate-500 font-medium block">Direct / Counter Sales</span>
+            <span className="text-lg sm:text-xl font-bold text-slate-900 font-mono tabular-nums block">
+              {currency} {directSalesTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </span>
+            <span className="text-[11px] text-slate-500 block">
+              Till, M-Pesa &amp; voice counter
+            </span>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-[#FDF9EE] border border-[#E6CF8B] space-y-0.5">
+            <span className="text-[11px] text-[#7C5212] font-medium block">Today&apos;s Sales ({todayShortLabel})</span>
+            <span className="text-lg sm:text-xl font-bold text-[#0B1B32] font-mono tabular-nums block">
+              {currency} {todaySalesTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </span>
+            <span className="text-[11px] text-[#996515] block">
+              {todaySales.length} entr{todaySales.length === 1 ? "y" : "ies"} today
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3C. AI INSIGHTS: RETAIL PULSE (WEEK-OVER-WEEK SALES REVENUE)              */}
+      {/* ========================================================================= */}
+      {(() => {
+        const isPositive =
+          retailPulse.pulseTier === "STRONG_GROWTH" ||
+          retailPulse.pulseTier === "STEADY_GROWTH" ||
+          retailPulse.pulseTier === "NEW_MOMENTUM";
+        const isNegative =
+          retailPulse.pulseTier === "SLIGHT_DECLINE" ||
+          retailPulse.pulseTier === "SHARP_DECLINE";
+        const isSharpNegative = retailPulse.pulseTier === "SHARP_DECLINE";
+
+        const statusTextClass = isPositive
+          ? "text-emerald-700"
+          : isSharpNegative
+            ? "text-red-700"
+            : isNegative
+              ? "text-amber-700"
+              : "text-slate-700";
+
+        const statusSurfaceClass = isPositive
+          ? "bg-emerald-50/70 border-emerald-200"
+          : isSharpNegative
+            ? "bg-red-50/70 border-red-200"
+            : isNegative
+              ? "bg-amber-50/70 border-amber-200"
+              : "bg-slate-50/80 border-slate-200";
+
+        const PulseIcon = isPositive
+          ? TrendingUp
+          : isNegative
+            ? TrendingDown
+            : Activity;
+
+        const maxDailyBar = Math.max(
+          ...retailPulse.dailySeries.map((d) => Math.max(d.current, d.previous)),
+          1
+        );
+
+        const formattedPct =
+          retailPulse.growthPct === null
+            ? "New"
+            : `${retailPulse.growthPct > 0 ? "+" : ""}${retailPulse.growthPct}%`;
+
+        return (
+          <section
+            aria-label="AI Insights Retail Pulse"
+            className="bg-white/95 rounded-2xl border border-[#C8D9EA] p-4 sm:p-5 shadow-[0_4px_16px_-6px_rgba(11,27,50,0.08)] space-y-4"
+          >
+            {/* Header row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div className="space-y-0.5 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500">
+                  <h3 className="text-base sm:text-lg font-semibold text-slate-900">
+                    AI Insights
+                  </h3>
+                  <span aria-hidden="true">&middot;</span>
+                  <span className="font-semibold text-[#0B1B32]">Retail Pulse</span>
+                  <span aria-hidden="true">&middot;</span>
+                  <span className="font-mono tabular-nums">
+                    {retailPulse.currRangeLabel} vs {retailPulse.prevRangeLabel}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Week-over-week sales revenue momentum across counter, voice, and batched realized sales
+                </p>
+              </div>
+
+              {/* Functional window toggle */}
+              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg self-start sm:self-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setPulseWindowMode("rolling_7d")}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                    pulseWindowMode === "rolling_7d"
+                      ? "bg-white text-slate-900 shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Rolling 7 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPulseWindowMode("calendar_week")}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                    pulseWindowMode === "calendar_week"
+                      ? "bg-white text-slate-900 shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Mon&ndash;Sun Week
+                </button>
+              </div>
+            </div>
+
+            {retailPulse.pulseTier === "NO_BASELINE" ? (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
+                    <Activity size={16} className="text-slate-500 shrink-0" />
+                    <span>Retail Pulse: Awaiting Sales Baseline</span>
+                  </div>
+                  <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
+                    {retailPulse.summaryText}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onOpenQuickSale) onOpenQuickSale();
+                    else onNavigateTab("supply_sales");
+                  }}
+                  className="px-4 py-2 rounded-lg bg-[#0B1B32] hover:bg-[#13294B] text-white text-xs font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer self-start sm:self-auto"
+                >
+                  Record First Sale
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                {/* Left: Retail Pulse Signal + 7-Day Comparison Bars */}
+                <div className={`lg:col-span-6 rounded-xl border p-4 flex flex-col justify-between gap-4 ${statusSurfaceClass}`}>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className={`flex items-center gap-2 font-semibold text-sm ${statusTextClass}`}>
+                        <PulseIcon size={17} className="shrink-0" />
+                        <span>Retail Pulse: {retailPulse.pulseLabel}</span>
+                      </div>
+                      <span className="text-xs font-mono tabular-nums text-slate-600">
+                        {retailPulse.deltaAmount >= 0 ? "+" : "-"}
+                        {currency} {Math.abs(retailPulse.deltaAmount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} vs prior week
+                      </span>
+                    </div>
+
+                    <div className="flex items-baseline gap-3 flex-wrap">
+                      <span className={`text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight ${statusTextClass}`}>
+                        {formattedPct}
+                      </span>
+                      <span className="text-xs text-slate-600 font-medium">
+                        week-over-week revenue change
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-700 leading-relaxed">
+                      {retailPulse.summaryText}
+                    </p>
+                  </div>
+
+                  {/* 7-Day This Week vs Previous Week Bar Comparison */}
+                  <div className="pt-3 border-t border-slate-200/70 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-slate-600">
+                      <span className="font-medium">Daily comparison (This week vs prior week)</span>
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center gap-1">
+                          <span
+                            className={`w-2.5 h-2.5 rounded-xs inline-block ${
+                              isPositive
+                                ? "bg-emerald-600"
+                                : isSharpNegative
+                                  ? "bg-red-600"
+                                  : isNegative
+                                    ? "bg-amber-600"
+                                    : "bg-[#0B1B32]"
+                            }`}
+                          />
+                          <span>This week</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-xs bg-slate-300 inline-block" />
+                          <span>Prior week</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-2 items-end h-20 pt-1">
+                      {retailPulse.dailySeries.map((day) => {
+                        const currPct = day.current > 0 ? Math.max(8, Math.round((day.current / maxDailyBar) * 100)) : 0;
+                        const prevPct = day.previous > 0 ? Math.max(8, Math.round((day.previous / maxDailyBar) * 100)) : 0;
+                        return (
+                          <div
+                            key={day.iso}
+                            className="flex flex-col items-center gap-1 h-full justify-end"
+                            title={`${day.label}: ${currency} ${day.current.toLocaleString()} (Prior week: ${currency} ${day.previous.toLocaleString()})`}
+                          >
+                            <div className="w-full flex items-end justify-center gap-1 h-14">
+                              <div
+                                className="w-2.5 rounded-t-xs bg-slate-300 transition-all"
+                                style={{ height: `${prevPct}%` }}
+                              />
+                              <div
+                                className={`w-2.5 rounded-t-xs transition-all ${
+                                  isPositive
+                                    ? "bg-emerald-600"
+                                    : isSharpNegative
+                                      ? "bg-red-600"
+                                      : isNegative
+                                        ? "bg-amber-600"
+                                        : "bg-[#0B1B32]"
+                                }`}
+                                style={{ height: `${currPct}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-mono text-slate-600">{day.dayName}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Structured Week-over-Week Breakdown */}
+                <div className="lg:col-span-6 grid grid-cols-2 gap-4 content-between">
+                  <div className="py-2 px-1 border-b border-slate-100 space-y-0.5">
+                    <span className="text-xs text-slate-500 block">This Week Revenue</span>
+                    <span className="text-lg sm:text-xl font-bold text-slate-900 font-mono tabular-nums block">
+                      {currency} {retailPulse.currentTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-[11px] text-slate-500 block font-mono tabular-nums">
+                      {retailPulse.currentCount} sale{retailPulse.currentCount === 1 ? "" : "s"} &middot; {retailPulse.currRangeLabel}
+                    </span>
+                  </div>
+
+                  <div className="py-2 px-1 border-b border-slate-100 space-y-0.5">
+                    <span className="text-xs text-slate-500 block">Previous Week Revenue</span>
+                    <span className="text-lg sm:text-xl font-bold text-slate-700 font-mono tabular-nums block">
+                      {currency} {retailPulse.previousTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-[11px] text-slate-500 block font-mono tabular-nums">
+                      {retailPulse.previousCount} sale{retailPulse.previousCount === 1 ? "" : "s"} &middot; {retailPulse.prevRangeLabel}
+                    </span>
+                  </div>
+
+                  <div className="py-2 px-1 border-b border-slate-100 space-y-0.5">
+                    <span className="text-xs text-slate-500 block">Daily Average Pace</span>
+                    <span className="text-base sm:text-lg font-bold text-slate-900 font-mono tabular-nums block">
+                      {currency} {retailPulse.currentDailyAvg.toLocaleString()} / day
+                    </span>
+                    <span className="text-[11px] text-slate-500 block font-mono tabular-nums">
+                      Prior week: {currency} {retailPulse.previousDailyAvg.toLocaleString()} / day
+                    </span>
+                  </div>
+
+                  <div className="py-2 px-1 border-b border-slate-100 space-y-0.5">
+                    <span className="text-xs text-slate-500 block">This Week Channel Mix</span>
+                    <span className="text-base sm:text-lg font-bold text-slate-900 font-mono tabular-nums block">
+                      {retailPulse.currentTotal > 0
+                        ? `${Math.round((retailPulse.currentDirectTotal / retailPulse.currentTotal) * 100)}% Direct`
+                        : "0% Direct"}
+                    </span>
+                    <span className="text-[11px] text-slate-500 block font-mono tabular-nums">
+                      Batched: {currency} {retailPulse.currentBatchedTotal.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="col-span-2 flex items-center justify-between gap-2 pt-1 text-xs text-slate-500 flex-wrap">
+                    <span>
+                      {retailPulse.isHistoricalAnchor
+                        ? `Anchored to latest active trading week (${retailPulse.currRangeLabel})`
+                        : retailPulse.peakDay.current > 0
+                          ? `Peak day: ${retailPulse.peakDay.dayName} (${retailPulse.peakDay.label}) at ${currency} ${retailPulse.peakDay.current.toLocaleString()}`
+                          : "Live weekly sales comparison"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateTab("analytics")}
+                      className="text-xs font-semibold text-[#1A56DB] hover:underline inline-flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer"
+                    >
+                      <span>Full Analytics</span>
+                      <ArrowRight size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* 4. 2-COLUMN GRID: EXPENSES BREAKDOWN + CASHFLOW                           */}
@@ -1261,9 +1864,9 @@ export default function SaasDashboardTab({
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-500">
             <span>
-              Sales: <strong className="text-slate-700 font-mono">{currency} {totalRevenue.toLocaleString()}</strong> &bull; OpEx: <strong className="text-slate-700 font-mono">{currency} {realOperatingExpenses.toLocaleString()}</strong>
+              Total Sales: <strong className="text-slate-700 font-mono tabular-nums">{currency} {totalRevenue.toLocaleString()}</strong> (Batched: <strong className="text-emerald-700 font-mono tabular-nums">{currency} {batchedRealizedTotal.toLocaleString()}</strong>) &bull; OpEx: <strong className="text-slate-700 font-mono tabular-nums">{currency} {realOperatingExpenses.toLocaleString()}</strong>
             </span>
             <span className="font-semibold text-slate-700">Audit status: Live</span>
           </div>

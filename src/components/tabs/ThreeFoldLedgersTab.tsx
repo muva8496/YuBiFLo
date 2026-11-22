@@ -5,6 +5,7 @@ import {
   Clock, Package, Plus, Wallet, ChevronRight, ChevronDown
 } from "lucide-react";
 import { AlacioMasterState, SupplierProfile, PayoutOrDrawing } from "../../types/alacio";
+import { getBatchedRealizedSalesSummary } from "../../utils/supplierBatchSalesEngine";
 
 interface ThreeFoldLedgersTabProps {
   state: AlacioMasterState;
@@ -24,13 +25,13 @@ interface ThreeFoldLedgersTabProps {
 export default function ThreeFoldLedgersTab({ state, onPaySupplier }: ThreeFoldLedgersTabProps) {
   const { 
     currency = "KSh", 
-    salesLedger = [], 
     customers = [], 
     inventory = [], 
     payouts = [], 
     suppliers = [],
     receiptsArchive = [] 
   } = state;
+  const { effectiveSalesLedger: salesLedger } = getBatchedRealizedSalesSummary(state);
 
   const [activeTab, setActiveTab] = useState<"P" | "R" | "N">("P");
   

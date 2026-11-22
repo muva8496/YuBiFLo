@@ -101,6 +101,8 @@ export interface SalesLedgerItem {
   payment_method: "CASH" | "MPESA" | "SPLIT" | "CREDIT";
   payment_channel?: string;
   cash_received?: number;
+  source_batch_id?: string;
+  source_type?: "COUNTER_SALE" | "VOICE_LEDGER" | "BATCH_REALIZED" | "CHRONO_RESTOCK";
 }
 
 export interface PayoutOrDrawing {

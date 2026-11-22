@@ -1683,7 +1683,9 @@ export default function App() {
         debt_amount: 0,
         payment_method: payload.paymentMethod,
         payment_channel: payload.paymentMethod,
-        cash_received: cashDelta
+        cash_received: cashDelta,
+        source_batch_id: payload.batchId,
+        source_type: "BATCH_REALIZED"
       };
 
       const newPayouts: PayoutOrDrawing[] = [...(prev.payouts || [])];
@@ -1763,24 +1765,37 @@ export default function App() {
 
       const newKpis = calculateKpis(updatedInventory, prev.warehouse);
 
-      // Mark batch card as authorized
+      // Upsert authorized batch card status so dynamic batches persist their reconciled status
       const existingBatchCards = prev.supplierBatchCards || [];
-      const updatedBatchCards = existingBatchCards.map((b) => {
-        if (b.id === payload.batchId) {
-          return {
-            ...b,
-            items: payload.items,
-            totalBatchRevenue: payload.totalRevenue,
-            totalBatchProfit: payload.totalProfit,
-            status: "AUTHORIZED_AND_RECONCILED" as const,
-            paymentMethod: payload.paymentMethod,
-            authorizedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            authorizedDate: recordDate,
-            notes: payload.notes
-          };
-        }
-        return b;
-      });
+      const hasExistingCard = existingBatchCards.some((b) => b.id === payload.batchId);
+      const authorizedCardPatch = {
+        items: payload.items,
+        totalBatchRevenue: payload.totalRevenue,
+        totalBatchProfit: payload.totalProfit,
+        status: "AUTHORIZED_AND_RECONCILED" as const,
+        paymentMethod: payload.paymentMethod,
+        authorizedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        authorizedDate: recordDate,
+        notes: payload.notes
+      };
+      const updatedBatchCards = hasExistingCard
+        ? existingBatchCards.map((b) =>
+            b.id === payload.batchId ? { ...b, ...authorizedCardPatch } : b
+          )
+        : [
+            ...existingBatchCards,
+            {
+              id: payload.batchId,
+              batchNumber: payload.batchNumber,
+              supplierName: canonicalSupplier,
+              deliveredDate: payload.deliveredDate,
+              deliveredTimestamp: `${payload.deliveredDate}T08:00:00Z`,
+              hoursElapsed: 24,
+              totalBatchUnits: payload.items.reduce((s, i) => s + i.batchQty, 0),
+              totalBatchCost: Math.round(payload.items.reduce((s, i) => s + i.batchQty * i.unitCost, 0) * 100) / 100,
+              ...authorizedCardPatch
+            }
+          ];
 
       const channelUpdates = applyDeltaToPaymentChannels(prev, { cashDelta, mpesaDelta });
 

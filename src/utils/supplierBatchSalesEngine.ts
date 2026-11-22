@@ -164,8 +164,13 @@ export function buildAndEvaluateSupplierBatches(state: AlacioMasterState): {
     });
   });
 
-  // Default initial demo batches illustrating the user's exact Jeremiah_bread scenario
-  if (rawBatches.length === 0) {
+  // Default initial demo batches illustrating the Jeremiah_bread scenario (only for non-skeleton / seeded workspaces)
+  const shouldSeedSampleBatches =
+    rawBatches.length === 0 &&
+    !state.is_skeleton &&
+    (Boolean(state.is_demo_template) || (state.inventory && state.inventory.length > 0));
+
+  if (shouldSeedSampleBatches) {
     const yesterdayDate = "2026-11-10";
     const todayDate = "2026-11-11";
 
@@ -440,9 +445,15 @@ export function buildAndEvaluateSupplierBatches(state: AlacioMasterState): {
         item.calculatedProfit = Math.round((item.calculatedRevenue - (item.calculatedSoldQty * item.unitCost)) * 100) / 100;
       });
 
-      // Recalculate totals
-      currentBatch.totalBatchRevenue = Math.round(currentBatch.items.reduce((sum, it) => sum + it.calculatedRevenue, 0) * 100) / 100;
-      currentBatch.totalBatchProfit = Math.round(currentBatch.items.reduce((sum, it) => sum + it.calculatedProfit, 0) * 100) / 100;
+      // Recalculate totals: when a later batch exists, realized revenue comes strictly from re-dropped items;
+      // otherwise sum items with calculated sold quantities.
+      const realizedCalcItems = hasLaterBatch
+        ? currentBatch.items.filter((it) => it.reappearedInLaterBatch)
+        : currentBatch.items;
+      currentBatch.totalBatchRevenue =
+        Math.round(realizedCalcItems.reduce((sum, it) => sum + it.calculatedRevenue, 0) * 100) / 100;
+      currentBatch.totalBatchProfit =
+        Math.round(realizedCalcItems.reduce((sum, it) => sum + it.calculatedProfit, 0) * 100) / 100;
 
       // 3. 12-Hour Auto-Validation Rule:
       // If >12 hours elapsed AND same supplier dropped next batch (or >24h elapsed),
@@ -457,27 +468,36 @@ export function buildAndEvaluateSupplierBatches(state: AlacioMasterState): {
           : `Auto-validated: ${Math.round(currentBatch.hoursElapsed)}h elapsed without dispute.`;
         currentBatch.authorizedAt = "18:00";
         currentBatch.authorizedDate = currentBatch.deliveredDate; // SALES CREDITED TO YESTERDAY'S DATE!
+      }
 
-        // Generate sales ledger entry credited strictly to currentBatch.deliveredDate
-        const soldItems = currentBatch.items.filter((it) => it.calculatedSoldQty > 0 && it.reappearedInLaterBatch);
-        if (soldItems.length > 0) {
+      // Generate realized sales ledger entry whenever a batch is AUTO_VALIDATED
+      if (currentBatch.status === "AUTO_VALIDATED") {
+        const soldItems = hasLaterBatch
+          ? currentBatch.items.filter((it) => it.calculatedSoldQty > 0 && it.reappearedInLaterBatch)
+          : currentBatch.items.filter((it) => it.calculatedSoldQty > 0);
+        const realizedRevenue =
+          Math.round(soldItems.reduce((sum, it) => sum + it.calculatedRevenue, 0) * 100) / 100;
+
+        if (soldItems.length > 0 && realizedRevenue > 0) {
           const itemsSummary = soldItems
             .map((item) => `${item.calculatedSoldQty} ${item.unitType} ${item.skuName}`)
             .join(", ");
 
           autoValidatedSales.push({
             id: `sale_batch_auto_${currentBatch.id}`,
-            date: currentBatch.deliveredDate, // YESTERDAY'S SALES DATE!
-            timestamp: "18:00",
+            date: currentBatch.authorizedDate || currentBatch.deliveredDate,
+            timestamp: currentBatch.authorizedAt || "18:00",
             customer_name: `Walk-in Counter (${currentBatch.supplierName} Batch)`,
             items_summary: itemsSummary,
-            total_amount: currentBatch.totalBatchRevenue,
-            cash_paid: currentBatch.paymentMethod === "CASH" ? currentBatch.totalBatchRevenue : 0,
-            mpesa_paid: currentBatch.paymentMethod === "MPESA" ? currentBatch.totalBatchRevenue : 0,
+            total_amount: realizedRevenue,
+            cash_paid: currentBatch.paymentMethod === "CASH" ? realizedRevenue : 0,
+            mpesa_paid: currentBatch.paymentMethod === "MPESA" ? realizedRevenue : 0,
             debt_amount: 0,
             payment_method: currentBatch.paymentMethod,
             payment_channel: currentBatch.paymentMethod,
-            cash_received: currentBatch.paymentMethod === "CASH" ? currentBatch.totalBatchRevenue : 0
+            cash_received: currentBatch.paymentMethod === "CASH" ? realizedRevenue : 0,
+            source_batch_id: currentBatch.id,
+            source_type: "BATCH_REALIZED"
           });
         }
       }
@@ -494,5 +514,150 @@ export function buildAndEvaluateSupplierBatches(state: AlacioMasterState): {
   return {
     batchCards: rawBatches,
     autoValidatedSales
+  };
+}
+
+export interface BatchedRealizedSalesSummary {
+  batchCards: SupplierBatchCard[];
+  realizedBatchCards: SupplierBatchCard[];
+  effectiveSalesLedger: SalesLedgerItem[];
+  batchedSalesEntries: SalesLedgerItem[];
+  batchedRealizedTotal: number;
+  batchedRealizedProfit: number;
+  directSalesTotal: number;
+  totalSalesRevenue: number;
+}
+
+/**
+ * Combines state.salesLedger with realized supplier batch turnover (AUTO_VALIDATED and
+ * AUTHORIZED_AND_RECONCILED batches) so all batched realized sales appear on the Dashboard
+ * and Reports as real sales, with strict deduplication against existing ledger/restock entries.
+ */
+export function getBatchedRealizedSalesSummary(
+  state: AlacioMasterState
+): BatchedRealizedSalesSummary {
+  const baseSales = Array.isArray(state.salesLedger) ? state.salesLedger : [];
+  const { batchCards, autoValidatedSales } = buildAndEvaluateSupplierBatches(state);
+  const restockCards = Array.isArray(state.restockCards) ? state.restockCards : [];
+
+  const realizedBatchCards = batchCards.filter(
+    (b) => b.status === "AUTO_VALIDATED" || b.status === "AUTHORIZED_AND_RECONCILED"
+  );
+
+  // Build candidate sales from any realized batch that isn't already recorded in state.salesLedger
+  const autoSaleByBatchId = new Map<string, SalesLedgerItem>();
+  autoValidatedSales.forEach((s) => {
+    if (s.source_batch_id) autoSaleByBatchId.set(s.source_batch_id, s);
+  });
+
+  const missingBatchSales: SalesLedgerItem[] = [];
+
+  realizedBatchCards.forEach((batch) => {
+    // 1. Check if chronological restock engine already generated daily sales (`sale_rcpt_auto_...`) for this receipt
+    const hasChronoRestockCoverage = Boolean(
+      batch.receiptId &&
+        restockCards.some(
+          (rc) =>
+            String(rc.id || "").startsWith(`restock_auto_${batch.receiptId}_`) &&
+            rc.status === "AUTHORIZED_AND_RECONCILED"
+        ) &&
+        baseSales.some((s) => String(s.id || "").startsWith("sale_rcpt_auto_"))
+    );
+    if (hasChronoRestockCoverage) return;
+
+    // 2. Check if state.salesLedger already contains a manual or auto batch sale for this batch
+    const batchDate = batch.authorizedDate || batch.deliveredDate;
+    const supplierLower = batch.supplierName.trim().toLowerCase();
+    const alreadyInLedger = baseSales.some((s) => {
+      if (s.source_batch_id && s.source_batch_id === batch.id) return true;
+      if (String(s.id || "") === `sale_batch_auto_${batch.id}`) return true;
+      if (
+        String(s.id || "").startsWith("sale_batch_") &&
+        (s.date || "") === batchDate &&
+        (s.customer_name || "").toLowerCase().includes(supplierLower)
+      ) {
+        return true;
+      }
+      return false;
+    });
+    if (alreadyInLedger) return;
+
+    const fromAuto = autoSaleByBatchId.get(batch.id);
+    if (fromAuto && fromAuto.total_amount > 0) {
+      missingBatchSales.push(fromAuto);
+      return;
+    }
+
+    const soldItems = batch.hasLaterBatchFromSameSupplier
+      ? batch.items.filter((it) => it.calculatedSoldQty > 0 && it.reappearedInLaterBatch)
+      : batch.items.filter((it) => it.calculatedSoldQty > 0);
+    const rev = Math.round(soldItems.reduce((sum, it) => sum + it.calculatedRevenue, 0) * 100) / 100;
+    if (rev <= 0) return;
+
+    missingBatchSales.push({
+      id: `sale_batch_auto_${batch.id}`,
+      date: batchDate,
+      timestamp: batch.authorizedAt || "18:00",
+      customer_name: `Walk-in Counter (${batch.supplierName} Batch)`,
+      items_summary:
+        soldItems.map((it) => `${it.calculatedSoldQty} ${it.unitType} ${it.skuName}`).join(", ") ||
+        `Batch Turnover: ${batch.supplierName} #${batch.batchNumber}`,
+      total_amount: rev,
+      cash_paid: batch.paymentMethod === "CASH" ? rev : batch.paymentMethod === "SPLIT" ? Math.round(rev / 2) : 0,
+      mpesa_paid: batch.paymentMethod === "MPESA" ? rev : batch.paymentMethod === "SPLIT" ? Math.round(rev / 2) : 0,
+      debt_amount: 0,
+      payment_method: batch.paymentMethod,
+      payment_channel: batch.paymentMethod,
+      cash_received: batch.paymentMethod === "CASH" ? rev : 0,
+      source_batch_id: batch.id,
+      source_type: "BATCH_REALIZED"
+    });
+  });
+
+  const effectiveSalesLedger = [...baseSales, ...missingBatchSales].sort((a, b) => {
+    const da = (a.date || a.timestamp?.slice(0, 10) || "").slice(0, 10);
+    const db = (b.date || b.timestamp?.slice(0, 10) || "").slice(0, 10);
+    const cmp = db.localeCompare(da);
+    if (cmp !== 0) return cmp;
+    return (b.timestamp || "").localeCompare(a.timestamp || "");
+  });
+
+  const isBatchedSaleItem = (s: SalesLedgerItem) => {
+    const id = String(s.id || "");
+    if (s.source_type === "BATCH_REALIZED" || s.source_type === "CHRONO_RESTOCK") return true;
+    if (id.startsWith("sale_batch_") || id.startsWith("sale_rcpt_auto_") || id.startsWith("sale_restock_")) {
+      return true;
+    }
+    const cust = (s.customer_name || "").toLowerCase();
+    return cust.includes("batch)") || cust.includes("restock");
+  };
+
+  const batchedSalesEntries = effectiveSalesLedger.filter(isBatchedSaleItem);
+  const totalSalesRevenue =
+    Math.round(
+      effectiveSalesLedger.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0) * 100
+    ) / 100;
+  const batchedRealizedTotal =
+    Math.round(
+      batchedSalesEntries.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0) * 100
+    ) / 100;
+  const directSalesTotal = Math.max(
+    0,
+    Math.round((totalSalesRevenue - batchedRealizedTotal) * 100) / 100
+  );
+  const batchedRealizedProfit =
+    Math.round(
+      realizedBatchCards.reduce((sum, b) => sum + (Number(b.totalBatchProfit) || 0), 0) * 100
+    ) / 100;
+
+  return {
+    batchCards,
+    realizedBatchCards,
+    effectiveSalesLedger,
+    batchedSalesEntries,
+    batchedRealizedTotal,
+    batchedRealizedProfit,
+    directSalesTotal,
+    totalSalesRevenue
   };
 }

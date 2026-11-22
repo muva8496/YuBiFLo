@@ -53,17 +53,28 @@ export default function SupplyDrivenSalesTab({
   const touchStartXRef = useRef<number | null>(null);
 
   // 1. Build and evaluate supplier batch cards with consecutive matching and 12-hour rule
-  const { batchCards, autoValidatedSales } = useMemo(() => {
-    return buildAndEvaluateSupplierBatches(state);
+  const { batchCards, realizedBatchCards, batchedRealizedTotal, batchedRealizedProfit } = useMemo(() => {
+    const { batchCards: cards } = buildAndEvaluateSupplierBatches(state);
+    const realized = cards.filter(
+      (b) => b.status === "AUTO_VALIDATED" || b.status === "AUTHORIZED_AND_RECONCILED"
+    );
+    const rev = realized.reduce((acc, b) => acc + (b.totalBatchRevenue || 0), 0);
+    const prof = realized.reduce((acc, b) => acc + (b.totalBatchProfit || 0), 0);
+    return {
+      batchCards: cards,
+      realizedBatchCards: realized,
+      batchedRealizedTotal: Math.round(rev * 100) / 100,
+      batchedRealizedProfit: Math.round(prof * 100) / 100
+    };
   }, [state]);
 
   // Aggregate metrics
   const pendingCount = batchCards.filter((b) => b.status === "PENDING_AUTHORIZATION").length;
   const autoValidatedCount = batchCards.filter((b) => b.status === "AUTO_VALIDATED").length;
   const reconciledCount = batchCards.filter((b) => b.status === "AUTHORIZED_AND_RECONCILED").length;
-  
-  const totalTurnoverRevenue = batchCards.reduce((acc, b) => acc + (b.totalBatchRevenue || 0), 0);
-  const totalTurnoverProfit = batchCards.reduce((acc, b) => acc + (b.totalBatchProfit || 0), 0);
+
+  const totalTurnoverRevenue = batchedRealizedTotal;
+  const totalTurnoverProfit = batchedRealizedProfit;
 
   // Filtered list
   const filteredBatches = useMemo(() => {

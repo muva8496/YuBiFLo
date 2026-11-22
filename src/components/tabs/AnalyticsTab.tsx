@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { AlacioMasterState } from "../../types/alacio";
 import SalesVelocityTrendChart from "../charts/SalesVelocityTrendChart";
+import { getBatchedRealizedSalesSummary } from "../../utils/supplierBatchSalesEngine";
 
 interface AnalyticsTabProps {
   state: AlacioMasterState;
@@ -34,7 +35,8 @@ export interface AnalyticsToolDefinition {
 }
 
 export default function AnalyticsTab({ state }: AnalyticsTabProps) {
-  const { currency, inventory, kpis, salesLedger = [], customers = [], warehouse = [], payouts = [], floatDenominations } = state;
+  const { currency, inventory, kpis, customers = [], warehouse = [], payouts = [], floatDenominations } = state;
+  const { effectiveSalesLedger: salesLedger } = useMemo(() => getBatchedRealizedSalesSummary(state), [state]);
 
   const [activeTimeframe, setActiveTimeframe] = useState<"7D" | "30D" | "ALL">("7D");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
