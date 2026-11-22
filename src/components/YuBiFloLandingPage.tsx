@@ -13,6 +13,7 @@ import ProofBand from "./ProofBand";
 const PrdViewerModal = lazy(() => import("./PrdViewerModal"));
 const EngineeringLabModal = lazy(() => import("./EngineeringLabModal"));
 const OnboardingModal = lazy(() => import("./OnboardingModal"));
+const ClientArticlesModal = lazy(() => import("./ClientArticlesModal"));
 import {
   SolutionsMegaMenu,
   BusinessTypesMegaMenu,
@@ -214,8 +215,15 @@ export default function YuBiFloLandingPage({
   const [isVoiceRecordingModalOpen, setIsVoiceRecordingModalOpen] = useState(false);
   const [isPrdModalOpen, setIsPrdModalOpen] = useState(false);
   const [isEngineeringLabOpen, setIsEngineeringLabOpen] = useState(false);
+  const [isArticlesModalOpen, setIsArticlesModalOpen] = useState(false);
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [activeVoiceDemo, setActiveVoiceDemo] = useState<number | null>(0);
   const [waitlistModalApp, setWaitlistModalApp] = useState<string | null>(null);
+
+  const handleOpenArticles = (articleId?: string) => {
+    setSelectedArticleId(articleId || null);
+    setIsArticlesModalOpen(true);
+  };
   
   // Comprehensive waitlist form fields
   const [waitlistName, setWaitlistName] = useState("");
@@ -556,6 +564,7 @@ export default function YuBiFloLandingPage({
         <ResourcesDropdown
           isOpen={resourcesMenuOpen}
           onClose={() => setResourcesMenuOpen(false)}
+          onOpenArticles={handleOpenArticles}
           onOpenPRD={() => setIsPrdModalOpen(true)}
           onOpenEngineeringLab={() => setIsEngineeringLabOpen(true)}
           onOpenHowItWorks={() => {
@@ -581,6 +590,7 @@ export default function YuBiFloLandingPage({
             launchSolutionDemo("bloom_dashboard", preset);
           }}
           onOpenAuth={onOpenAuth}
+          onOpenArticles={handleOpenArticles}
           onOpenPRD={() => setIsPrdModalOpen(true)}
           onOpenEngineeringLab={() => setIsEngineeringLabOpen(true)}
           onOpenWaitlist={(name) => setWaitlistModalApp(name)}
@@ -1856,6 +1866,13 @@ export default function YuBiFloLandingPage({
               &copy; {new Date().getFullYear()} YuBiFLo. All rights reserved.
             </div>
             <div className="flex items-center gap-4 flex-wrap">
+              <button
+                onClick={() => handleOpenArticles()}
+                className="text-slate-200 hover:text-white font-medium cursor-pointer"
+                title="Read practical MSME guides and client articles"
+              >
+                Client Articles
+              </button>
               <button 
                 onClick={() => setIsPrdModalOpen(true)} 
                 className="text-[#B8860B] hover:text-[#FAF6EE] font-medium flex items-center gap-1 cursor-pointer"
@@ -2126,6 +2143,26 @@ export default function YuBiFloLandingPage({
             isOpen={isEngineeringLabOpen}
             onClose={() => setIsEngineeringLabOpen(false)}
             onLaunchWorkspace={handleLaunchWorkspace}
+          />
+        </Suspense>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 13B. CLIENT ARTICLES & GUIDES MODAL (UNDER RESOURCES)                     */}
+      {/* ========================================================================= */}
+      {isArticlesModalOpen && (
+        <Suspense fallback={null}>
+          <ClientArticlesModal
+            isOpen={isArticlesModalOpen}
+            initialArticleId={selectedArticleId}
+            onClose={() => setIsArticlesModalOpen(false)}
+            onTryInWorkspace={(tabId) => {
+              if (onLaunchDemoTab) {
+                onLaunchDemoTab(tabId || "dashboard", "duka");
+              } else {
+                handleLaunchWorkspace();
+              }
+            }}
           />
         </Suspense>
       )}

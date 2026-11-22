@@ -3,8 +3,9 @@ import {
   Check, ChevronDown, ArrowRight, Mic, Scale, TrendingUp, 
   Layers, Users, Truck, Sparkles, Smartphone, Download, 
   Store, Wrench, Shield, ShoppingBag, FileSpreadsheet,
-  Camera, BarChart3, HelpCircle, ChevronRight, Phone
+  Camera, BarChart3, HelpCircle, ChevronRight, Phone, BookOpen
 } from "lucide-react";
+import { CLIENT_ARTICLES } from "../data/clientArticles";
 
 export type BlueprintStatus = "available" | "next" | "soon" | "request";
 
@@ -568,6 +569,7 @@ export function BusinessTypesMegaMenu({
 export function ResourcesDropdown({
   isOpen,
   onClose,
+  onOpenArticles,
   onOpenPRD,
   onOpenEngineeringLab,
   onOpenHowItWorks,
@@ -577,6 +579,7 @@ export function ResourcesDropdown({
 }: {
   isOpen: boolean;
   onClose: () => void;
+  onOpenArticles: (articleId?: string) => void;
   onOpenPRD: () => void;
   onOpenEngineeringLab: () => void;
   onOpenHowItWorks: () => void;
@@ -611,65 +614,106 @@ export function ResourcesDropdown({
   return (
     <div 
       ref={menuRef}
-      className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-80 bg-white rounded-2xl shadow-xl border border-[#e4e4e7] p-3 space-y-1.5 z-50 animate-in fade-in slide-in-from-top-1 text-xs text-[#222222]"
+      className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-96 bg-white rounded-2xl shadow-xl border border-[#e4e4e7] p-3.5 space-y-2 z-50 animate-in fade-in slide-in-from-top-1 text-xs text-[#222222]"
     >
-      <button
-        onClick={() => {
-          onClose();
-          onOpenPRD();
-        }}
-        className="w-full text-left p-2.5 rounded-xl hover:bg-[#f4f4f5] transition flex items-center justify-between cursor-pointer"
-      >
-        <div>
-          <div className="font-bold text-[#000000]">PRD Document &amp; Flow</div>
-          <div className="text-[11px] text-[#666666]">Official specifications &amp; user journey</div>
+      {/* Featured Client Articles & Reading Room */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between px-2 pt-0.5 pb-1">
+          <span className="text-[11px] font-semibold text-[#996515] flex items-center gap-1.5">
+            <BookOpen size={13} />
+            <span>Client Articles &amp; Guides</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onOpenArticles();
+            }}
+            className="text-[11px] font-semibold text-[#1A56DB] hover:underline cursor-pointer whitespace-nowrap"
+          >
+            Read all ({CLIENT_ARTICLES.length}) &rarr;
+          </button>
         </div>
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#f4f4f5] text-[#000000] font-bold">
-          v2.4
-        </span>
-      </button>
 
-      <button
-        onClick={() => {
-          onClose();
-          onOpenEngineeringLab();
-        }}
-        className="w-full text-left p-2.5 rounded-xl hover:bg-[#f4f4f5] transition flex items-center justify-between cursor-pointer"
-      >
-        <div>
-          <div className="font-bold text-[#222222]">Engineering Lab</div>
-          <div className="text-[11px] text-[#666666]">Schemas, reconciliation &amp; double-entry accounts</div>
-        </div>
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#FAF6EE] text-[#996515] font-bold">
-          Partners
-        </span>
-      </button>
+        {CLIENT_ARTICLES.slice(0, 3).map((article) => (
+          <button
+            key={article.id}
+            type="button"
+            onClick={() => {
+              onClose();
+              onOpenArticles(article.id);
+            }}
+            className="w-full text-left p-2 rounded-xl hover:bg-[#f4f4f5] transition cursor-pointer group space-y-0.5"
+          >
+            <div className="font-semibold text-[#0B1B32] group-hover:text-[#1A56DB] transition-colors line-clamp-1">
+              {article.title}
+            </div>
+            <div className="text-[11px] text-[#666666]">
+              {article.category} &middot; {article.readTime}
+            </div>
+          </button>
+        ))}
+      </div>
 
-      <button
-        onClick={() => {
-          onClose();
-          onOpenHowItWorks();
-        }}
-        className="w-full text-left p-2.5 rounded-xl hover:bg-[#f4f4f5] transition flex items-center justify-between cursor-pointer"
-      >
-        <div>
-          <div className="font-bold text-[#222222]">How It Works Guide</div>
-          <div className="text-[11px] text-[#666666]">1 Dawn float, 2 Cargo goods receipts, 3 Zero evening checks</div>
-        </div>
-      </button>
+      <div className="border-t border-[#e5e7eb] pt-2 space-y-1">
+        <button
+          onClick={() => {
+            onClose();
+            onOpenPRD();
+          }}
+          className="w-full text-left p-2 rounded-xl hover:bg-[#f4f4f5] transition flex items-center justify-between cursor-pointer"
+        >
+          <div>
+            <div className="font-bold text-[#000000]">PRD Document &amp; Flow</div>
+            <div className="text-[11px] text-[#666666]">Official specifications &amp; user journey</div>
+          </div>
+          <span className="text-[10px] font-mono text-[#666666] font-semibold">
+            v2.4
+          </span>
+        </button>
 
-      <button
-        onClick={() => {
-          onClose();
-          onOpenProjects();
-        }}
-        className="w-full text-left p-2.5 rounded-xl hover:bg-[#f4f4f5] transition flex items-center justify-between cursor-pointer"
-      >
-        <div>
-          <div className="font-bold text-[#222222]">Project #1 Case Study</div>
-          <div className="text-[11px] text-[#666666]">Field evidence from live Kenyan shop</div>
-        </div>
-      </button>
+        <button
+          onClick={() => {
+            onClose();
+            onOpenEngineeringLab();
+          }}
+          className="w-full text-left p-2 rounded-xl hover:bg-[#f4f4f5] transition flex items-center justify-between cursor-pointer"
+        >
+          <div>
+            <div className="font-bold text-[#222222]">Engineering Lab</div>
+            <div className="text-[11px] text-[#666666]">Schemas, reconciliation &amp; double-entry accounts</div>
+          </div>
+          <span className="text-[10px] font-medium text-[#996515]">
+            Partners
+          </span>
+        </button>
+
+        <button
+          onClick={() => {
+            onClose();
+            onOpenHowItWorks();
+          }}
+          className="w-full text-left p-2 rounded-xl hover:bg-[#f4f4f5] transition flex items-center justify-between cursor-pointer"
+        >
+          <div>
+            <div className="font-bold text-[#222222]">How It Works Guide</div>
+            <div className="text-[11px] text-[#666666]">1 Dawn float, 2 Cargo goods receipts, 3 Zero evening checks</div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => {
+            onClose();
+            onOpenProjects();
+          }}
+          className="w-full text-left p-2 rounded-xl hover:bg-[#f4f4f5] transition flex items-center justify-between cursor-pointer"
+        >
+          <div>
+            <div className="font-bold text-[#222222]">Project #1 Case Study</div>
+            <div className="text-[11px] text-[#666666]">Field evidence from live Kenyan shop</div>
+          </div>
+        </button>
+      </div>
 
       <div className="pt-2 border-t border-[#e5e7eb] flex items-center justify-between px-2">
         <span className="text-[11px] text-[#666666]">Language Toggle:</span>
@@ -696,6 +740,7 @@ export function MobileNavAccordions({
   onSelectSolution,
   onSelectBusinessType,
   onOpenAuth,
+  onOpenArticles,
   onOpenPRD,
   onOpenEngineeringLab,
   onOpenWaitlist,
@@ -708,6 +753,7 @@ export function MobileNavAccordions({
   onSelectSolution?: (solutionId: string) => void;
   onSelectBusinessType?: (name: string) => void;
   onOpenAuth?: (mode: "signin" | "signup") => void;
+  onOpenArticles: (articleId?: string) => void;
   onOpenPRD: () => void;
   onOpenEngineeringLab: () => void;
   onOpenWaitlist: (name: string) => void;
@@ -800,12 +846,38 @@ export function MobileNavAccordions({
           onClick={() => setResourcesExpanded(!resourcesExpanded)}
           className="w-full p-3.5 bg-[#fafafa] flex items-center justify-between text-left font-bold text-[#000000]"
         >
-          <span>Resources &amp; Specs</span>
+          <span>Resources &amp; Client Articles</span>
           <ChevronDown size={16} className={`transition-transform ${resourcesExpanded ? "rotate-180" : ""}`} />
         </button>
 
         {resourcesExpanded && (
-          <div className="p-3 bg-white space-y-2">
+          <div className="p-3 bg-white space-y-2.5">
+            <div className="space-y-1.5 pb-2 border-b border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenArticles();
+                }}
+                className="w-full text-left py-1 text-[#1A56DB] font-bold flex items-center justify-between"
+              >
+                <span>Client Articles &amp; Guides ({CLIENT_ARTICLES.length})</span>
+                <span>&rarr;</span>
+              </button>
+              {CLIENT_ARTICLES.slice(0, 2).map((article) => (
+                <button
+                  key={article.id}
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenArticles(article.id);
+                  }}
+                  className="w-full text-left py-1 text-[11px] text-slate-700 hover:text-[#0B1B32] line-clamp-1"
+                >
+                  &bull; {article.title}
+                </button>
+              ))}
+            </div>
             <button
               onClick={() => {
                 onClose();
