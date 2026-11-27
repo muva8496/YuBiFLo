@@ -142,5 +142,70 @@ service cloud.firestore {
         allow update, delete: if false; // Tamper-proof audit evidence
       }
     }
+
+    function isValidPlatformTelemetry(data, telemetryId) {
+      return data.keys().hasAll([
+          'id', 'workspace_id', 'business_name', 'business_type',
+          'blueprint_id', 'plan_tier', 'signed_up_at', 'last_active_at',
+          'sessions_count', 'actions_count', 'active_modules',
+          'sync_success_count', 'sync_failure_count',
+          'avg_sync_latency_ms', 'last_sync_latency_ms',
+          'payload_kb', 'app_boot_ms', 'schema_version',
+          'e2ee_enabled', 'device_form_factor', 'health_status',
+          'server_updated_at'
+        ])
+        && data.keys().hasOnly([
+          'id', 'workspace_id', 'owner_handle', 'business_name', 'business_type',
+          'blueprint_id', 'plan_tier', 'role_type', 'signed_up_at', 'last_active_at',
+          'last_active_tab', 'active_modules', 'sessions_count', 'actions_count',
+          'sync_success_count', 'sync_failure_count', 'avg_sync_latency_ms',
+          'last_sync_latency_ms', 'payload_kb', 'app_boot_ms', 'record_score',
+          'schema_version', 'e2ee_enabled', 'device_form_factor', 'health_status',
+          'server_updated_at'
+        ])
+        && data.id is string && data.id == telemetryId && data.id.size() > 0 && data.id.size() <= 128
+        && data.workspace_id is string && data.workspace_id.size() > 0 && data.workspace_id.size() <= 128
+        && (!('owner_handle' in data) || (data.owner_handle is string && data.owner_handle.size() <= 80))
+        && data.business_name is string && data.business_name.size() > 0 && data.business_name.size() <= 120
+        && data.business_type is string && data.business_type.size() > 0 && data.business_type.size() <= 80
+        && data.blueprint_id is string && data.blueprint_id.size() > 0 && data.blueprint_id.size() <= 60
+        && data.plan_tier in ['FREE_TRIAL', 'PAID_BLUEPRINT', 'PRO', 'PLATINUM', 'ENTERPRISE']
+        && (!('role_type' in data) || data.role_type in ['OWNER', 'MANAGER', 'ADMIN'])
+        && data.signed_up_at is string && data.signed_up_at.size() >= 10 && data.signed_up_at.size() <= 40
+        && data.last_active_at is string && data.last_active_at.size() >= 10 && data.last_active_at.size() <= 40
+        && (!('last_active_tab' in data) || (data.last_active_tab is string && data.last_active_tab.size() <= 50))
+        && data.sessions_count is number && data.sessions_count >= 0 && data.sessions_count <= 1000000
+        && data.actions_count is number && data.actions_count >= 0 && data.actions_count <= 10000000
+        && data.active_modules is list && data.active_modules.size() <= 15
+        && (data.active_modules.size() == 0 || data.active_modules[0] is string)
+        && data.sync_success_count is number && data.sync_success_count >= 0 && data.sync_success_count <= 10000000
+        && data.sync_failure_count is number && data.sync_failure_count >= 0 && data.sync_failure_count <= 10000000
+        && data.avg_sync_latency_ms is number && data.avg_sync_latency_ms >= 0 && data.avg_sync_latency_ms <= 600000
+        && data.last_sync_latency_ms is number && data.last_sync_latency_ms >= 0 && data.last_sync_latency_ms <= 600000
+        && data.payload_kb is number && data.payload_kb >= 0 && data.payload_kb <= 50000
+        && data.app_boot_ms is number && data.app_boot_ms >= 0 && data.app_boot_ms <= 600000
+        && (!('record_score' in data) || (data.record_score is number && data.record_score >= 0))
+        && data.schema_version is number && data.schema_version >= 1 && data.schema_version <= 1000
+        && data.e2ee_enabled is bool
+        && data.device_form_factor in ['MOBILE', 'DESKTOP', 'TABLET']
+        && data.health_status in ['HEALTHY', 'DEGRADED', 'IDLE']
+        && data.server_updated_at == request.time;
+    }
+
+    // Privacy-Preserving Site Usage & Performance Telemetry (Zero Private Financial Data)
+    match /platform_telemetry/{telemetryId} {
+      allow get: if isValidId(telemetryId);
+      allow list: if existing().id is string
+        && existing().schema_version is number
+        && existing().schema_version >= 1;
+      allow create: if isValidId(telemetryId)
+        && isValidPlatformTelemetry(incoming(), telemetryId);
+      allow update: if isValidId(telemetryId)
+        && isValidPlatformTelemetry(incoming(), telemetryId)
+        && incoming().id == existing().id
+        && incoming().workspace_id == existing().workspace_id
+        && incoming().signed_up_at == existing().signed_up_at;
+      allow delete: if false;
+    }
   }
 }

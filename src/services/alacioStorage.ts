@@ -2103,6 +2103,8 @@ export async function flushWorkspaceToCloudNow(
   }
 
   const recordScore = computeStateRichnessScore(stateToPersist);
+  const syncStartedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+  let approxPayloadKb = 0;
 
   try {
     const [{ db, handleFirestoreError, OperationType }, { doc, getDoc, setDoc }] = await loadFirestoreModules();
@@ -2180,14 +2182,57 @@ export async function flushWorkspaceToCloudNow(
       last_updated: stateToPersist.last_persisted_at
     };
 
+    try {
+      approxPayloadKb = Math.round((JSON.stringify(cloudDoc).length / 1024) * 10) / 10;
+    } catch {}
+
     const sig = `${recordScore}:${stateToPersist.receiptsArchive?.length || 0}:${stateToPersist.payouts?.length || 0}:${stateToPersist.salesLedger?.length || 0}:${stateToPersist.inventory?.length || 0}:${stateToPersist.cash_register_balance}:${allCargoEdits.length}`;
     recentlyWrittenTimestamps.set(docId, String(cloudDoc.last_updated));
     lastFlushedCloudSignatures.set(docId, sig);
 
     // Replace document cleanly so legacy plaintext fields cannot remain exposed in Firestore
     await setDoc(workspaceRef, cloudDoc);
+
+    const latencyMs = Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - syncStartedAt);
+    import("./platformTelemetryService")
+      .then(({ recordTelemetryHeartbeat }) =>
+        recordTelemetryHeartbeat({
+          workspaceId: docId,
+          userEmail: targetEmail,
+          businessName: stateToPersist.merchant_name || "YuBiFlo Merchant",
+          businessType: stateToPersist.client_type || "Retail / Duka",
+          blueprintId: stateToPersist.business_blueprint_id || "duka_fmcg",
+          planTier: stateToPersist.tier || "PAID_BLUEPRINT",
+          eventKind: "sync_success",
+          syncLatencyMs: latencyMs,
+          payloadKb: approxPayloadKb,
+          recordScore,
+          schemaVersion: SCHEMA_VERSION
+        })
+      )
+      .catch(() => {});
+
     return true;
   } catch (cloudErr) {
+    const latencyMs = Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - syncStartedAt);
+    import("./platformTelemetryService")
+      .then(({ recordTelemetryHeartbeat }) =>
+        recordTelemetryHeartbeat({
+          workspaceId: docId,
+          userEmail: targetEmail,
+          businessName: stateToPersist.merchant_name || "YuBiFlo Merchant",
+          businessType: stateToPersist.client_type || "Retail / Duka",
+          blueprintId: stateToPersist.business_blueprint_id || "duka_fmcg",
+          planTier: stateToPersist.tier || "PAID_BLUEPRINT",
+          eventKind: "sync_error",
+          syncLatencyMs: latencyMs,
+          payloadKb: approxPayloadKb,
+          recordScore,
+          schemaVersion: SCHEMA_VERSION
+        })
+      )
+      .catch(() => {});
+
     try {
       const [{ handleFirestoreError, OperationType }] = await loadFirestoreModules();
       handleFirestoreError(cloudErr, OperationType.WRITE, `workspaces/${docId}`);

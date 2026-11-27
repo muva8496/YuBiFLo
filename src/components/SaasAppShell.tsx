@@ -4,7 +4,7 @@ import {
   Sun, Mic, Users, BookOpen, BarChart2, ChevronDown, HelpCircle, 
   LogOut, Settings, Building2, Menu, X, ArrowRight, Shield, 
   CheckCircle2, AlertCircle, Phone, Lock, Globe, Check, Sparkles,
-  Plus, Play, FileText, Bookmark, Truck, ShieldCheck, Wallet, Camera
+  Plus, Play, FileText, Bookmark, Truck, ShieldCheck, Wallet, Camera, Home, Activity
 } from "lucide-react";
 import { UserProfile, signOut, signOutAllDevices } from "../services/authSessionService";
 import { UserAccount } from "../services/accountManagementService";
@@ -58,6 +58,10 @@ interface SaasAppShellProps {
   onOpenDataVault?: () => void;
   overdueDebtors?: OverdueDebtorAlert[];
   currency?: string;
+  onGoHome?: () => void;
+  onOpenBusinessChooser?: () => void;
+  isPlatformOwner?: boolean;
+  onOpenAdminBackend?: () => void;
   children: React.ReactNode;
 }
 
@@ -86,6 +90,10 @@ export default function SaasAppShell({
   onOpenDataVault,
   overdueDebtors = [],
   currency = "KSh",
+  onGoHome,
+  onOpenBusinessChooser,
+  isPlatformOwner = false,
+  onOpenAdminBackend,
   children
 }: SaasAppShellProps) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -197,8 +205,19 @@ export default function SaasAppShell({
           </button>
         </div>
 
-        {/* RIGHT: DATA VAULT + DOCUMENT ICON + HELP (?) + BUSINESS SWITCHER PILL AT TOP RIGHT */}
+        {/* RIGHT: HOMEPAGE + DATA VAULT + DOCUMENT ICON + HELP (?) + BUSINESS SWITCHER PILL AT TOP RIGHT */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {onGoHome && (
+            <button
+              type="button"
+              onClick={onGoHome}
+              className="h-8 px-2.5 rounded-lg bg-white hover:bg-slate-100 border border-[#CBD5E1] text-slate-700 hover:text-slate-950 flex items-center gap-1.5 transition cursor-pointer text-xs font-semibold shadow-2xs"
+              title="Return to YuBiFLo public homepage"
+            >
+              <Home size={14} className="text-[#1A56DB]" />
+              <span className="hidden lg:inline">Homepage</span>
+            </button>
+          )}
           
           {/* ZERO-DATA-LOSS DATA VAULT BUTTON */}
           {onOpenDataVault && (
@@ -422,6 +441,45 @@ export default function SaasAppShell({
 
                 {/* ADDITIONAL ACTIONS */}
                 <div className="border-t border-slate-100 pt-1 space-y-0.5">
+                  {onGoHome && (
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        onGoHome();
+                      }}
+                      className="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 text-slate-700 flex items-center gap-2 transition cursor-pointer text-xs font-semibold"
+                    >
+                      <Home size={14} className="text-[#1A56DB] shrink-0" />
+                      <span>Back to Public Homepage</span>
+                    </button>
+                  )}
+
+                  {onOpenBusinessChooser && !isDemo && (
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        onOpenBusinessChooser();
+                      }}
+                      className="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 text-slate-700 flex items-center gap-2 transition cursor-pointer text-xs font-semibold"
+                    >
+                      <Building2 size={14} className="text-[#1A56DB] shrink-0" />
+                      <span>Choose Managed Business</span>
+                    </button>
+                  )}
+
+                  {isPlatformOwner && onOpenAdminBackend && (
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        onOpenAdminBackend();
+                      }}
+                      className="w-full px-3 py-2 text-left rounded-xl bg-[#0B1B32] hover:bg-[#13294B] text-[#F5D061] flex items-center gap-2 transition cursor-pointer text-xs font-semibold my-1"
+                    >
+                      <Activity size={14} className="text-[#F5D061] shrink-0" />
+                      <span>Platform Admin Backend</span>
+                    </button>
+                  )}
+
                   {onOpenDataVault && (
                     <button
                       onClick={() => {

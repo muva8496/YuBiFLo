@@ -35,6 +35,10 @@ interface YuBiFloLandingPageProps {
   onCompleteOnboarding?: (customState: Partial<AlacioMasterState>) => void;
   onOpenAuth?: (mode: "signin" | "signup") => void;
   isLoggedIn?: boolean;
+  accountsCount?: number;
+  isPlatformOwner?: boolean;
+  onOpenBusinessChooser?: () => void;
+  onOpenAdminBackend?: () => void;
   onLaunchDukaDemo?: () => void;
   onLaunchDemoTab?: (tabId?: string, preset?: "duka" | "eatery") => void;
 }
@@ -165,10 +169,28 @@ export default function YuBiFloLandingPage({
   onCompleteOnboarding,
   onOpenAuth,
   isLoggedIn = false,
+  accountsCount = 0,
+  isPlatformOwner = false,
+  onOpenBusinessChooser,
+  onOpenAdminBackend,
   onLaunchDukaDemo,
   onLaunchDemoTab
 }: YuBiFloLandingPageProps) {
-  const handleLaunchWorkspace = onLaunchRetailWorkspace || onLaunchAlacioShop || onGetStarted;
+  const handleLaunchWorkspace =
+    isLoggedIn && onOpenBusinessChooser
+      ? onOpenBusinessChooser
+      : onLaunchRetailWorkspace || onLaunchAlacioShop || onGetStarted;
+  const handlePrimaryAuthOrChooser = (mode: "signin" | "signup") => {
+    if (isLoggedIn && onOpenBusinessChooser) {
+      onOpenBusinessChooser();
+      return;
+    }
+    if (onOpenAuth) {
+      onOpenAuth(mode);
+    } else {
+      handleLaunchWorkspace();
+    }
+  };
 
   const launchSolutionDemo = (solutionId: string, preset: "duka" | "eatery" = "duka") => {
     const tabMap: Record<string, string> = {
@@ -362,7 +384,7 @@ export default function YuBiFloLandingPage({
           {/* Logo & Brand Signature */}
           <div className="flex items-center gap-8 lg:gap-10">
             <button 
-              onClick={handleLaunchWorkspace}
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="flex items-center gap-3 text-left group cursor-pointer transition-transform hover:scale-[1.02]"
             >
               <YuBiFloLogo size="md" variant="dark" />
@@ -462,15 +484,38 @@ export default function YuBiFloLandingPage({
           </div>
 
           {/* Right Action Buttons */}
-          <div className="hidden sm:flex items-center gap-3.5">
+          <div className="hidden sm:flex items-center gap-3">
             {isLoggedIn ? (
-              <button
-                onClick={handleLaunchWorkspace}
-                className="px-5 py-2.5 rounded-full bg-[#000000] hover:bg-[#171717] text-white font-semibold text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <span>Open dashboard</span>
-                <ArrowRight size={14} />
-              </button>
+              <>
+                <button
+                  onClick={() => onLaunchDukaDemo ? onLaunchDukaDemo() : handleLaunchWorkspace()}
+                  className="px-4 py-2 rounded-full border border-zinc-300 hover:border-black text-[#222222] hover:text-[#000000] font-semibold text-xs transition cursor-pointer"
+                  title="Explore live workspace demo"
+                >
+                  Explore Live
+                </button>
+
+                {isPlatformOwner && onOpenAdminBackend && (
+                  <button
+                    onClick={onOpenAdminBackend}
+                    className="px-4 py-2 rounded-full bg-[#0B1B32] hover:bg-[#13294B] border border-[#D4AF37]/60 text-[#F5D061] font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer"
+                    title="View signed-up businesses & site usage performance"
+                  >
+                    <Shield size={13} />
+                    <span>Admin Backend</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => onOpenBusinessChooser ? onOpenBusinessChooser() : handleLaunchWorkspace()}
+                  className="px-5 py-2.5 rounded-full neuro-cta-gold text-white font-semibold text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                  title="Choose which managed business to open"
+                >
+                  <Building2 size={14} className="text-[#F5D061]" />
+                  <span>My Businesses{accountsCount > 0 ? ` (${accountsCount})` : ""}</span>
+                  <ArrowRight size={14} />
+                </button>
+              </>
             ) : (
               <>
                 <button
@@ -502,14 +547,24 @@ export default function YuBiFloLandingPage({
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="flex md:hidden items-center gap-2">
+          <div className="flex md:hidden items-center gap-1.5">
             {isLoggedIn ? (
-              <button
-                onClick={handleLaunchWorkspace}
-                className="px-3.5 py-1.5 rounded-full bg-[#000000] text-white text-xs font-semibold"
-              >
-                Open dashboard
-              </button>
+              <>
+                {isPlatformOwner && onOpenAdminBackend && (
+                  <button
+                    onClick={onOpenAdminBackend}
+                    className="px-2.5 py-1.5 rounded-full bg-[#0B1B32] text-[#F5D061] border border-[#D4AF37]/50 text-[11px] font-semibold"
+                  >
+                    Admin
+                  </button>
+                )}
+                <button
+                  onClick={() => onOpenBusinessChooser ? onOpenBusinessChooser() : handleLaunchWorkspace()}
+                  className="px-3 py-1.5 rounded-full bg-[#000000] text-white text-[11px] font-semibold"
+                >
+                  Businesses{accountsCount > 0 ? ` (${accountsCount})` : ""}
+                </button>
+              </>
             ) : (
               <div className="flex items-center gap-1.5">
                 <button
@@ -626,11 +681,11 @@ export default function YuBiFloLandingPage({
               {/* Action Buttons */}
               <div className="pt-1 sm:pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-3.5">
                 <button
-                  onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
+                  onClick={() => handlePrimaryAuthOrChooser("signup")}
                   className="px-3 sm:px-6 py-2 sm:py-3 rounded-full neuro-cta-gold text-white font-bold text-[11px] sm:text-sm cursor-pointer text-center flex items-center justify-center gap-1.5 sm:gap-2 group whitespace-nowrap min-h-[36px] sm:min-h-[44px]"
-                  title="Sign up and start using the app for your business"
+                  title={isLoggedIn ? "Choose one of your managed businesses" : "Sign up and start using the app for your business"}
                 >
-                  <span>Meet Your Biz</span>
+                  <span>{isLoggedIn ? "Choose My Business" : "Meet Your Biz"}</span>
                   <ArrowRight size={14} className="text-[#F5D061] group-hover:translate-x-1 transition-transform shrink-0" />
                 </button>
 
@@ -1888,8 +1943,16 @@ export default function YuBiFloLandingPage({
               >
                 <span>Engineering Lab (for partners)</span>
               </button>
-              <button onClick={() => onOpenAuth ? onOpenAuth("signin") : handleLaunchWorkspace()} className="hover:text-white cursor-pointer">Sign in</button>
-              <button onClick={() => onOpenAuth ? onOpenAuth("signup") : handleLaunchWorkspace()} className="hover:text-white cursor-pointer">Sign up</button>
+              {isPlatformOwner && onOpenAdminBackend && (
+                <button
+                  onClick={onOpenAdminBackend}
+                  className="text-[#F5D061] hover:text-white font-semibold cursor-pointer"
+                >
+                  Platform Admin Backend
+                </button>
+              )}
+              <button onClick={() => handlePrimaryAuthOrChooser("signin")} className="hover:text-white cursor-pointer">Sign in</button>
+              <button onClick={() => handlePrimaryAuthOrChooser("signup")} className="hover:text-white cursor-pointer">Sign up</button>
             </div>
           </div>
 
@@ -2202,10 +2265,10 @@ export default function YuBiFloLandingPage({
             Try Live
           </button>
           <button
-            onClick={() => onOpenAuth ? onOpenAuth("signup") : handleStartOnboarding("A")}
+            onClick={() => handlePrimaryAuthOrChooser("signup")}
             className="px-4 py-2 rounded-full bg-[#FFD54F] hover:bg-[#FFE082] text-[#000000] font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
           >
-            <span>Meet Your Biz</span>
+            <span>{isLoggedIn ? "My Businesses" : "Meet Your Biz"}</span>
             <ArrowRight size={13} />
           </button>
         </div>

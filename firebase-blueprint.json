@@ -167,6 +167,63 @@
         "edited_at",
         "immutable"
       ]
+    },
+    "PlatformTelemetry": {
+      "title": "PlatformTelemetry",
+      "description": "Privacy-preserving site usage and technical performance telemetry per signed-up business workspace (zero financial or customer PII)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "workspace_id": { "type": "string", "maxLength": 128 },
+        "owner_handle": { "type": "string", "maxLength": 80 },
+        "business_name": { "type": "string", "maxLength": 120 },
+        "business_type": { "type": "string", "maxLength": 80 },
+        "blueprint_id": { "type": "string", "maxLength": 60 },
+        "plan_tier": { "type": "string", "enum": ["FREE_TRIAL", "PAID_BLUEPRINT", "PRO", "PLATINUM", "ENTERPRISE"] },
+        "role_type": { "type": "string", "enum": ["OWNER", "MANAGER", "ADMIN"] },
+        "signed_up_at": { "type": "string", "maxLength": 40 },
+        "last_active_at": { "type": "string", "maxLength": 40 },
+        "last_active_tab": { "type": "string", "maxLength": 50 },
+        "active_modules": { "type": "array" },
+        "sessions_count": { "type": "number" },
+        "actions_count": { "type": "number" },
+        "sync_success_count": { "type": "number" },
+        "sync_failure_count": { "type": "number" },
+        "avg_sync_latency_ms": { "type": "number" },
+        "last_sync_latency_ms": { "type": "number" },
+        "payload_kb": { "type": "number" },
+        "app_boot_ms": { "type": "number" },
+        "record_score": { "type": "number" },
+        "schema_version": { "type": "number" },
+        "e2ee_enabled": { "type": "boolean" },
+        "device_form_factor": { "type": "string", "enum": ["MOBILE", "DESKTOP", "TABLET"] },
+        "health_status": { "type": "string", "enum": ["HEALTHY", "DEGRADED", "IDLE"] },
+        "server_updated_at": { "type": "string" }
+      },
+      "required": [
+        "id",
+        "workspace_id",
+        "business_name",
+        "business_type",
+        "blueprint_id",
+        "plan_tier",
+        "signed_up_at",
+        "last_active_at",
+        "sessions_count",
+        "actions_count",
+        "active_modules",
+        "sync_success_count",
+        "sync_failure_count",
+        "avg_sync_latency_ms",
+        "last_sync_latency_ms",
+        "payload_kb",
+        "app_boot_ms",
+        "schema_version",
+        "e2ee_enabled",
+        "device_form_factor",
+        "health_status",
+        "server_updated_at"
+      ]
     }
   },
   "firestore": {
@@ -201,6 +258,10 @@
     "/workspaces/{workspaceId}/cargo_edit_evidence/{editId}": {
       "schema": "CargoEditEvidence",
       "description": "Immutable Firebase database evidence of edits made to Inbound Cargo deliveries and missed dates"
+    },
+    "/platform_telemetry/{telemetryId}": {
+      "schema": "PlatformTelemetry",
+      "description": "Privacy-preserving site usage and performance telemetry for signed-up businesses"
     }
   }
 }

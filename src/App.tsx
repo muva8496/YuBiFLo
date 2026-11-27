@@ -104,6 +104,8 @@ const MpesaImportModal = lazy(() => import("./components/MpesaImportModal"));
 const PullYourOwnAppModal = lazy(() => import("./components/PullYourOwnAppModal"));
 const DataVaultModal = lazy(() => import("./components/DataVaultModal"));
 const YuBiFloEnterpriseCommand = lazy(() => import("./components/YuBiFloEnterpriseCommand"));
+const BusinessChooserModal = lazy(() => import("./components/BusinessChooserModal"));
+const AdminTelemetryConsole = lazy(() => import("./components/AdminTelemetryConsole"));
 import {
   UserAccount,
   getUserAccounts,
@@ -115,6 +117,10 @@ import {
   syncAccountDirectoryFromCloud,
   saveAccountDirectoryToCloud
 } from "./services/accountManagementService";
+import {
+  isPlatformOwnerEmail,
+  recordTelemetryHeartbeat
+} from "./services/platformTelemetryService";
 
 function applyDeltaToPaymentChannels(
   prevState: AlacioMasterState,
@@ -190,14 +196,15 @@ export default function App() {
     initialSession ? initialSession.user : null
   );
 
-  // Main View Router: returning user with session opens straight to workspace
-  const [currentView, setCurrentView] = useState<"landing" | "workspace" | "developing" | "yubiflo_command">(() =>
-    initialSession ? "workspace" : "landing"
-  );
+  // Main View Router: Always land on the public homepage first so owner/admin is never trapped on a managed dashboard
+  const [currentView, setCurrentView] = useState<"landing" | "workspace" | "developing" | "yubiflo_command" | "admin_backend">("landing");
 
   const [activeDevelopingBlueprint, setActiveDevelopingBlueprint] = useState<Blueprint | null>(null);
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [preselectedSupplier, setPreselectedSupplier] = useState<string | undefined>(undefined);
+  const [isBusinessChooserOpen, setIsBusinessChooserOpen] = useState<boolean>(false);
+
+  const isPlatformOwner = isPlatformOwnerEmail(currentUser?.email);
 
   // MULTI-ACCOUNT MANAGEMENT UNDER SAME GMAIL (deferred until signed in)
   const [accounts, setAccounts] = useState<UserAccount[]>(() => {
@@ -281,6 +288,13 @@ export default function App() {
   latestAlacioStateRef.current = alacioState;
 
   const effectiveOwnerEmail = (currentUser?.email || alacioState.user_email || "mosesmukangai75@gmail.com").trim().toLowerCase();
+
+  // Security guard: ensure admin_backend view is only accessible to verified platform owner
+  useEffect(() => {
+    if (currentView === "admin_backend" && (!isPlatformOwner || !currentUser?.email)) {
+      setCurrentView("landing");
+    }
+  }, [currentView, isPlatformOwner, currentUser?.email]);
 
   // Persist real state locally & mirror encrypted E2EE vault to Firestore once cloud-armed (only when authenticated)
   useEffect(() => {
@@ -385,10 +399,31 @@ export default function App() {
   useEffect(() => {
     if (isDemoMode) {
       document.title = "Demo · yubiflo.com";
+    } else if (currentView === "admin_backend") {
+      document.title = "Platform Telemetry Backend · yubiflo.com";
     } else {
       document.title = "yubiflo.com — Your Business Is A Flower";
     }
-  }, [isDemoMode]);
+  }, [isDemoMode, currentView]);
+
+  // Privacy-preserving site usage telemetry when operating a real workspace
+  useEffect(() => {
+    if (currentView !== "workspace" || isDemoMode || !currentUser?.email) return;
+    const activeAcc = accounts.find((a) => a.id === activeAccountId);
+    const workspaceId = resolveWorkspaceCloudDocId(effectiveOwnerEmail, activeAccountId);
+    recordTelemetryHeartbeat({
+      workspaceId,
+      userEmail: effectiveOwnerEmail,
+      businessName: activeAcc?.businessName || alacioState.merchant_name || "YuBiFlo Merchant",
+      businessType: activeAcc?.businessType || alacioState.client_type || "Retail / Duka",
+      blueprintId: alacioState.business_blueprint_id || "duka_fmcg",
+      planTier: alacioState.tier || currentUser.plan || "PAID_BLUEPRINT",
+      roleType: activeAcc?.role || "OWNER",
+      activeTab,
+      eventKind: activeTab === "dashboard" ? "session_start" : "module_view",
+      signedUpAt: activeAcc?.createdAt || currentUser.createdAt
+    }).catch(() => {});
+  }, [currentView, activeTab, activeAccountId, isDemoMode, currentUser?.email]);
 
   // -------------------------------------------------------------
   // INTERACTIVE DEMO SANDBOX: ENTRY & EXIT HANDLERS (NO SIGN-IN NEEDED)
@@ -491,7 +526,31 @@ export default function App() {
     cloudHydratedKeyRef.current = `${email}::${newAcc.id}`;
     setAlacioState(freshState);
     saveAlacioState(freshState, email, newAcc.id, { immediate: true, forceCloud: true });
+
+    recordTelemetryHeartbeat({
+      workspaceId: resolveWorkspaceCloudDocId(email, newAcc.id),
+      userEmail: email,
+      businessName,
+      businessType,
+      blueprintId: freshState.business_blueprint_id || "duka_fmcg",
+      planTier: freshState.tier || "PAID_BLUEPRINT",
+      roleType: "OWNER",
+      activeTab: "launchpad",
+      eventKind: "account_create",
+      signedUpAt: newAcc.createdAt,
+      forceFlush: true
+    }).catch(() => {});
+
+    setIsDemoMode(false);
+    setCurrentView("workspace");
     setActiveTab("launchpad");
+  };
+
+  const handleSelectBusinessFromChooser = (accountId: string) => {
+    setIsDemoMode(false);
+    handleSwitchAccount(accountId);
+    setCurrentView("workspace");
+    setActiveTab("dashboard");
   };
 
   const handleAuthSuccess = async (user: UserProfile) => {
@@ -502,6 +561,8 @@ export default function App() {
 
     const cleanEmail = (user.email || "mosesmukangai75@gmail.com").trim().toLowerCase();
     const hadLocalAccsBefore = hasLocalSavedAccounts(cleanEmail);
+    const shouldPromptBusinessChoice = (accs: UserAccount[]) =>
+      accs.length > 1 || isPlatformOwnerEmail(cleanEmail);
 
     // 1. Sync multi-account directory & launchpad from Cloud Firestore first
     let userAccs = getUserAccounts(cleanEmail);
@@ -541,19 +602,38 @@ export default function App() {
     setAccounts(userAccs);
     setActiveAccountIdState(userAccId);
 
+    const activeAcc = userAccs.find((a) => a.id === userAccId) || userAccs[0];
+    recordTelemetryHeartbeat({
+      workspaceId: resolveWorkspaceCloudDocId(cleanEmail, userAccId),
+      userEmail: cleanEmail,
+      businessName: activeAcc?.businessName || user.businessName || "YuBiFlo Merchant",
+      businessType: activeAcc?.businessType || user.businessType || "Retail / Duka",
+      planTier: user.plan || "PRO",
+      roleType: activeAcc?.role || "OWNER",
+      activeTab: "dashboard",
+      eventKind: "signup",
+      signedUpAt: activeAcc?.createdAt || user.createdAt,
+      forceFlush: true
+    }).catch(() => {});
+
     // 2. Check if THIS domain/device holds real unsynced merchant data (not untouched INITIAL_ALACIO_STATE seed)
     const hasLocalReal = hasRealLocalSavedState(cleanEmail, userAccId);
     const existingLocalState = hasLocalReal ? loadAlacioState(cleanEmail, userAccId) : undefined;
 
-    // 3. Twitter -> X Unified Cloud Resolution: pulls cloud if richer (new domain/device), or pushes richer local up
+    // 3. Unified Cloud Resolution: pulls cloud if richer, or pushes richer local up
     try {
       const syncRes = await syncWorkspaceWithCloud(cleanEmail, userAccId, existingLocalState);
       cloudHydratedKeyRef.current = `${cleanEmail}::${userAccId}`;
 
       if (syncRes.state) {
         setAlacioState(syncRes.state);
-        setCurrentView("workspace");
-        setActiveTab("dashboard");
+        if (shouldPromptBusinessChoice(userAccs)) {
+          setCurrentView("landing");
+          setIsBusinessChooserOpen(true);
+        } else {
+          setCurrentView("workspace");
+          setActiveTab("dashboard");
+        }
         return;
       }
     } catch (e) {
@@ -591,8 +671,13 @@ export default function App() {
       localStorage.setItem("yubiflo_real_launchpad_progress", JSON.stringify(freshLaunchpad));
     }
 
-    setCurrentView("workspace");
-    setActiveTab("dashboard");
+    if (shouldPromptBusinessChoice(userAccs)) {
+      setCurrentView("landing");
+      setIsBusinessChooserOpen(true);
+    } else {
+      setCurrentView("workspace");
+      setActiveTab("dashboard");
+    }
   };
 
   // State updater router (mutates demoState in sandbox, or alacioState in real)
@@ -2583,6 +2668,36 @@ export default function App() {
     }));
   };
 
+  const renderBusinessChooserModal = () => (
+    isBusinessChooserOpen && currentUser ? (
+      <Suspense fallback={null}>
+        <BusinessChooserModal
+          isOpen={isBusinessChooserOpen}
+          onClose={() => setIsBusinessChooserOpen(false)}
+          user={currentUser}
+          accounts={accounts}
+          activeAccountId={activeAccountId}
+          isPlatformOwner={isPlatformOwner}
+          onSelectBusiness={handleSelectBusinessFromChooser}
+          onCreateBusiness={(name, type, opts) => handleCreateAccount(name, type, opts)}
+          onOpenAdminBackend={() => {
+            if (isPlatformOwner) {
+              setIsDemoMode(false);
+              setCurrentView("admin_backend");
+            }
+          }}
+          onExploreDemo={() => handleEnterDukaSpace("landing", { tab: "dashboard", preset: "duka" })}
+          onSignOut={() => {
+            signOut();
+            setCurrentUser(null);
+            setIsBusinessChooserOpen(false);
+            setCurrentView("landing");
+          }}
+        />
+      </Suspense>
+    ) : null
+  );
+
   // -------------------------------------------------------------
   // VIEW 1: PUBLIC LANDING PAGE
   // -------------------------------------------------------------
@@ -2590,8 +2705,16 @@ export default function App() {
     return (
       <>
         <YuBiFloLandingPage
-          state={currentUser ? alacioState : undefined}
+          state={undefined}
           isLoggedIn={!!currentUser}
+          accountsCount={accounts.length}
+          isPlatformOwner={isPlatformOwner}
+          onOpenBusinessChooser={() => setIsBusinessChooserOpen(true)}
+          onOpenAdminBackend={() => {
+            if (isPlatformOwner) {
+              setCurrentView("admin_backend");
+            }
+          }}
           onOpenAuth={(mode) => {
             setAuthModalMode(mode);
             setIsAuthModalOpen(true);
@@ -2604,22 +2727,24 @@ export default function App() {
           }}
           onGetStarted={() => {
             if (currentUser) {
-              setCurrentView("workspace");
-              setActiveTab("dashboard");
+              setIsBusinessChooserOpen(true);
             } else {
               handleEnterDukaSpace("landing", { tab: "dashboard", preset: "duka" });
             }
           }}
           onLaunchRetailWorkspace={() => {
             if (currentUser) {
-              setCurrentView("workspace");
-              setActiveTab("dashboard");
+              setIsBusinessChooserOpen(true);
             } else {
               handleEnterDukaSpace("landing", { tab: "dashboard", preset: "duka" });
             }
           }}
           onOpenSovereignCommand={() => {
-            setCurrentView("yubiflo_command");
+            if (isPlatformOwner) {
+              setCurrentView("admin_backend");
+            } else {
+              setCurrentView("yubiflo_command");
+            }
           }}
           onOpenBlueprints={() => {
             const bp = PLATFORM_BLUEPRINTS.find((b) => b.status === "IN_DEVELOPMENT") || PLATFORM_BLUEPRINTS[2];
@@ -2635,6 +2760,8 @@ export default function App() {
           }}
         />
 
+        {renderBusinessChooserModal()}
+
         {isAuthModalOpen && (
           <Suspense fallback={null}>
             <UnifiedAuthModal
@@ -2645,6 +2772,24 @@ export default function App() {
             />
           </Suspense>
         )}
+      </>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 1B: PLATFORM OWNER ADMIN TELEMETRY BACKEND
+  // -------------------------------------------------------------
+  if (currentView === "admin_backend" && isPlatformOwner && currentUser?.email) {
+    return (
+      <>
+        <Suspense fallback={<TabLoadingSkeleton />}>
+          <AdminTelemetryConsole
+            ownerEmail={currentUser.email}
+            onBackToHomepage={() => setCurrentView("landing")}
+            onOpenBusinessChooser={() => setIsBusinessChooserOpen(true)}
+          />
+        </Suspense>
+        {renderBusinessChooserModal()}
       </>
     );
   }
@@ -2743,6 +2888,18 @@ export default function App() {
         onOpenDataVault={() => setIsDataVaultOpen(true)}
         overdueDebtors={getOverdueDebtors(currentMasterState.customers)}
         currency={currentMasterState.currency}
+        onGoHome={() => {
+          setIsDemoMode(false);
+          setCurrentView("landing");
+        }}
+        onOpenBusinessChooser={() => setIsBusinessChooserOpen(true)}
+        isPlatformOwner={isPlatformOwner}
+        onOpenAdminBackend={() => {
+          if (isPlatformOwner) {
+            setIsDemoMode(false);
+            setCurrentView("admin_backend");
+          }
+        }}
         onOpenSettings={() => {}}
         onSignOut={() => {
           signOut();
@@ -3108,6 +3265,7 @@ export default function App() {
           />
         )}
       </Suspense>
+      {renderBusinessChooserModal()}
     </>
   );
 }
